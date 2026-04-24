@@ -14,6 +14,7 @@ This is an early-stage experimental repo. Keep experiments self-contained in the
 - **Serialisation**: Use Pydantic models when serialisation/deserialisation is needed.
 - **File paths**: Prefer `pathlib.Path` over `os.path`.
 - **Tooling**: Use `uv` for project and dependency management. Use `pyproject.toml` (not `requirements.txt` or `setup.py`). When providing commands to run code, use `uv run` (e.g., `uv run python script.py`, `uv run mypy .`) rather than plain `python` invocations.
+- **TUI**: Use the `textual` package for all terminal user interface implementations.
 
 ## Git
 
