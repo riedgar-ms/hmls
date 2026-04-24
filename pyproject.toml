@@ -1,0 +1,27 @@
+[project]
+name = "hmls-workspace"
+version = "0.0.0"
+description = "Tank game AI experiments workspace"
+requires-python = ">=3.11"
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.4",
+    "mypy>=1.10",
+]
+
+[tool.ruff]
+src = ["packages/*/src"]
+
+[tool.mypy]
+packages = ["hmls"]
+mypy_path = "packages/hmls-core/src"
+strict = true
+explicit_package_bases = true
+
+[tool.pytest.ini_options]
+testpaths = ["packages/hmls-core/tests"]
