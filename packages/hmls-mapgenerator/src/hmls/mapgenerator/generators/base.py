@@ -30,7 +30,7 @@ Then pass an instance to ``generate_map(strategy=...)``.
 To make your strategy configurable via the TUI:
 
 1. Accept parameters in ``__init__()`` and validate them.
-2. Override the ``params`` class variable with a tuple of
+2. Override :meth:`~MapStrategy.get_params` to return a list of
    :class:`StrategyParam` descriptors.  The TUI reads these to build input
    widgets dynamically.
 3. Register the strategy in :data:`STRATEGY_REGISTRY`.
@@ -58,8 +58,9 @@ class StrategyParam:
 
     This is metadata used by the TUI (and potentially other UIs) to
     dynamically build input widgets for strategy-specific settings.
-    Every :class:`MapStrategy` subclass exposes a ``params`` class variable
-    (defaulting to an empty tuple) that the TUI reads to build input widgets.
+    Every :class:`MapStrategy` subclass exposes a :meth:`~MapStrategy.get_params`
+    classmethod (defaulting to an empty list) that the TUI reads to build
+    input widgets.
 
     Attributes:
         name: Constructor keyword argument name.
@@ -90,18 +91,25 @@ class MapStrategy(ABC):
     separately.
 
     Subclasses **must** implement :meth:`place_obstacles`.  They may also
-    override :attr:`params` with a tuple of :class:`StrategyParam`
+    override :meth:`get_params` to return a list of :class:`StrategyParam`
     descriptors so the TUI can build input widgets for strategy-specific
     settings.  Strategy-specific configuration (e.g. shape, scale, octaves)
     belongs on the concrete subclass.
-
-    Attributes:
-        params: Tuple of :class:`StrategyParam` descriptors for this
-            strategy's configurable parameters.  Defaults to an empty tuple
-            (no configurable parameters).
     """
 
-    params: tuple[StrategyParam, ...] = ()
+    @classmethod
+    def get_params(cls) -> list[StrategyParam]:
+        """Return the configurable parameters for this strategy.
+
+        The base implementation returns an empty list.  Subclasses with
+        configurable parameters should override this to return a list of
+        :class:`StrategyParam` descriptors.  The TUI calls this on the
+        class (before instantiation) to build input widgets dynamically.
+
+        Returns:
+            A list of :class:`StrategyParam` descriptors.
+        """
+        return []
 
     @abstractmethod
     def place_obstacles(
@@ -124,7 +132,7 @@ class MapStrategy(ABC):
 # ── Strategy registry ─────────────────────────────────────────────────
 
 # Maps display names to strategy classes.  The TUI uses this to populate
-# the strategy selector.  Each registered class exposes ``params``
+# the strategy selector.  Each registered class exposes ``get_params()``
 # (inherited from MapStrategy) and a constructor that accepts those
 # params as keyword arguments.
 STRATEGY_REGISTRY: dict[str, type[MapStrategy]] = {}

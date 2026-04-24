@@ -31,7 +31,10 @@ class BlobAndLineStrategy(MapStrategy):
             1.0 = fully circular blobs, 0.5 = mixed.
     """
 
-    params = (StrategyParam("shape", "Shape (0=linear, 1=circular)", float, 0.5, 0.0, 1.0),)
+    @classmethod
+    def get_params(cls) -> list[StrategyParam]:
+        """Return the configurable parameters for this strategy."""
+        return [StrategyParam("shape", "Shape (0=linear, 1=circular)", float, 0.5, 0.0, 1.0)]
 
     def __init__(self, shape: float = 0.5) -> None:
         """Create a blob-and-line strategy.

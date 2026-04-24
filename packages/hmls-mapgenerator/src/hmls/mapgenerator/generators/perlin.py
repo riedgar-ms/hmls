@@ -170,10 +170,13 @@ class PerlinNoiseStrategy(MapStrategy):
         octaves: Number of noise layers summed together.
     """
 
-    params = (
-        StrategyParam("scale", "Noise scale", float, 0.05, 0.02, 0.2),
-        StrategyParam("octaves", "Octaves", int, 4, 1, 8),
-    )
+    @classmethod
+    def get_params(cls) -> list[StrategyParam]:
+        """Return the configurable parameters for this strategy."""
+        return [
+            StrategyParam("scale", "Noise scale", float, 0.05, 0.02, 0.2),
+            StrategyParam("octaves", "Octaves", int, 4, 1, 8),
+        ]
 
     def __init__(self, scale: float = 0.05, octaves: int = 4) -> None:
         """Create a Perlin noise strategy.

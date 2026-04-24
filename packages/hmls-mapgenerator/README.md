@@ -61,9 +61,9 @@ from hmls.mapgenerator.generators.base import MapStrategy, STRATEGY_REGISTRY, St
 class MyStrategy(MapStrategy):
     """My custom obstacle placement strategy."""
 
-    params: tuple[StrategyParam, ...] = (
-        StrategyParam("density", "Density", float, 0.5, 0.0, 1.0),
-    )
+    @classmethod
+    def get_params(cls) -> list[StrategyParam]:
+        return [StrategyParam("density", "Density", float, 0.5, 0.0, 1.0)]
 
     def __init__(self, density: float = 0.5) -> None:
         self.density = density
