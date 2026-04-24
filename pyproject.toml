@@ -24,11 +24,11 @@ extend-select = ["I"]
 
 [tool.mypy]
 packages = ["hmls"]
-mypy_path = "packages/hmls-core/src"
+mypy_path = "packages/hmls-core/src:packages/hmls-mapgenerator/src"
 plugins = ["pydantic.mypy"]
 strict = true
 explicit_package_bases = true
 python_version = "3.14"
 
 [tool.pytest.ini_options]
-testpaths = ["packages/hmls-core/tests"]
+testpaths = ["packages/hmls-core/tests", "packages/hmls-mapgenerator/tests"]
