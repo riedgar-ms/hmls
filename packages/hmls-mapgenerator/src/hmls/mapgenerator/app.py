@@ -29,7 +29,6 @@ from hmls.mapgenerator.generators import (
     STRATEGY_REGISTRY,
     BlobAndLineStrategy,
     MapStrategy,
-    StrategyParam,
     generate_map,
 )
 
@@ -264,7 +263,7 @@ class MapGeneratorApp(App[None]):
                 )
                 # Dynamic strategy-specific parameter widgets
                 default_cls = STRATEGY_REGISTRY[next(iter(STRATEGY_REGISTRY))]
-                default_params: tuple[StrategyParam, ...] = getattr(default_cls, "params", ())
+                default_params = default_cls.get_params()
                 with Vertical(id="strategy-params"):
                     for param in default_params:
                         yield Label(param.label)
@@ -298,7 +297,7 @@ class MapGeneratorApp(App[None]):
             await container.remove_children()
             return
 
-        params: tuple[StrategyParam, ...] = getattr(strategy_cls, "params", ())
+        params = strategy_cls.get_params()
 
         await container.remove_children()
 
@@ -342,7 +341,7 @@ class MapGeneratorApp(App[None]):
         strategy_name = self.query_one("#strategy-select", Select).value
         strategy_cls = STRATEGY_REGISTRY.get(str(strategy_name), BlobAndLineStrategy)
 
-        params: tuple[StrategyParam, ...] = getattr(strategy_cls, "params", ())
+        params = strategy_cls.get_params()
         kwargs: dict[str, float | int] = {}
 
         for param in params:
@@ -360,7 +359,7 @@ class MapGeneratorApp(App[None]):
             except Exception:
                 kwargs[param.name] = param.default
 
-        return strategy_cls(**kwargs)  # type: ignore[no-any-return]
+        return strategy_cls(**kwargs)
 
     # ── Map generation ────────────────────────────────────────────
 

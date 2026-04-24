@@ -9,10 +9,10 @@ from __future__ import annotations
 import random
 
 from hmls.core import CellType, GameMap
-from hmls.mapgenerator.generators.base import STRATEGY_REGISTRY, StrategyParam
+from hmls.mapgenerator.generators.base import STRATEGY_REGISTRY, MapStrategy, StrategyParam
 
 
-class BlobAndLineStrategy:
+class BlobAndLineStrategy(MapStrategy):
     """Default obstacle placement using a mix of ellipses and line segments.
 
     Algorithm
@@ -31,7 +31,10 @@ class BlobAndLineStrategy:
             1.0 = fully circular blobs, 0.5 = mixed.
     """
 
-    params = (StrategyParam("shape", "Shape (0=linear, 1=circular)", float, 0.5, 0.0, 1.0),)
+    @classmethod
+    def get_params(cls) -> list[StrategyParam]:
+        """Return the configurable parameters for this strategy."""
+        return [StrategyParam("shape", "Shape (0=linear, 1=circular)", float, 0.5, 0.0, 1.0)]
 
     def __init__(self, shape: float = 0.5) -> None:
         """Create a blob-and-line strategy.

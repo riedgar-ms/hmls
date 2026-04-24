@@ -1,13 +1,14 @@
 """Map generation base classes and entry point.
 
 This module provides the :func:`generate_map` entry point and defines the
-:class:`MapStrategy` protocol for pluggable obstacle-placement algorithms.
+:class:`MapStrategy` abstract base class for pluggable obstacle-placement
+algorithms.
 
 Architecture
 ------------
 The generation pipeline has three phases:
 
-1. **Obstacle placement** — delegated to a :class:`MapStrategy` implementation.
+1. **Obstacle placement** — delegated to a :class:`MapStrategy` subclass.
    The strategy receives an all-passable :class:`~hmls.core.GameMap` and is
    responsible for marking cells as impassable until the target fraction is
    approximately reached.
@@ -23,14 +24,15 @@ The generation pipeline has three phases:
 
 Writing a new strategy
 ----------------------
-Implement the :class:`MapStrategy` protocol and override ``place_obstacles()``.
+Subclass :class:`MapStrategy` and implement ``place_obstacles()``.
 Then pass an instance to ``generate_map(strategy=...)``.
 
-To make your strategy configurable via the TUI, also:
+To make your strategy configurable via the TUI:
 
 1. Accept parameters in ``__init__()`` and validate them.
-2. Define a ``params`` class variable as a tuple of :class:`StrategyParam`
-   descriptors.  The TUI reads these to build input widgets dynamically.
+2. Override :meth:`~MapStrategy.get_params` to return a list of
+   :class:`StrategyParam` descriptors.  The TUI reads these to build input
+   widgets dynamically.
 3. Register the strategy in :data:`STRATEGY_REGISTRY`.
 """
 
@@ -38,8 +40,8 @@ from __future__ import annotations
 
 import random
 import warnings
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
 
 from hmls.core import GameMap
 from hmls.mapgenerator.connectivity import (
@@ -56,8 +58,9 @@ class StrategyParam:
 
     This is metadata used by the TUI (and potentially other UIs) to
     dynamically build input widgets for strategy-specific settings.
-    The :class:`MapStrategy` protocol itself does not require this — it is
-    optional for strategies that want TUI integration.
+    Every :class:`MapStrategy` subclass exposes a :meth:`~MapStrategy.get_params`
+    classmethod (defaulting to an empty list) that the TUI reads to build
+    input widgets.
 
     Attributes:
         name: Constructor keyword argument name.
@@ -76,22 +79,39 @@ class StrategyParam:
     max_val: float | int | None = None
 
 
-# ── Strategy protocol ─────────────────────────────────────────────────
+# ── Strategy base class ───────────────────────────────────────────────
 
 
-@runtime_checkable
-class MapStrategy(Protocol):
-    """Protocol for map generation strategies.
+class MapStrategy(ABC):
+    """Abstract base class for map generation strategies.
 
     A strategy is responsible for placing impassable terrain on an
     initially all-passable :class:`~hmls.core.GameMap`.  The
     :func:`generate_map` function handles connectivity enforcement
     separately.
 
-    This is a pure behavioural contract.  Strategy-specific configuration
-    (e.g. shape, scale, octaves) belongs on the concrete class, not here.
+    Subclasses **must** implement :meth:`place_obstacles`.  They may also
+    override :meth:`get_params` to return a list of :class:`StrategyParam`
+    descriptors so the TUI can build input widgets for strategy-specific
+    settings.  Strategy-specific configuration (e.g. shape, scale, octaves)
+    belongs on the concrete subclass.
     """
 
+    @classmethod
+    def get_params(cls) -> list[StrategyParam]:
+        """Return the configurable parameters for this strategy.
+
+        The base implementation returns an empty list.  Subclasses with
+        configurable parameters should override this to return a list of
+        :class:`StrategyParam` descriptors.  The TUI calls this on the
+        class (before instantiation) to build input widgets dynamically.
+
+        Returns:
+            A list of :class:`StrategyParam` descriptors.
+        """
+        return []
+
+    @abstractmethod
     def place_obstacles(
         self,
         game_map: GameMap,
@@ -107,17 +127,15 @@ class MapStrategy(Protocol):
                 but need not be exact.
             rng: Seeded :class:`random.Random` instance for reproducibility.
         """
-        ...
 
 
 # ── Strategy registry ─────────────────────────────────────────────────
 
 # Maps display names to strategy classes.  The TUI uses this to populate
-# the strategy selector.  Strategies registered here should have a
-# ``params`` class variable (tuple of StrategyParam) so the TUI can
-# build input widgets, and a constructor that accepts those params as
-# keyword arguments.
-STRATEGY_REGISTRY: dict[str, type] = {}
+# the strategy selector.  Each registered class exposes ``get_params()``
+# (inherited from MapStrategy) and a constructor that accepts those
+# params as keyword arguments.
+STRATEGY_REGISTRY: dict[str, type[MapStrategy]] = {}
 
 
 # ── Main entry point ──────────────────────────────────────────────────

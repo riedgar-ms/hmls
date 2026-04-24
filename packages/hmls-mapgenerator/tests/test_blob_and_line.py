@@ -52,9 +52,9 @@ class TestStrategyParam:
 
     def test_blob_and_line_has_params(self) -> None:
         """BlobAndLineStrategy declares its configurable parameters."""
-        assert hasattr(BlobAndLineStrategy, "params")
-        assert len(BlobAndLineStrategy.params) == 1
-        param = BlobAndLineStrategy.params[0]
+        assert hasattr(BlobAndLineStrategy, "get_params")
+        assert len(BlobAndLineStrategy.get_params()) == 1
+        param = BlobAndLineStrategy.get_params()[0]
         assert isinstance(param, StrategyParam)
         assert param.name == "shape"
         assert param.param_type is float

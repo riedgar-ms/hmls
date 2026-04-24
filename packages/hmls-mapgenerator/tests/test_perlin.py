@@ -174,24 +174,24 @@ class TestPerlinStrategyParams:
 
     def test_has_params(self) -> None:
         """PerlinNoiseStrategy declares its configurable parameters."""
-        assert hasattr(PerlinNoiseStrategy, "params")
-        assert len(PerlinNoiseStrategy.params) == 2
+        assert hasattr(PerlinNoiseStrategy, "get_params")
+        assert len(PerlinNoiseStrategy.get_params()) == 2
 
     def test_param_types(self) -> None:
         """All params should be StrategyParam instances."""
-        for param in PerlinNoiseStrategy.params:
+        for param in PerlinNoiseStrategy.get_params():
             assert isinstance(param, StrategyParam)
 
     def test_scale_param(self) -> None:
         """Scale parameter has correct metadata."""
-        param = PerlinNoiseStrategy.params[0]
+        param = PerlinNoiseStrategy.get_params()[0]
         assert param.name == "scale"
         assert param.param_type is float
         assert param.default == 0.05
 
     def test_octaves_param(self) -> None:
         """Octaves parameter has correct metadata."""
-        param = PerlinNoiseStrategy.params[1]
+        param = PerlinNoiseStrategy.get_params()[1]
         assert param.name == "octaves"
         assert param.param_type is int
         assert param.default == 4

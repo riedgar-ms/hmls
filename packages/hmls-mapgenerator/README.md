@@ -53,17 +53,17 @@ automatically in the TUI.
 
 ### Adding a custom strategy
 
-Implement the `MapStrategy` protocol and register it:
+Subclass `MapStrategy` and register it:
 
 ```python
-from hmls.mapgenerator.generators.base import STRATEGY_REGISTRY, StrategyParam
+from hmls.mapgenerator.generators.base import MapStrategy, STRATEGY_REGISTRY, StrategyParam
 
-class MyStrategy:
+class MyStrategy(MapStrategy):
     """My custom obstacle placement strategy."""
 
-    params: tuple[StrategyParam, ...] = (
-        StrategyParam("density", "Density", float, 0.5, 0.0, 1.0),
-    )
+    @classmethod
+    def get_params(cls) -> list[StrategyParam]:
+        return [StrategyParam("density", "Density", float, 0.5, 0.0, 1.0)]
 
     def __init__(self, density: float = 0.5) -> None:
         self.density = density
