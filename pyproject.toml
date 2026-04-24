@@ -25,6 +25,7 @@ extend-select = ["I"]
 [tool.mypy]
 packages = ["hmls"]
 mypy_path = "packages/hmls-core/src"
+plugins = ["pydantic.mypy"]
 strict = true
 explicit_package_bases = true
 python_version = "3.14"
