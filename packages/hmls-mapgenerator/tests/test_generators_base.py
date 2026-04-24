@@ -7,6 +7,7 @@ import pytest
 from hmls.core import CellType, GameMap
 from hmls.mapgenerator.connectivity import find_components
 from hmls.mapgenerator.generators import generate_map
+from hmls.mapgenerator.generators.base import MapStrategy
 from hmls.mapgenerator.generators.blob_and_line import BlobAndLineStrategy
 
 
@@ -150,7 +151,7 @@ class TestCustomStrategy:
     def test_custom_strategy_is_used(self) -> None:
         """A custom no-op strategy should produce an all-passable map."""
 
-        class NoOpStrategy:
+        class NoOpStrategy(MapStrategy):
             """Strategy that places no obstacles."""
 
             def place_obstacles(
@@ -163,3 +164,12 @@ class TestCustomStrategy:
 
         gm = generate_map(10, 10, strategy=NoOpStrategy(), seed=42)
         assert gm.count_impassable() == 0
+
+    def test_abstract_method_required(self) -> None:
+        """Subclassing MapStrategy without implementing place_obstacles raises TypeError."""
+
+        class IncompleteStrategy(MapStrategy):
+            pass
+
+        with pytest.raises(TypeError):
+            IncompleteStrategy()  # type: ignore[abstract]

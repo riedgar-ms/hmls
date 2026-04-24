@@ -40,7 +40,7 @@ import math
 import random
 
 from hmls.core import CellType, GameMap
-from hmls.mapgenerator.generators.base import STRATEGY_REGISTRY, StrategyParam
+from hmls.mapgenerator.generators.base import STRATEGY_REGISTRY, MapStrategy, StrategyParam
 
 # ── Perlin noise primitives ───────────────────────────────────────────
 
@@ -157,7 +157,7 @@ def _fractal_noise2d(
 # ── Strategy class ────────────────────────────────────────────────────
 
 
-class PerlinNoiseStrategy:
+class PerlinNoiseStrategy(MapStrategy):
     """Obstacle placement using 2D Perlin noise thresholding.
 
     Generates organic, natural-looking terrain by sampling fractal

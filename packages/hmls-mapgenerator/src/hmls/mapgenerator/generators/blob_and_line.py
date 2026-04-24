@@ -9,10 +9,10 @@ from __future__ import annotations
 import random
 
 from hmls.core import CellType, GameMap
-from hmls.mapgenerator.generators.base import STRATEGY_REGISTRY, StrategyParam
+from hmls.mapgenerator.generators.base import STRATEGY_REGISTRY, MapStrategy, StrategyParam
 
 
-class BlobAndLineStrategy:
+class BlobAndLineStrategy(MapStrategy):
     """Default obstacle placement using a mix of ellipses and line segments.
 
     Algorithm
