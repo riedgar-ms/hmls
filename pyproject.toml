@@ -16,6 +16,10 @@ dev = [
 
 [tool.ruff]
 src = ["packages/*/src"]
+line-length = 100
+
+[tool.ruff.lint]
+extend-select = ["I"]
 
 [tool.mypy]
 packages = ["hmls"]

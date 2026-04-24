@@ -43,8 +43,7 @@ class GameMap(BaseModel):
             self.cells = [CellType.PASSABLE] * expected
         elif len(self.cells) != expected:
             raise ValueError(
-                f"cells length {len(self.cells)} does not match "
-                f"width*height ({expected})"
+                f"cells length {len(self.cells)} does not match width*height ({expected})"
             )
         return self
 
@@ -57,8 +56,7 @@ class GameMap(BaseModel):
         row, col = pos
         if not (0 <= row < self.height and 0 <= col < self.width):
             raise IndexError(
-                f"Position ({row}, {col}) is out of bounds for a "
-                f"{self.height}×{self.width} map"
+                f"Position ({row}, {col}) is out of bounds for a {self.height}×{self.width} map"
             )
         return self.cells[row * self.width + col]
 
@@ -70,7 +68,6 @@ class GameMap(BaseModel):
         """
         if not (0 <= row < self.height and 0 <= col < self.width):
             raise IndexError(
-                f"Position ({row}, {col}) is out of bounds for a "
-                f"{self.height}×{self.width} map"
+                f"Position ({row}, {col}) is out of bounds for a {self.height}×{self.width} map"
             )
         self.cells[row * self.width + col] = cell_type
