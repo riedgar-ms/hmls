@@ -3,17 +3,21 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from enum import Enum
+from enum import IntEnum
 from typing import Self
 
 from pydantic import BaseModel, model_validator
 
 
-class CellType(str, Enum):
-    """Type of a single map cell."""
+class CellType(IntEnum):
+    """Type of a single map cell.
 
-    PASSABLE = "passable"
-    IMPASSABLE = "impassable"
+    Values are integers for compact JSON serialisation:
+    ``0`` for impassable, ``1`` for passable.
+    """
+
+    IMPASSABLE = 0
+    PASSABLE = 1
 
 
 class GameMap(BaseModel):
