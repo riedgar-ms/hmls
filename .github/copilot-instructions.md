@@ -18,6 +18,7 @@ This is an early-stage experimental repo. Keep experiments self-contained in the
 ## Git
 
 - **Do not commit** unless the user has explicitly asked for a commit.
+- **Do not amend, rebase, or rewrite git history** without explicit user permission.
 
 ## Linting and type checking
 
