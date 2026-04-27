@@ -12,7 +12,7 @@ not contain scheduling logic.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel
 
 from hmls.core.tank import Tank, TankId
 from hmls.core.types import Position
@@ -39,25 +39,6 @@ class GameState(BaseModel):
 
     tanks: list[Tank]
     current_tank_id: TankId | None = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def _migrate_current_turn_index(cls, data: dict) -> dict:  # type: ignore[type-arg]
-        """Accept legacy ``current_turn_index`` and convert to ``current_tank_id``.
-
-        This allows old serialised ``GameState`` payloads (which stored
-        an integer index) to be deserialised transparently.
-        """
-        if not isinstance(data, dict):
-            return data
-        if "current_tank_id" not in data and "current_turn_index" in data:
-            idx = data.pop("current_turn_index")
-            tanks = data.get("tanks", [])
-            if tanks and 0 <= idx < len(tanks):
-                tank = tanks[idx]
-                # Handle both raw dicts and Tank instances.
-                data["current_tank_id"] = tank["id"] if isinstance(tank, dict) else tank.id
-        return data
 
     # ── Lookup helpers ────────────────────────────────────────────────
 

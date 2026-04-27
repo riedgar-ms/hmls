@@ -87,29 +87,3 @@ class TestGameStateLookup:
         """current_tank_id can be set to any tank."""
         state = _make_state(current_tank_id="b1")
         assert state.current_tank_id == "b1"
-
-
-class TestGameStateMigration:
-    """Tests for backward-compatible deserialisation."""
-
-    def test_legacy_current_turn_index_migrated(self) -> None:
-        """Old JSON with current_turn_index is transparently migrated."""
-        tanks = [
-            Tank(id="a1", team="alpha", position=Position(0, 0), direction=Direction.EAST),
-            Tank(id="b1", team="beta", position=Position(4, 4), direction=Direction.WEST),
-        ]
-        state = GameState.model_validate(
-            {"tanks": [t.model_dump() for t in tanks], "current_turn_index": 1}
-        )
-        assert state.current_tank_id == "b1"
-
-    def test_legacy_index_zero(self) -> None:
-        """Index 0 maps to the first tank."""
-        tanks = [
-            Tank(id="a1", team="alpha", position=Position(0, 0), direction=Direction.EAST),
-            Tank(id="b1", team="beta", position=Position(4, 4), direction=Direction.WEST),
-        ]
-        state = GameState.model_validate(
-            {"tanks": [t.model_dump() for t in tanks], "current_turn_index": 0}
-        )
-        assert state.current_tank_id == "a1"
