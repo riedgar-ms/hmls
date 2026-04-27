@@ -90,8 +90,8 @@ class TestInterleavedTurnOrder:
         ]
         order = _build_interleaved_turn_order(tanks)
         # alpha: [a0, a1, a2], beta: [b0]
-        # Interleaved: a0, b0, a1, a2
-        assert order == ["a0", "b0", "a1", "a2"]
+        # Shorter team cycles: a0, b0, a1, b0, a2, b0
+        assert order == ["a0", "b0", "a1", "b0", "a2", "b0"]
 
     def test_teams_sorted_alphabetically(self) -> None:
         tanks = [

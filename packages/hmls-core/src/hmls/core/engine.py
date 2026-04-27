@@ -7,8 +7,6 @@ a fixed number of rounds or until one side is fully destroyed.
 
 from __future__ import annotations
 
-from itertools import zip_longest
-
 from pydantic import BaseModel
 
 from hmls.core.actions import apply_action, validate_action
@@ -70,14 +68,19 @@ def _build_interleaved_turn_order(tanks: list[Tank]) -> list[TankId]:
     Tanks are grouped by team (preserving within-team order), then
     interleaved: first tank of team A, first tank of team B, second
     tank of team A, second tank of team B, etc.  Teams are sorted
-    alphabetically for determinism.  If teams have unequal sizes, the
-    shorter team's slots are simply skipped once exhausted.
+    alphabetically for determinism.
+
+    Each team's tanks cycle independently so that every slot is filled.
+    For example, if team A has ``[a0, a1]`` and team B has ``[b0]``,
+    one round is ``[a0, b0, a1, b0]`` — team B's single tank appears
+    twice to match team A's two tanks.  The round length equals
+    ``max(team_size) * num_teams``.
 
     Args:
         tanks: All tanks in the game.
 
     Returns:
-        Flat list of tank IDs in interleaved order.
+        Flat list of tank IDs in interleaved order for one round.
     """
     teams: dict[str, list[TankId]] = {}
     for t in tanks:
@@ -86,11 +89,11 @@ def _build_interleaved_turn_order(tanks: list[Tank]) -> list[TankId]:
     sorted_team_names = sorted(teams)
     team_lists = [teams[name] for name in sorted_team_names]
 
+    max_len = max(len(tl) for tl in team_lists)
     order: list[TankId] = []
-    for slot in zip_longest(*team_lists):
-        for tid in slot:
-            if tid is not None:
-                order.append(tid)
+    for slot_idx in range(max_len):
+        for tl in team_lists:
+            order.append(tl[slot_idx % len(tl)])
     return order
 
 
