@@ -1,10 +1,9 @@
 """Game engine: orchestrates a complete tank-game match.
 
 The engine alternates between players on every turn.  Each player
-independently cycles through their alive tanks, so the shorter team's
-tanks are reused to match the longer team's count.  The engine manages
+independently cycles through their alive tanks.  The engine manages
 fog-of-war visibility, action validation, and history recording.  It
-runs for a fixed number of rounds or until one side is fully destroyed.
+runs for a fixed number of turns or until one side is fully destroyed.
 """
 
 from __future__ import annotations
@@ -52,13 +51,13 @@ class GameResult(BaseModel):
         winner: Team name of the winning side, or ``None`` for a draw.
         final_state: The game state when the game ended.
         history: Ordered list of every action taken during the game.
-        rounds_played: Number of full rounds completed.
+        turns_played: Total number of individual turns taken.
     """
 
     winner: str | None
     final_state: GameState
     history: list[HistoryEntry]
-    rounds_played: int
+    turns_played: int
 
 
 # ── Helpers ───────────────────────────────────────────────────────────
@@ -118,13 +117,11 @@ class GameEngine:
 
     Players always alternate turns.  On each turn the engine asks the
     current player for an action for their next alive tank, cycling
-    through the player's tanks independently.  This means the shorter
-    team's tanks are reused to match the longer team's count within
-    each round.
+    through the player's tanks independently.
 
-    A *round* consists of ``max(alive_team_size)`` turns **per player**
-    (recalculated at the start of each round), for a total of
-    ``max(alive_team_size) * 2`` individual actions.
+    The game runs for at most *max_turns* individual turns (each turn
+    is one player acting with one tank) or until one side is fully
+    destroyed.
 
     Args:
         game_map: The map to play on.
@@ -132,7 +129,7 @@ class GameEngine:
         players: Mapping from team name to the :class:`Player` controlling
             that team.  Must contain an entry for every team present in
             *tanks*.
-        max_rounds: Maximum number of full rounds before the game ends.
+        max_turns: Maximum number of individual turns before the game ends.
         patch_size: Side length of the egocentric visibility patches
             (must be odd, ≥ 3).  Defaults to ``7``.
 
@@ -145,14 +142,11 @@ class GameEngine:
         game_map: GameMap,
         tanks: list[Tank],
         players: dict[str, Player],
-        max_rounds: int,
+        max_turns: int,
         patch_size: int = 7,
     ) -> None:
-        self._validate_inputs(game_map, tanks, players, max_rounds, patch_size)
+        self._validate_inputs(game_map, tanks, players, max_turns, patch_size)
 
-        # turn_order is a flat list of all unique tank IDs — the engine
-        # manages alternation itself and points current_turn_index at
-        # the correct tank before each apply_action call.
         turn_order = [t.id for t in tanks]
         self._state = GameState(
             game_map=game_map,
@@ -161,7 +155,7 @@ class GameEngine:
             current_turn_index=0,
         )
         self._players = players
-        self._max_rounds = max_rounds
+        self._max_turns = max_turns
         self._patch_size = patch_size
         # Teams sorted alphabetically for deterministic alternation.
         self._team_order: list[str] = sorted({t.team for t in tanks})
@@ -173,7 +167,7 @@ class GameEngine:
         game_map: GameMap,
         tanks: list[Tank],
         players: dict[str, Player],
-        max_rounds: int,
+        max_turns: int,
         patch_size: int,
     ) -> None:
         """Validate engine construction parameters.
@@ -184,8 +178,8 @@ class GameEngine:
         if patch_size < 3 or patch_size % 2 == 0:
             raise ValueError(f"patch_size must be odd and >= 3, got {patch_size}")
 
-        if max_rounds < 1:
-            raise ValueError(f"max_rounds must be >= 1, got {max_rounds}")
+        if max_turns < 1:
+            raise ValueError(f"max_turns must be >= 1, got {max_turns}")
 
         if not tanks:
             raise ValueError("Must provide at least one tank")
@@ -229,10 +223,9 @@ class GameEngine:
     def run(self) -> GameResult:
         """Execute the game and return the result.
 
-        The game runs for at most *max_rounds* full rounds.  Each round
-        has ``max(alive_team_size) * 2`` turns (players alternate, with
-        the shorter team cycling its tanks).  The game ends early if all
-        tanks of one team are destroyed.
+        Players alternate turns, each cycling through their alive tanks.
+        The game runs for at most *max_turns* individual turns or until
+        one side is fully destroyed.
 
         Returns:
             A :class:`GameResult` with the winner, final state, and
@@ -240,65 +233,59 @@ class GameEngine:
         """
         state = self._state
         history: list[HistoryEntry] = []
-
-        # Per-team cursors into their tank lists (survives across rounds).
         cursors: dict[str, int] = {t: 0 for t in self._team_order}
+        team_count = len(self._team_order)
+        turns_taken = 0
 
-        for round_num in range(self._max_rounds):
-            # How many turns per player this round?
-            alive_counts = _count_alive_by_team(state)
-            if len(alive_counts) < 2:
-                # One side already eliminated.
-                break
-            turns_per_player = max(alive_counts.values())
+        for turn_num in range(self._max_turns):
+            team = self._team_order[turn_num % team_count]
 
-            for _slot in range(turns_per_player):
-                for team in self._team_order:
-                    # Skip if team is fully eliminated.
-                    if team not in _count_alive_by_team(state):
-                        continue
+            # Skip if team is fully eliminated.
+            if team not in _count_alive_by_team(state):
+                continue
 
-                    tank_id, cursors[team] = _next_alive_tank(state, team, cursors[team])
+            tank_id, cursors[team] = _next_alive_tank(state, team, cursors[team])
 
-                    # Point GameState at the chosen tank so apply_action
-                    # accepts it as the current turn.
-                    state = _set_current_tank(state, tank_id)
+            # Point GameState at the chosen tank so apply_action
+            # accepts it as the current turn.
+            state = _set_current_tank(state, tank_id)
 
-                    player = self._players[team]
-                    view = build_player_view(state, team, self._patch_size)
-                    requested = player.choose_action(tank_id, view)
-                    result = validate_action(state, tank_id, requested)
+            player = self._players[team]
+            view = build_player_view(state, team, self._patch_size)
+            requested = player.choose_action(tank_id, view)
+            result = validate_action(state, tank_id, requested)
 
-                    if result.valid:
-                        applied = requested
-                    else:
-                        player.notify_invalid_action(tank_id, requested, result.reason)
-                        applied = Action.PASS
+            if result.valid:
+                applied = requested
+            else:
+                player.notify_invalid_action(tank_id, requested, result.reason)
+                applied = Action.PASS
 
-                    state = apply_action(state, tank_id, applied)
+            state = apply_action(state, tank_id, applied)
+            turns_taken += 1
 
-                    history.append(
-                        HistoryEntry(
-                            tank_id=tank_id,
-                            requested_action=requested,
-                            applied_action=applied,
-                            valid=result.valid,
-                            reason=result.reason,
-                            state_after=state,
-                        )
-                    )
+            history.append(
+                HistoryEntry(
+                    tank_id=tank_id,
+                    requested_action=requested,
+                    applied_action=applied,
+                    valid=result.valid,
+                    reason=result.reason,
+                    state_after=state,
+                )
+            )
 
-                    # Early termination: one side fully destroyed.
-                    if len(_count_alive_by_team(state)) < 2:
-                        return self._make_result(state, history, round_num + 1)
+            # Early termination: one side fully destroyed.
+            if len(_count_alive_by_team(state)) < 2:
+                return self._make_result(state, history, turns_taken)
 
-        return self._make_result(state, history, self._max_rounds)
+        return self._make_result(state, history, turns_taken)
 
     @staticmethod
     def _make_result(
         state: GameState,
         history: list[HistoryEntry],
-        rounds_played: int,
+        turns_played: int,
     ) -> GameResult:
         """Determine the winner and build the final :class:`GameResult`."""
         alive_counts = _count_alive_by_team(state)
@@ -314,5 +301,5 @@ class GameEngine:
             winner=winner,
             final_state=state,
             history=history,
-            rounds_played=rounds_played,
+            turns_played=turns_played,
         )

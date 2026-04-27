@@ -68,7 +68,7 @@ class TestEngineValidation:
 
     def test_valid_setup_succeeds(self) -> None:
         game_map, tanks, players = _two_tank_setup()
-        engine = GameEngine(game_map, tanks, players, max_rounds=10)
+        engine = GameEngine(game_map, tanks, players, max_turns=10)
         assert engine is not None
 
     def test_rejects_single_team(self) -> None:
@@ -76,7 +76,7 @@ class TestEngineValidation:
             Tank(id="a0", team="alpha", position=Position(2, 4), direction=Direction.EAST),
         ]
         with pytest.raises(ValueError, match="2 teams"):
-            GameEngine(_default_map(), tanks, {"alpha": PassPlayer("alpha")}, max_rounds=10)
+            GameEngine(_default_map(), tanks, {"alpha": PassPlayer("alpha")}, max_turns=10)
 
     def test_rejects_three_teams(self) -> None:
         tanks = [
@@ -90,7 +90,7 @@ class TestEngineValidation:
             "gamma": PassPlayer("gamma"),
         }
         with pytest.raises(ValueError, match="2 teams"):
-            GameEngine(_default_map(), tanks, players, max_rounds=10)
+            GameEngine(_default_map(), tanks, players, max_turns=10)
 
     def test_rejects_duplicate_tank_ids(self) -> None:
         tanks = [
@@ -102,7 +102,7 @@ class TestEngineValidation:
             "beta": PassPlayer("beta"),
         }
         with pytest.raises(ValueError, match="unique"):
-            GameEngine(_default_map(), tanks, players, max_rounds=10)
+            GameEngine(_default_map(), tanks, players, max_turns=10)
 
     def test_rejects_overlapping_positions(self) -> None:
         tanks = [
@@ -114,7 +114,7 @@ class TestEngineValidation:
             "beta": PassPlayer("beta"),
         }
         with pytest.raises(ValueError, match="position"):
-            GameEngine(_default_map(), tanks, players, max_rounds=10)
+            GameEngine(_default_map(), tanks, players, max_turns=10)
 
     def test_rejects_out_of_bounds_tank(self) -> None:
         tanks = [
@@ -126,17 +126,17 @@ class TestEngineValidation:
             "beta": PassPlayer("beta"),
         }
         with pytest.raises(ValueError, match="out of bounds"):
-            GameEngine(_default_map(), tanks, players, max_rounds=10)
+            GameEngine(_default_map(), tanks, players, max_turns=10)
 
     def test_rejects_even_patch_size(self) -> None:
         game_map, tanks, players = _two_tank_setup()
         with pytest.raises(ValueError, match="odd"):
-            GameEngine(game_map, tanks, players, max_rounds=10, patch_size=6)
+            GameEngine(game_map, tanks, players, max_turns=10, patch_size=6)
 
     def test_rejects_missing_player(self) -> None:
         game_map, tanks, _ = _two_tank_setup()
         with pytest.raises(ValueError, match="No player"):
-            GameEngine(game_map, tanks, {"alpha": PassPlayer("alpha")}, max_rounds=10)
+            GameEngine(game_map, tanks, {"alpha": PassPlayer("alpha")}, max_turns=10)
 
     def test_rejects_tank_on_impassable(self) -> None:
         game_map = _default_map()
@@ -150,7 +150,7 @@ class TestEngineValidation:
             "beta": PassPlayer("beta"),
         }
         with pytest.raises(ValueError, match="impassable"):
-            GameEngine(game_map, tanks, players, max_rounds=10)
+            GameEngine(game_map, tanks, players, max_turns=10)
 
 
 # ── Turn alternation ──────────────────────────────────────────────────
@@ -162,7 +162,7 @@ class TestTurnAlternation:
     def test_1v1_alternates_players(self) -> None:
         """In a 1v1, players strictly alternate: a0, b0, a0, b0, ..."""
         game_map, tanks, players = _two_tank_setup()
-        engine = GameEngine(game_map, tanks, players, max_rounds=2)
+        engine = GameEngine(game_map, tanks, players, max_turns=4)
         result = engine.run()
         tank_ids = [e.tank_id for e in result.history]
         assert tank_ids == ["a0", "b0", "a0", "b0"]
@@ -180,7 +180,7 @@ class TestTurnAlternation:
             "alpha": PassPlayer("alpha"),
             "beta": PassPlayer("beta"),
         }
-        engine = GameEngine(game_map, tanks, players, max_rounds=1)
+        engine = GameEngine(game_map, tanks, players, max_turns=4)
         result = engine.run()
         tank_ids = [e.tank_id for e in result.history]
         # Round has max(2,2)=2 slots, alternating: a0,b0,a1,b1
@@ -202,7 +202,7 @@ class TestTurnAlternation:
             "alpha": PassPlayer("alpha"),
             "beta": PassPlayer("beta"),
         }
-        engine = GameEngine(game_map, tanks, players, max_rounds=1)
+        engine = GameEngine(game_map, tanks, players, max_turns=6)
         result = engine.run()
         tank_ids = [e.tank_id for e in result.history]
         assert tank_ids == ["a0", "b0", "a1", "b0", "a2", "b0"]
@@ -233,10 +233,10 @@ class TestTurnAlternation:
             "alpha": PassPlayer("alpha"),
             "beta": PassPlayer("beta"),
         }
-        engine = GameEngine(game_map, tanks, players, max_rounds=1)
+        engine = GameEngine(game_map, tanks, players, max_turns=6)
         result = engine.run()
         tank_ids = [e.tank_id for e in result.history]
-        # beta has 3 alive → 3 turns per player.
+        # beta has 3 alive → alternating gives 6 turns.
         # alpha cycles: a1, a2, a1 (skipping dead a0).
         assert tank_ids == ["a1", "b0", "a2", "b1", "a1", "b2"]
 
@@ -255,11 +255,11 @@ class TestTurnAlternation:
         beta_player = ScriptedPlayer("beta", [Action.PASS])
         players: dict[str, Player] = {"alpha": alpha_player, "beta": beta_player}
 
-        engine = GameEngine(game_map, tanks, players, max_rounds=100)
+        engine = GameEngine(game_map, tanks, players, max_turns=100)
         result = engine.run()
 
         assert result.winner == "alpha"
-        assert result.rounds_played == 1
+        assert result.turns_played == 1
         # Only alpha fired; beta was destroyed before its turn.
         assert len(result.history) == 1
         assert result.history[0].tank_id == "a0"
@@ -272,19 +272,19 @@ class TestTurnAlternation:
 class TestGameExecution:
     """Tests for GameEngine.run()."""
 
-    def test_pass_game_runs_to_max_rounds(self) -> None:
-        """When both players always pass, the game runs to max_rounds."""
+    def test_pass_game_runs_to_max_turns(self) -> None:
+        """When both players always pass, the game runs to max_turns."""
         game_map, tanks, players = _two_tank_setup()
-        engine = GameEngine(game_map, tanks, players, max_rounds=5)
+        engine = GameEngine(game_map, tanks, players, max_turns=10)
         result = engine.run()
-        assert result.rounds_played == 5
+        assert result.turns_played == 10
         assert result.winner is None  # both still alive, equal count → draw
 
     def test_history_entries_recorded(self) -> None:
         game_map, tanks, players = _two_tank_setup()
-        engine = GameEngine(game_map, tanks, players, max_rounds=1)
+        engine = GameEngine(game_map, tanks, players, max_turns=2)
         result = engine.run()
-        # 1v1, 1 round → 2 history entries
+        # 1v1, 2 turns → 2 history entries
         assert len(result.history) == 2
         for entry in result.history:
             assert isinstance(entry, HistoryEntry)
@@ -314,7 +314,7 @@ class TestGameExecution:
         beta_player = PassPlayer("beta")
         players: dict[str, Player] = {"alpha": alpha_player, "beta": beta_player}
 
-        engine = GameEngine(game_map, tanks, players, max_rounds=1)
+        engine = GameEngine(game_map, tanks, players, max_turns=2)
         result = engine.run()
 
         # alpha's move was invalid (out of bounds)
@@ -332,12 +332,12 @@ class TestGameExecution:
     def test_draw_with_equal_survivors(self) -> None:
         """Equal alive counts result in a draw."""
         game_map, tanks, players = _two_tank_setup()
-        engine = GameEngine(game_map, tanks, players, max_rounds=1)
+        engine = GameEngine(game_map, tanks, players, max_turns=2)
         result = engine.run()
         assert result.winner is None
 
     def test_winner_by_alive_count(self) -> None:
-        """The team with more alive tanks wins at max_rounds."""
+        """The team with more alive tanks wins at max_turns."""
         game_map = _default_map()
         tanks = [
             Tank(id="a0", team="alpha", position=Position(2, 2), direction=Direction.EAST),
@@ -348,19 +348,19 @@ class TestGameExecution:
             "alpha": PassPlayer("alpha"),
             "beta": PassPlayer("beta"),
         }
-        engine = GameEngine(game_map, tanks, players, max_rounds=1)
+        engine = GameEngine(game_map, tanks, players, max_turns=2)
         result = engine.run()
         assert result.winner == "alpha"  # 2 alive vs 1
 
     def test_game_result_serialisable(self) -> None:
         """GameResult must round-trip through JSON."""
         game_map, tanks, players = _two_tank_setup()
-        engine = GameEngine(game_map, tanks, players, max_rounds=1)
+        engine = GameEngine(game_map, tanks, players, max_turns=2)
         result = engine.run()
         json_str = result.model_dump_json()
         restored = GameResult.model_validate_json(json_str)
         assert restored.winner == result.winner
-        assert restored.rounds_played == result.rounds_played
+        assert restored.turns_played == result.turns_played
         assert len(restored.history) == len(result.history)
 
     def test_fog_of_war_enforced(self) -> None:
@@ -394,7 +394,7 @@ class TestGameExecution:
         beta = ViewCapturingPlayer("beta")
         players: dict[str, Player] = {"alpha": alpha, "beta": beta}
 
-        engine = GameEngine(game_map, tanks, players, max_rounds=1)
+        engine = GameEngine(game_map, tanks, players, max_turns=1)
         engine.run()
 
         # Alpha got a view with only their own tank info
@@ -425,7 +425,7 @@ class TestGameExecution:
         beta = PassPlayer("beta")
         players: dict[str, Player] = {"alpha": alpha, "beta": beta}
 
-        engine = GameEngine(game_map, tanks, players, max_rounds=1)
+        engine = GameEngine(game_map, tanks, players, max_turns=1)
         result = engine.run()
 
         # After alpha moves east, position should be (5, 4)
