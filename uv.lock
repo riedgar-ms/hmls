@@ -10,6 +10,7 @@ resolution-markers = [
 members = [
     "hmls-core",
     "hmls-mapgenerator",
+    "hmls-testharness",
     "hmls-workspace",
 ]
 
@@ -46,6 +47,21 @@ requires-dist = [{ name = "pydantic", specifier = ">=2" }]
 name = "hmls-mapgenerator"
 version = "0.1.0"
 source = { editable = "packages/hmls-mapgenerator" }
+dependencies = [
+    { name = "hmls-core" },
+    { name = "textual" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "hmls-core", editable = "packages/hmls-core" },
+    { name = "textual", specifier = ">=0.40" },
+]
+
+[[package]]
+name = "hmls-testharness"
+version = "0.1.0"
+source = { editable = "packages/hmls-testharness" }
 dependencies = [
     { name = "hmls-core" },
     { name = "textual" },
