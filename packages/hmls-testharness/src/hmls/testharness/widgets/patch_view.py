@@ -86,6 +86,9 @@ class PatchView(Static):
         """Build a Rich Text representation of the patch."""
         patch = self._patch
         grid = patch.grid
+        # The observer's world-space direction — used to rotate other
+        # tanks' arrows into egocentric space where "up" = forward.
+        observer_dir = int(patch.direction)
 
         # Toggle active border class.
         if self._is_active:
@@ -108,7 +111,9 @@ class PatchView(Static):
                         if not tank.alive:
                             text.append(DEAD_MARKER, style=DEAD_STYLE)
                         else:
-                            arrow = DIRECTION_ARROWS.get(int(tank.direction), "? ")
+                            # Rotate into egocentric space: subtract observer direction.
+                            ego_dir = (int(tank.direction) - observer_dir) % 4
+                            arrow = DIRECTION_ARROWS.get(ego_dir, "? ")
                             style = _TEAM_STYLES.get(tank.team, TEAM_A_STYLE)
                             text.append(arrow, style=style)
                     elif cell.cell_type.value == 1:  # PASSABLE
