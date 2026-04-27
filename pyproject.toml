@@ -23,7 +23,7 @@ target-version = "py314"
 extend-select = ["I"]
 
 [tool.mypy]
-packages = ["hmls"]
+packages = ["hmls.core", "hmls.mapgenerator", "hmls.testharness"]
 mypy_path = "packages/hmls-core/src:packages/hmls-mapgenerator/src:packages/hmls-testharness/src"
 plugins = ["pydantic.mypy"]
 strict = true
