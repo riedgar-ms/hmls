@@ -1,29 +1,35 @@
-"""Aggregate game state: map, tanks, and turn tracking."""
+"""Aggregate game state: tanks and turn tracking.
+
+The game map is intentionally *not* part of the state — it never
+changes during a game and is supplied separately to functions that
+need it (see :mod:`hmls.core.actions` and :mod:`hmls.core.visibility`).
+"""
 
 from __future__ import annotations
 
 from pydantic import BaseModel
 
-from hmls.core.map import GameMap
 from hmls.core.tank import Tank, TankId
 from hmls.core.types import Position
 
 
 class GameState(BaseModel):
-    """Complete snapshot of the game at a point in time.
+    """Snapshot of the mutable game state at a point in time.
 
     The game state is treated as immutable by convention: mutation
     functions (in :mod:`hmls.core.actions`) return a *new* ``GameState``
     rather than modifying in place, which makes undo/replay trivial.
 
+    The game map is *not* stored here because it never changes during
+    a game.  It is passed separately to functions that need terrain
+    information.
+
     Attributes:
-        game_map: The map on which the game is played.
         tanks: All tanks (alive and destroyed) in the game.
         turn_order: Tank IDs in the order they take turns.
         current_turn_index: Index into *turn_order* for the next tank to act.
     """
 
-    game_map: GameMap
     tanks: list[Tank]
     turn_order: list[TankId]
     current_turn_index: int = 0

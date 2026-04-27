@@ -49,15 +49,29 @@ class GameResult(BaseModel):
 
     Attributes:
         winner: Team name of the winning side, or ``None`` for a draw.
-        final_state: The game state when the game ended.
+        game_map: The map the game was played on (stored once here
+            rather than duplicated in every history entry).
+        initial_state: The game state before any actions were taken.
         history: Ordered list of every action taken during the game.
         turns_played: Total number of individual turns taken.
     """
 
     winner: str | None
-    final_state: GameState
+    game_map: GameMap
+    initial_state: GameState
     history: list[HistoryEntry]
     turns_played: int
+
+    @property
+    def final_state(self) -> GameState:
+        """The game state when the game ended.
+
+        Returns the state after the last action, or the initial state
+        if no actions were taken.
+        """
+        if self.history:
+            return self.history[-1].state_after
+        return self.initial_state
 
 
 # ── Helpers ───────────────────────────────────────────────────────────
@@ -149,11 +163,11 @@ class GameEngine:
 
         turn_order = [t.id for t in tanks]
         self._state = GameState(
-            game_map=game_map,
             tanks=tanks,
             turn_order=turn_order,
             current_turn_index=0,
         )
+        self._game_map = game_map
         self._players = players
         self._max_turns = max_turns
         self._patch_size = patch_size
@@ -232,6 +246,7 @@ class GameEngine:
             full action history.
         """
         state = self._state
+        initial_state = state
         history: list[HistoryEntry] = []
         cursors: dict[str, int] = {t: 0 for t in self._team_order}
         team_count = len(self._team_order)
@@ -251,9 +266,9 @@ class GameEngine:
             state = _set_current_tank(state, tank_id)
 
             player = self._players[team]
-            view = build_player_view(state, team, self._patch_size)
+            view = build_player_view(state, self._game_map, team, self._patch_size)
             requested = player.choose_action(tank_id, view)
-            result = validate_action(state, tank_id, requested)
+            result = validate_action(state, self._game_map, tank_id, requested)
 
             if result.valid:
                 applied = requested
@@ -261,7 +276,7 @@ class GameEngine:
                 player.notify_invalid_action(tank_id, requested, result.reason)
                 applied = Action.PASS
 
-            state = apply_action(state, tank_id, applied)
+            state = apply_action(state, self._game_map, tank_id, applied)
             turns_taken += 1
 
             history.append(
@@ -277,13 +292,14 @@ class GameEngine:
 
             # Early termination: one side fully destroyed.
             if len(_count_alive_by_team(state)) < 2:
-                return self._make_result(state, history, turns_taken)
+                return self._make_result(state, initial_state, history, turns_taken)
 
-        return self._make_result(state, history, turns_taken)
+        return self._make_result(state, initial_state, history, turns_taken)
 
-    @staticmethod
     def _make_result(
+        self,
         state: GameState,
+        initial_state: GameState,
         history: list[HistoryEntry],
         turns_played: int,
     ) -> GameResult:
@@ -299,7 +315,8 @@ class GameEngine:
             winner = leaders[0] if len(leaders) == 1 else None
         return GameResult(
             winner=winner,
-            final_state=state,
+            game_map=self._game_map,
+            initial_state=initial_state,
             history=history,
             turns_played=turns_played,
         )
