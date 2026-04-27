@@ -192,10 +192,8 @@ class GameEngine:
     ) -> None:
         self._validate_inputs(game_map, tanks, players, max_turns, patch_size)
 
-        turn_order = [t.id for t in tanks]
         self._state = GameState(
             tanks=tanks,
-            turn_order=turn_order,
             current_turn_index=0,
         )
         self._initial_state = self._state

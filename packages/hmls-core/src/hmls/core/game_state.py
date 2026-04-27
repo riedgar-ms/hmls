@@ -25,14 +25,19 @@ class GameState(BaseModel):
     information.
 
     Attributes:
-        tanks: All tanks (alive and destroyed) in the game.
-        turn_order: Tank IDs in the order they take turns.
-        current_turn_index: Index into *turn_order* for the next tank to act.
+        tanks: All tanks (alive and destroyed) in the game.  The list
+            order is stable for the lifetime of a game and implicitly
+            defines the turn order.
+        current_turn_index: Index into the tank list for the next tank to act.
     """
 
     tanks: list[Tank]
-    turn_order: list[TankId]
     current_turn_index: int = 0
+
+    @property
+    def turn_order(self) -> list[TankId]:
+        """Tank IDs in turn order, derived from the tanks list."""
+        return [t.id for t in self.tanks]
 
     # ── Lookup helpers ────────────────────────────────────────────────
 

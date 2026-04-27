@@ -28,8 +28,7 @@ def _make_state(
     """Create a simple game state and map for testing."""
     game_map = GameMap(width=width, height=height)
     tanks = tanks or []
-    turn_order = [t.id for t in tanks]
-    state = GameState(tanks=tanks, turn_order=turn_order)
+    state = GameState(tanks=tanks)
     return state, game_map
 
 
@@ -214,7 +213,7 @@ class TestExtractPatchEdgeCases:
         game_map = GameMap(width=9, height=9)
         game_map[4, 3] = CellType.IMPASSABLE  # one cell north of (4,4)
         tank = Tank(id="t0", team="a", position=Position(4, 4), direction=Direction.NORTH)
-        state = GameState(tanks=[tank], turn_order=["t0"])
+        state = GameState(tanks=[tank])
         patch = extract_patch(state, game_map, "t0", 5)
         half = 5 // 2
         cell = patch.grid[half - 1][half]

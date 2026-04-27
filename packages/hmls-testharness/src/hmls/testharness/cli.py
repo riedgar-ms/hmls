@@ -145,6 +145,5 @@ def build_initial_state(tanks: list[Tank]) -> GameState:
     """
     return GameState(
         tanks=tanks,
-        turn_order=[t.id for t in tanks],
         current_turn_index=0,
     )

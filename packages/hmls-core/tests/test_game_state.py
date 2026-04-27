@@ -9,7 +9,6 @@ from hmls.core.types import Direction, Position
 
 def _make_state(
     tanks: list[Tank] | None = None,
-    turn_order: list[str] | None = None,
 ) -> GameState:
     """Helper to build a simple GameState for testing."""
     if tanks is None:
@@ -17,11 +16,8 @@ def _make_state(
             Tank(id="a1", team="alpha", position=Position(0, 0), direction=Direction.EAST),
             Tank(id="b1", team="beta", position=Position(4, 4), direction=Direction.WEST),
         ]
-    if turn_order is None:
-        turn_order = [t.id for t in tanks]
     return GameState(
         tanks=tanks,
-        turn_order=turn_order,
     )
 
 
