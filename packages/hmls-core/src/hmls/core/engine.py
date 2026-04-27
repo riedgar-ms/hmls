@@ -256,7 +256,10 @@ class GameEngine:
 
         Only meaningful when :attr:`game_over` is ``False``.
         """
-        return self._state.current_tank_id
+        tank_id = self._state.current_tank_id
+        if tank_id is None:
+            raise RuntimeError("No current tank (game may be over or not started)")
+        return tank_id
 
     @property
     def current_team(self) -> str:
