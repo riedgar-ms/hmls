@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from hmls.core.engine import GameEngine, GameResult, HistoryEntry
+from hmls.core.game_state import GameState
 from hmls.core.map import CellType, GameMap
 from hmls.core.player import Player
 from hmls.core.tank import Tank, TankId
@@ -362,6 +363,7 @@ class TestGameExecution:
         assert restored.winner == result.winner
         assert restored.turns_played == result.turns_played
         assert len(restored.history) == len(result.history)
+        assert restored.initial_state == result.initial_state
 
     def test_fog_of_war_enforced(self) -> None:
         """Players receive PlayerView, not raw GameState."""
@@ -431,3 +433,42 @@ class TestGameExecution:
         # After alpha moves east, position should be (5, 4)
         final_a0 = result.final_state.get_tank("a0")
         assert final_a0.position == Position(5, 4)
+
+    def test_initial_state_captured(self) -> None:
+        """GameResult.initial_state should reflect the state before any actions."""
+        game_map, tanks, players = _two_tank_setup()
+        engine = GameEngine(game_map, tanks, players, max_turns=2)
+        result = engine.run()
+
+        # initial_state should have the original tank positions
+        for original_tank in tanks:
+            recorded = result.initial_state.get_tank(original_tank.id)
+            assert recorded.position == original_tank.position
+            assert recorded.direction == original_tank.direction
+            assert recorded.alive is True
+
+    def test_final_state_matches_last_history_entry(self) -> None:
+        """final_state property should equal the last history entry's state_after."""
+        game_map, tanks, players = _two_tank_setup()
+        engine = GameEngine(game_map, tanks, players, max_turns=4)
+        result = engine.run()
+
+        assert len(result.history) > 0
+        assert result.final_state == result.history[-1].state_after
+
+    def test_final_state_is_initial_when_no_history(self) -> None:
+        """final_state should return initial_state when history is empty."""
+        game_map, tanks, _ = _two_tank_setup()
+        # Construct a GameResult directly with empty history.
+        gr = GameResult(
+            winner=None,
+            game_map=game_map,
+            initial_state=GameState(
+                tanks=tanks,
+                turn_order=[t.id for t in tanks],
+                current_turn_index=0,
+            ),
+            history=[],
+            turns_played=0,
+        )
+        assert gr.final_state == gr.initial_state

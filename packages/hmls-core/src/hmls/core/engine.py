@@ -51,16 +51,27 @@ class GameResult(BaseModel):
         winner: Team name of the winning side, or ``None`` for a draw.
         game_map: The map the game was played on (stored once here
             rather than duplicated in every history entry).
-        final_state: The game state when the game ended.
+        initial_state: The game state before any actions were taken.
         history: Ordered list of every action taken during the game.
         turns_played: Total number of individual turns taken.
     """
 
     winner: str | None
     game_map: GameMap
-    final_state: GameState
+    initial_state: GameState
     history: list[HistoryEntry]
     turns_played: int
+
+    @property
+    def final_state(self) -> GameState:
+        """The game state when the game ended.
+
+        Returns the state after the last action, or the initial state
+        if no actions were taken.
+        """
+        if self.history:
+            return self.history[-1].state_after
+        return self.initial_state
 
 
 # ── Helpers ───────────────────────────────────────────────────────────
@@ -235,6 +246,7 @@ class GameEngine:
             full action history.
         """
         state = self._state
+        initial_state = state
         history: list[HistoryEntry] = []
         cursors: dict[str, int] = {t: 0 for t in self._team_order}
         team_count = len(self._team_order)
@@ -280,13 +292,14 @@ class GameEngine:
 
             # Early termination: one side fully destroyed.
             if len(_count_alive_by_team(state)) < 2:
-                return self._make_result(state, history, turns_taken)
+                return self._make_result(state, initial_state, history, turns_taken)
 
-        return self._make_result(state, history, turns_taken)
+        return self._make_result(state, initial_state, history, turns_taken)
 
     def _make_result(
         self,
         state: GameState,
+        initial_state: GameState,
         history: list[HistoryEntry],
         turns_played: int,
     ) -> GameResult:
@@ -303,7 +316,7 @@ class GameEngine:
         return GameResult(
             winner=winner,
             game_map=self._game_map,
-            final_state=state,
+            initial_state=initial_state,
             history=history,
             turns_played=turns_played,
         )
