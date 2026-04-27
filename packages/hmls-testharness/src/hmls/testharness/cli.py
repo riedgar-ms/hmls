@@ -145,5 +145,5 @@ def build_initial_state(tanks: list[Tank]) -> GameState:
     """
     return GameState(
         tanks=tanks,
-        current_turn_index=0,
+        current_tank_id=tanks[0].id if tanks else None,
     )

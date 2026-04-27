@@ -9,6 +9,7 @@ from hmls.core.types import Direction, Position
 
 def _make_state(
     tanks: list[Tank] | None = None,
+    current_tank_id: str | None = None,
 ) -> GameState:
     """Helper to build a simple GameState for testing."""
     if tanks is None:
@@ -16,8 +17,11 @@ def _make_state(
             Tank(id="a1", team="alpha", position=Position(0, 0), direction=Direction.EAST),
             Tank(id="b1", team="beta", position=Position(4, 4), direction=Direction.WEST),
         ]
+    if current_tank_id is None and tanks:
+        current_tank_id = tanks[0].id
     return GameState(
         tanks=tanks,
+        current_tank_id=current_tank_id,
     )
 
 
@@ -28,7 +32,7 @@ class TestGameStateConstruction:
         """A game state can be created with a map and tanks."""
         state = _make_state()
         assert len(state.tanks) == 2
-        assert state.current_turn_index == 0
+        assert state.current_tank_id == "a1"
 
     def test_alive_tanks(self) -> None:
         """alive_tanks filters out dead tanks."""
@@ -38,6 +42,11 @@ class TestGameStateConstruction:
         state.tanks[1] = state.tanks[1].model_copy(update={"alive": False})
         assert len(state.alive_tanks) == 1
         assert state.alive_tanks[0].id == "a1"
+
+    def test_current_tank_id_none_by_default(self) -> None:
+        """current_tank_id defaults to None when not set."""
+        state = GameState(tanks=[])
+        assert state.current_tank_id is None
 
 
 class TestGameStateLookup:
@@ -70,12 +79,37 @@ class TestGameStateLookup:
         assert Position(4, 4) in positions
 
     def test_current_tank_id(self) -> None:
-        """current_tank_id returns the first alive tank in turn order."""
+        """current_tank_id returns the assigned tank."""
         state = _make_state()
         assert state.current_tank_id == "a1"
 
-    def test_current_tank_id_skips_dead(self) -> None:
-        """current_tank_id skips dead tanks."""
-        state = _make_state()
-        state.tanks[0] = state.tanks[0].model_copy(update={"alive": False})
+    def test_current_tank_id_explicit(self) -> None:
+        """current_tank_id can be set to any tank."""
+        state = _make_state(current_tank_id="b1")
         assert state.current_tank_id == "b1"
+
+
+class TestGameStateMigration:
+    """Tests for backward-compatible deserialisation."""
+
+    def test_legacy_current_turn_index_migrated(self) -> None:
+        """Old JSON with current_turn_index is transparently migrated."""
+        tanks = [
+            Tank(id="a1", team="alpha", position=Position(0, 0), direction=Direction.EAST),
+            Tank(id="b1", team="beta", position=Position(4, 4), direction=Direction.WEST),
+        ]
+        state = GameState.model_validate(
+            {"tanks": [t.model_dump() for t in tanks], "current_turn_index": 1}
+        )
+        assert state.current_tank_id == "b1"
+
+    def test_legacy_index_zero(self) -> None:
+        """Index 0 maps to the first tank."""
+        tanks = [
+            Tank(id="a1", team="alpha", position=Position(0, 0), direction=Direction.EAST),
+            Tank(id="b1", team="beta", position=Position(4, 4), direction=Direction.WEST),
+        ]
+        state = GameState.model_validate(
+            {"tanks": [t.model_dump() for t in tanks], "current_turn_index": 0}
+        )
+        assert state.current_tank_id == "a1"

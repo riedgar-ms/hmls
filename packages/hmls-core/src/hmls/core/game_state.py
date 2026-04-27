@@ -3,11 +3,16 @@
 The game map is intentionally *not* part of the state — it never
 changes during a game and is supplied separately to functions that
 need it (see :mod:`hmls.core.actions` and :mod:`hmls.core.visibility`).
+
+Turn scheduling is the sole responsibility of the game engine
+(:class:`~hmls.core.engine.GameEngine`).  ``GameState`` merely records
+*which* tank is currently active via :attr:`current_tank_id`; it does
+not contain scheduling logic.
 """
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 from hmls.core.tank import Tank, TankId
 from hmls.core.types import Position
@@ -26,18 +31,33 @@ class GameState(BaseModel):
 
     Attributes:
         tanks: All tanks (alive and destroyed) in the game.  The list
-            order is stable for the lifetime of a game and implicitly
-            defines the turn order.
-        current_turn_index: Index into the tank list for the next tank to act.
+            order is stable for the lifetime of a game.
+        current_tank_id: ID of the tank whose turn it is, or ``None``
+            when the state has no meaningful active turn (e.g. an
+            empty tank list, or a state constructed outside the engine).
     """
 
     tanks: list[Tank]
-    current_turn_index: int = 0
+    current_tank_id: TankId | None = None
 
-    @property
-    def turn_order(self) -> list[TankId]:
-        """Tank IDs in turn order, derived from the tanks list."""
-        return [t.id for t in self.tanks]
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_current_turn_index(cls, data: dict) -> dict:  # type: ignore[type-arg]
+        """Accept legacy ``current_turn_index`` and convert to ``current_tank_id``.
+
+        This allows old serialised ``GameState`` payloads (which stored
+        an integer index) to be deserialised transparently.
+        """
+        if not isinstance(data, dict):
+            return data
+        if "current_tank_id" not in data and "current_turn_index" in data:
+            idx = data.pop("current_turn_index")
+            tanks = data.get("tanks", [])
+            if tanks and 0 <= idx < len(tanks):
+                tank = tanks[idx]
+                # Handle both raw dicts and Tank instances.
+                data["current_tank_id"] = tank["id"] if isinstance(tank, dict) else tank.id
+        return data
 
     # ── Lookup helpers ────────────────────────────────────────────────
 
@@ -66,22 +86,3 @@ class GameState(BaseModel):
             if t.id == tank_id:
                 return t
         raise KeyError(f"No tank with id {tank_id!r}")
-
-    @property
-    def current_tank_id(self) -> TankId:
-        """Return the ID of the tank whose turn it is.
-
-        Skips over dead tanks in the turn order.  If all tanks are dead,
-        returns the ID at the raw index (the caller should check for
-        game-over conditions).
-        """
-        alive_ids = {t.id for t in self.tanks if t.alive}
-        order_len = len(self.turn_order)
-        # Walk forward from current_turn_index looking for an alive tank.
-        for i in range(order_len):
-            idx = (self.current_turn_index + i) % order_len
-            tid = self.turn_order[idx]
-            if tid in alive_ids:
-                return tid
-        # Fallback: no alive tanks — return raw index entry.
-        return self.turn_order[self.current_turn_index % order_len]

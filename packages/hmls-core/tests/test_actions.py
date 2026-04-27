@@ -18,7 +18,7 @@ def _make_map(width: int = 5, height: int = 5) -> GameMap:
 
 def _make_state(
     tanks: list[Tank] | None = None,
-    current_turn_index: int = 0,
+    current_tank_id: str | None = None,
 ) -> GameState:
     """Build a GameState for testing."""
     if tanks is None:
@@ -26,9 +26,11 @@ def _make_state(
             Tank(id="a1", team="alpha", position=Position(2, 2), direction=Direction.NORTH),
             Tank(id="b1", team="beta", position=Position(4, 4), direction=Direction.WEST),
         ]
+    if current_tank_id is None and tanks:
+        current_tank_id = tanks[0].id
     return GameState(
         tanks=tanks,
-        current_turn_index=current_turn_index,
+        current_tank_id=current_tank_id,
     )
 
 
@@ -159,7 +161,7 @@ class TestApplyAction:
         assert tank.position == Position(2, 1)
 
     def test_move_forward_invalid_loses_turn(self) -> None:
-        """Moving into impassable terrain does nothing but advances the turn."""
+        """Moving into impassable terrain does nothing but the action still completes."""
         tanks = [
             Tank(id="a1", team="alpha", position=Position(2, 0), direction=Direction.NORTH),
             Tank(id="b1", team="beta", position=Position(4, 4), direction=Direction.WEST),
@@ -169,8 +171,8 @@ class TestApplyAction:
         new = apply_action(state, game_map, "a1", Action.MOVE_FORWARD)
         # Position unchanged.
         assert new.get_tank("a1").position == Position(2, 0)
-        # Turn advanced.
-        assert new.current_tank_id == "b1"
+        # Turn is NOT advanced — the engine owns scheduling.
+        assert new.current_tank_id == "a1"
 
     def test_turn_left(self) -> None:
         """Turning left rotates the tank 90° counter-clockwise."""
@@ -242,50 +244,20 @@ class TestApplyAction:
         assert not new.get_tank("b1").alive
 
     def test_pass_does_nothing(self) -> None:
-        """Passing leaves the state unchanged except for turn advancement."""
+        """Passing leaves the state unchanged (including current_tank_id)."""
         state = _make_state()
         game_map = _make_map()
         new = apply_action(state, game_map, "a1", Action.PASS)
         assert new.get_tank("a1").position == Position(2, 2)
         assert new.get_tank("a1").direction == Direction.NORTH
+        assert new.current_tank_id == "a1"
 
-    def test_turn_advances(self) -> None:
-        """After an action, the turn advances to the next alive tank."""
+    def test_turn_not_advanced(self) -> None:
+        """apply_action does not advance the turn — the engine owns scheduling."""
         state = _make_state()
         game_map = _make_map()
         new = apply_action(state, game_map, "a1", Action.PASS)
-        assert new.current_tank_id == "b1"
-
-    def test_turn_wraps_around(self) -> None:
-        """The turn order wraps around when the last tank acts."""
-        state = _make_state()
-        game_map = _make_map()
-        s1 = apply_action(state, game_map, "a1", Action.PASS)
-        s2 = apply_action(s1, game_map, "b1", Action.PASS)
-        assert s2.current_tank_id == "a1"
-
-    def test_turn_skips_dead_tanks(self) -> None:
-        """Dead tanks are skipped in the turn order."""
-        tanks = [
-            Tank(id="a1", team="alpha", position=Position(0, 0), direction=Direction.EAST),
-            Tank(id="b1", team="beta", position=Position(2, 2), direction=Direction.NORTH),
-            Tank(id="a2", team="alpha", position=Position(4, 4), direction=Direction.WEST),
-        ]
-        state = _make_state(tanks=tanks)
-        # Kill b1.
-        state = state.model_copy(
-            update={
-                "tanks": [
-                    tanks[0],
-                    tanks[1].model_copy(update={"alive": False}),
-                    tanks[2],
-                ]
-            }
-        )
-        game_map = _make_map()
-        s1 = apply_action(state, game_map, "a1", Action.PASS)
-        # Should skip dead b1 and go to a2.
-        assert s1.current_tank_id == "a2"
+        assert new.current_tank_id == "a1"
 
     def test_apply_dead_tank_raises(self) -> None:
         """Applying an action for a dead tank raises ValueError."""
@@ -318,7 +290,7 @@ class TestApplyAction:
         original_pos = state.get_tank("a1").position
         _ = apply_action(state, game_map, "a1", Action.MOVE_FORWARD)
         assert state.get_tank("a1").position == original_pos
-        assert state.current_turn_index == 0
+        assert state.current_tank_id == "a1"
 
 
 # ── Tank list order invariant tests ──────────────────────────────────
@@ -332,8 +304,8 @@ def _tank_ids(state: GameState) -> list[str]:
 class TestTankListOrderPreserved:
     """The tanks list order must never change during a game.
 
-    Turn scheduling derives from tank list order, so any reordering
-    would silently break the turn cycle.
+    The tank list order is a fundamental invariant; any reordering
+    would silently break consumers that rely on stable ordering.
     """
 
     def test_move_preserves_order(self) -> None:
@@ -399,9 +371,12 @@ class TestTankListOrderPreserved:
         state = _make_state(tanks=tanks)
         game_map = _make_map()
         original = _tank_ids(state)
-        # Play several turns with varied actions.
+        # Play several turns with varied actions, manually advancing turns.
         state = apply_action(state, game_map, "a1", Action.MOVE_FORWARD)
+        state = state.model_copy(update={"current_tank_id": "b1"})
         state = apply_action(state, game_map, "b1", Action.TURN_LEFT)
+        state = state.model_copy(update={"current_tank_id": "a2"})
         state = apply_action(state, game_map, "a2", Action.PASS)
+        state = state.model_copy(update={"current_tank_id": "a1"})
         state = apply_action(state, game_map, "a1", Action.TURN_RIGHT)
         assert _tank_ids(state) == original

@@ -89,21 +89,6 @@ def validate_action(
 # ── Execution ─────────────────────────────────────────────────────────
 
 
-def _advance_turn(state: GameState) -> GameState:
-    """Return a new state with ``current_turn_index`` advanced to the next alive tank."""
-    order_len = len(state.turn_order)
-    alive_ids = {t.id for t in state.tanks if t.alive}
-
-    next_idx = (state.current_turn_index + 1) % order_len
-    # Walk forward to find the next alive tank.
-    for _ in range(order_len):
-        if state.turn_order[next_idx] in alive_ids:
-            break
-        next_idx = (next_idx + 1) % order_len
-
-    return state.model_copy(update={"current_turn_index": next_idx})
-
-
 def _replace_tank(tanks: list[Tank], updated: Tank) -> list[Tank]:
     """Return a new tank list with *updated* replacing the tank of the same ID."""
     return [updated if t.id == updated.id else t for t in tanks]
@@ -122,8 +107,9 @@ def apply_action(state: GameState, game_map: GameMap, tank_id: TankId, action: A
       Firing into wreckage (a dead tank) has no additional effect.
     * ``PASS``: do nothing.
 
-    After the action, ``current_turn_index`` advances to the next alive
-    tank.
+    Turn scheduling is **not** handled here — the caller (typically
+    :class:`~hmls.core.engine.GameEngine`) is responsible for advancing
+    ``current_tank_id`` after this function returns.
 
     Args:
         state: Current game state (tanks and turn info).
@@ -176,4 +162,4 @@ def apply_action(state: GameState, game_map: GameMap, tank_id: TankId, action: A
     # PASS: nothing to do
 
     new_state = state.model_copy(update={"tanks": new_tanks})
-    return _advance_turn(new_state)
+    return new_state
