@@ -123,12 +123,12 @@ def _next_alive_tank(state: GameState, team: str, cursor: int) -> tuple[TankId, 
 
 
 def _set_current_tank(state: GameState, tank_id: TankId) -> GameState:
-    """Return a copy of *state* with ``current_turn_index`` pointing to *tank_id*.
+    """Return a copy of *state* with ``current_tank_id`` set to *tank_id*.
 
-    The tank must appear in ``state.turn_order``.
+    The tank must exist in ``state.tanks``.
     """
-    idx = state.turn_order.index(tank_id)
-    return state.model_copy(update={"current_turn_index": idx})
+    state.get_tank(tank_id)  # Validate existence.
+    return state.model_copy(update={"current_tank_id": tank_id})
 
 
 def _determine_winner(state: GameState) -> str | None:
@@ -192,13 +192,9 @@ class GameEngine:
     ) -> None:
         self._validate_inputs(game_map, tanks, players, max_turns, patch_size)
 
-        turn_order = [t.id for t in tanks]
         self._state = GameState(
             tanks=tanks,
-            turn_order=turn_order,
-            current_turn_index=0,
         )
-        self._initial_state = self._state
         self._game_map = game_map
         self._players = players
         self._max_turns = max_turns
@@ -213,8 +209,9 @@ class GameEngine:
         self._turns_taken: int = 0
         self._history: list[HistoryEntry] = []
 
-        # Advance to the first valid tank.
+        # Advance to the first valid tank, then capture the initial state.
         self._advance_to_next_tank()
+        self._initial_state = self._state
 
     # ── Public properties ─────────────────────────────────────────
 
@@ -259,7 +256,10 @@ class GameEngine:
 
         Only meaningful when :attr:`game_over` is ``False``.
         """
-        return self._state.current_tank_id
+        tank_id = self._state.current_tank_id
+        if tank_id is None:
+            raise RuntimeError("No current tank (game may be over or not started)")
+        return tank_id
 
     @property
     def current_team(self) -> str:
@@ -350,7 +350,7 @@ class GameEngine:
         """Advance internal state to point at the next alive tank.
 
         Walks through the team alternation, skipping eliminated teams,
-        and sets ``current_turn_index`` on the state.
+        and sets ``current_tank_id`` on the state.
         """
         team_count = len(self._team_order)
         for _ in range(team_count):
@@ -399,6 +399,12 @@ class GameEngine:
 
         self._state = apply_action(self._state, self._game_map, tank_id, applied)
         self._turns_taken += 1
+        self._global_turn += 1
+
+        # Advance to the next tank (if game not over) so the history
+        # entry reflects the correct *next* active tank.
+        if not self.game_over:
+            self._advance_to_next_tank()
 
         entry = HistoryEntry(
             tank_id=tank_id,
@@ -409,12 +415,6 @@ class GameEngine:
             state_after=self._state,
         )
         self._history.append(entry)
-
-        self._global_turn += 1
-
-        # Advance to the next tank (if game not over).
-        if not self.game_over:
-            self._advance_to_next_tank()
 
         return entry
 

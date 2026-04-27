@@ -465,8 +465,7 @@ class TestGameExecution:
             game_map=game_map,
             initial_state=GameState(
                 tanks=tanks,
-                turn_order=[t.id for t in tanks],
-                current_turn_index=0,
+                current_tank_id=tanks[0].id,
             ),
             history=[],
             turns_played=0,

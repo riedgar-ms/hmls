@@ -3,6 +3,11 @@
 The game map is intentionally *not* part of the state — it never
 changes during a game and is supplied separately to functions that
 need it (see :mod:`hmls.core.actions` and :mod:`hmls.core.visibility`).
+
+Turn scheduling is the sole responsibility of the game engine
+(:class:`~hmls.core.engine.GameEngine`).  ``GameState`` merely records
+*which* tank is currently active via :attr:`current_tank_id`; it does
+not contain scheduling logic.
 """
 
 from __future__ import annotations
@@ -25,14 +30,15 @@ class GameState(BaseModel):
     information.
 
     Attributes:
-        tanks: All tanks (alive and destroyed) in the game.
-        turn_order: Tank IDs in the order they take turns.
-        current_turn_index: Index into *turn_order* for the next tank to act.
+        tanks: All tanks (alive and destroyed) in the game.  The list
+            order is stable for the lifetime of a game.
+        current_tank_id: ID of the tank whose turn it is, or ``None``
+            when the state has no meaningful active turn (e.g. an
+            empty tank list, or a state constructed outside the engine).
     """
 
     tanks: list[Tank]
-    turn_order: list[TankId]
-    current_turn_index: int = 0
+    current_tank_id: TankId | None = None
 
     # ── Lookup helpers ────────────────────────────────────────────────
 
@@ -61,22 +67,3 @@ class GameState(BaseModel):
             if t.id == tank_id:
                 return t
         raise KeyError(f"No tank with id {tank_id!r}")
-
-    @property
-    def current_tank_id(self) -> TankId:
-        """Return the ID of the tank whose turn it is.
-
-        Skips over dead tanks in the turn order.  If all tanks are dead,
-        returns the ID at the raw index (the caller should check for
-        game-over conditions).
-        """
-        alive_ids = {t.id for t in self.tanks if t.alive}
-        order_len = len(self.turn_order)
-        # Walk forward from current_turn_index looking for an alive tank.
-        for i in range(order_len):
-            idx = (self.current_turn_index + i) % order_len
-            tid = self.turn_order[idx]
-            if tid in alive_ids:
-                return tid
-        # Fallback: no alive tanks — return raw index entry.
-        return self.turn_order[self.current_turn_index % order_len]
