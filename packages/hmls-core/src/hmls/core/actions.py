@@ -9,7 +9,7 @@ from __future__ import annotations
 from pydantic import BaseModel
 
 from hmls.core.game_state import GameState
-from hmls.core.map import CellType
+from hmls.core.map import CellType, GameMap
 from hmls.core.tank import Tank, TankId
 from hmls.core.types import Action, Position
 
@@ -29,7 +29,9 @@ class ActionResult(BaseModel):
 # ── Validation ────────────────────────────────────────────────────────
 
 
-def validate_action(state: GameState, tank_id: TankId, action: Action) -> ActionResult:
+def validate_action(
+    state: GameState, game_map: GameMap, tank_id: TankId, action: Action
+) -> ActionResult:
     """Check whether *action* is legal for *tank_id* in the given *state*.
 
     An action is **invalid** if:
@@ -41,6 +43,12 @@ def validate_action(state: GameState, tank_id: TankId, action: Action) -> Action
 
     All other actions (``TURN_LEFT``, ``TURN_RIGHT``, ``FIRE``, ``PASS``)
     are always valid (assuming the tank is alive and it is their turn).
+
+    Args:
+        state: Current game state (tanks and turn info).
+        game_map: The map on which the game is played.
+        tank_id: The tank attempting the action.
+        action: The proposed action.
     """
     # --- Tank existence & liveness ---
     try:
@@ -63,10 +71,10 @@ def validate_action(state: GameState, tank_id: TankId, action: Action) -> Action
         dx, dy = tank.direction.forward_delta()
         dest = Position(tank.position.x + dx, tank.position.y + dy)
 
-        if not state.game_map.in_bounds(dest.x, dest.y):
+        if not game_map.in_bounds(dest.x, dest.y):
             return ActionResult(valid=False, reason="Destination is out of bounds")
 
-        if state.game_map[dest.x, dest.y] == CellType.IMPASSABLE:
+        if game_map[dest.x, dest.y] == CellType.IMPASSABLE:
             return ActionResult(valid=False, reason="Destination cell is impassable")
 
         occupied = state.tank_positions
@@ -101,7 +109,7 @@ def _replace_tank(tanks: list[Tank], updated: Tank) -> list[Tank]:
     return [updated if t.id == updated.id else t for t in tanks]
 
 
-def apply_action(state: GameState, tank_id: TankId, action: Action) -> GameState:
+def apply_action(state: GameState, game_map: GameMap, tank_id: TankId, action: Action) -> GameState:
     """Apply *action* for *tank_id* and return a new :class:`GameState`.
 
     **Move semantics:**
@@ -117,6 +125,12 @@ def apply_action(state: GameState, tank_id: TankId, action: Action) -> GameState
     After the action, ``current_turn_index`` advances to the next alive
     tank.
 
+    Args:
+        state: Current game state (tanks and turn info).
+        game_map: The map on which the game is played.
+        tank_id: The tank performing the action.
+        action: The action to apply.
+
     Raises:
         KeyError: If *tank_id* does not exist.
         ValueError: If the tank is dead or it is not their turn.
@@ -130,7 +144,7 @@ def apply_action(state: GameState, tank_id: TankId, action: Action) -> GameState
     new_tanks = list(state.tanks)
 
     if action == Action.MOVE_FORWARD:
-        result = validate_action(state, tank_id, action)
+        result = validate_action(state, game_map, tank_id, action)
         if result.valid:
             dx, dy = tank.direction.forward_delta()
             moved = tank.model_copy(

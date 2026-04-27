@@ -24,12 +24,13 @@ def _make_state(
     width: int = 9,
     height: int = 9,
     tanks: list[Tank] | None = None,
-) -> GameState:
-    """Create a simple game state for testing."""
+) -> tuple[GameState, GameMap]:
+    """Create a simple game state and map for testing."""
     game_map = GameMap(width=width, height=height)
     tanks = tanks or []
     turn_order = [t.id for t in tanks]
-    return GameState(game_map=game_map, tanks=tanks, turn_order=turn_order)
+    state = GameState(tanks=tanks, turn_order=turn_order)
+    return state, game_map
 
 
 # ── compute_visibility_mask ───────────────────────────────────────────
@@ -126,10 +127,10 @@ class TestComputeVisibilityMask:
 class TestExtractPatchRotation:
     """Test that patches are correctly rotated to egocentric space."""
 
-    def _make_marked_state(self, direction: Direction) -> tuple[GameState, str]:
+    def _make_marked_state(self, direction: Direction) -> tuple[GameState, GameMap, str]:
         """Create a state with a wall one cell ahead of the tank.
 
-        Returns the state and the tank ID.
+        Returns the state, the map, and the tank ID.
         """
         game_map = GameMap(width=9, height=9)
         # Place a wall one cell in the tank's forward direction.
@@ -139,15 +140,14 @@ class TestExtractPatchRotation:
         game_map[wall_x, wall_y] = CellType.IMPASSABLE
 
         tank = Tank(id="t0", team="a", position=tank_pos, direction=direction)
-        state = _make_state(tanks=[tank])
-        state = state.model_copy(update={"game_map": game_map})
-        return state, "t0"
+        state, _ = _make_state(tanks=[tank])
+        return state, game_map, "t0"
 
     @pytest.mark.parametrize("direction", list(Direction))
     def test_wall_ahead_appears_at_row_above_centre(self, direction: Direction) -> None:
         """Regardless of world direction, a wall ahead should appear one row above centre."""
-        state, tid = self._make_marked_state(direction)
-        patch = extract_patch(state, tid, 5)
+        state, game_map, tid = self._make_marked_state(direction)
+        patch = extract_patch(state, game_map, tid, 5)
         half = 5 // 2
         # One row above centre, same column = forward cell in ego space
         cell = patch.grid[half - 1][half]
@@ -157,8 +157,8 @@ class TestExtractPatchRotation:
     @pytest.mark.parametrize("direction", list(Direction))
     def test_centre_is_tank(self, direction: Direction) -> None:
         """The centre cell should contain the tank itself."""
-        state, tid = self._make_marked_state(direction)
-        patch = extract_patch(state, tid, 5)
+        state, game_map, tid = self._make_marked_state(direction)
+        patch = extract_patch(state, game_map, tid, 5)
         half = 5 // 2
         cell = patch.grid[half][half]
         assert isinstance(cell, VisibleCell)
@@ -170,8 +170,8 @@ class TestExtractPatchRotation:
         tank = Tank(id="t0", team="a", position=Position(4, 4), direction=Direction.NORTH)
         # Enemy one cell to the east (right when facing north)
         enemy = Tank(id="e0", team="b", position=Position(5, 4), direction=Direction.SOUTH)
-        state = _make_state(tanks=[tank, enemy])
-        patch = extract_patch(state, "t0", 5)
+        state, game_map = _make_state(tanks=[tank, enemy])
+        patch = extract_patch(state, game_map, "t0", 5)
         half = 5 // 2
         cell = patch.grid[half][half + 1]
         assert isinstance(cell, VisibleCell)
@@ -182,8 +182,8 @@ class TestExtractPatchRotation:
         """An enemy one cell behind (in the 8-ring) should be visible."""
         tank = Tank(id="t0", team="a", position=Position(4, 4), direction=Direction.NORTH)
         enemy = Tank(id="e0", team="b", position=Position(4, 5), direction=Direction.SOUTH)
-        state = _make_state(tanks=[tank, enemy])
-        patch = extract_patch(state, "t0", 5)
+        state, game_map = _make_state(tanks=[tank, enemy])
+        patch = extract_patch(state, game_map, "t0", 5)
         half = 5 // 2
         # Behind = one row below centre in ego space
         cell = patch.grid[half + 1][half]
@@ -201,8 +201,8 @@ class TestExtractPatchEdgeCases:
     def test_map_edge_produces_fog(self) -> None:
         """Cells outside the map should be FogCell."""
         tank = Tank(id="t0", team="a", position=Position(0, 0), direction=Direction.NORTH)
-        state = _make_state(width=5, height=5, tanks=[tank])
-        patch = extract_patch(state, "t0", 5)
+        state, game_map = _make_state(width=5, height=5, tanks=[tank])
+        patch = extract_patch(state, game_map, "t0", 5)
         # Top-left corner of patch: ego position (0, 0) for a 5x5 patch
         # centred at (0, 0) means 2 cells forward and 2 cells left,
         # which is out of bounds.
@@ -214,8 +214,8 @@ class TestExtractPatchEdgeCases:
         game_map = GameMap(width=9, height=9)
         game_map[4, 3] = CellType.IMPASSABLE  # one cell north of (4,4)
         tank = Tank(id="t0", team="a", position=Position(4, 4), direction=Direction.NORTH)
-        state = GameState(game_map=game_map, tanks=[tank], turn_order=["t0"])
-        patch = extract_patch(state, "t0", 5)
+        state = GameState(tanks=[tank], turn_order=["t0"])
+        patch = extract_patch(state, game_map, "t0", 5)
         half = 5 // 2
         cell = patch.grid[half - 1][half]
         assert isinstance(cell, VisibleCell)
@@ -226,8 +226,8 @@ class TestExtractPatchEdgeCases:
         tank = Tank(id="t0", team="a", position=Position(4, 4), direction=Direction.NORTH)
         # Enemy 2 cells behind and 2 to the right (outside 8-ring, behind)
         enemy = Tank(id="e0", team="b", position=Position(6, 6), direction=Direction.SOUTH)
-        state = _make_state(tanks=[tank, enemy])
-        patch = extract_patch(state, "t0", 7)
+        state, game_map = _make_state(tanks=[tank, enemy])
+        patch = extract_patch(state, game_map, "t0", 7)
         # This enemy should be fogged — it's behind and to the side
         # World offset: (2, 2) from tank at (4,4). Facing NORTH:
         # forward=(0,-1), right=(1,0)
@@ -246,8 +246,8 @@ class TestBuildPlayerView:
 
     def test_one_alive_tank_produces_one_patch(self) -> None:
         tank = Tank(id="t0", team="a", position=Position(4, 4), direction=Direction.NORTH)
-        state = _make_state(tanks=[tank])
-        view = build_player_view(state, "a", 5)
+        state, game_map = _make_state(tanks=[tank])
+        view = build_player_view(state, game_map, "a", 5)
         assert len(view.patches) == 1
         assert view.patches[0].tank_id == "t0"
 
@@ -259,8 +259,8 @@ class TestBuildPlayerView:
             direction=Direction.NORTH,
             alive=False,
         )
-        state = _make_state(tanks=[tank])
-        view = build_player_view(state, "a", 5)
+        state, game_map = _make_state(tanks=[tank])
+        view = build_player_view(state, game_map, "a", 5)
         assert len(view.patches) == 0
 
     def test_dead_tank_still_in_tank_info(self) -> None:
@@ -271,24 +271,24 @@ class TestBuildPlayerView:
             direction=Direction.NORTH,
             alive=False,
         )
-        state = _make_state(tanks=[tank])
-        view = build_player_view(state, "a", 5)
+        state, game_map = _make_state(tanks=[tank])
+        view = build_player_view(state, game_map, "a", 5)
         assert len(view.tanks) == 1
         assert view.tanks[0].alive is False
 
     def test_enemy_tanks_not_in_tank_info(self) -> None:
         ally = Tank(id="t0", team="a", position=Position(4, 4), direction=Direction.NORTH)
         enemy = Tank(id="e0", team="b", position=Position(6, 6), direction=Direction.SOUTH)
-        state = _make_state(tanks=[ally, enemy])
-        view = build_player_view(state, "a", 5)
+        state, game_map = _make_state(tanks=[ally, enemy])
+        view = build_player_view(state, game_map, "a", 5)
         tank_ids = [t.tank_id for t in view.tanks]
         assert "e0" not in tank_ids
 
     def test_multiple_alive_tanks_produce_multiple_patches(self) -> None:
         t0 = Tank(id="t0", team="a", position=Position(2, 2), direction=Direction.NORTH)
         t1 = Tank(id="t1", team="a", position=Position(6, 6), direction=Direction.SOUTH)
-        state = _make_state(tanks=[t0, t1])
-        view = build_player_view(state, "a", 5)
+        state, game_map = _make_state(tanks=[t0, t1])
+        view = build_player_view(state, game_map, "a", 5)
         assert len(view.patches) == 2
         patch_ids = {p.tank_id for p in view.patches}
         assert patch_ids == {"t0", "t1"}
@@ -296,8 +296,8 @@ class TestBuildPlayerView:
     def test_player_view_is_serialisable(self) -> None:
         """PlayerView must round-trip through JSON."""
         tank = Tank(id="t0", team="a", position=Position(4, 4), direction=Direction.NORTH)
-        state = _make_state(tanks=[tank])
-        view = build_player_view(state, "a", 5)
+        state, game_map = _make_state(tanks=[tank])
+        view = build_player_view(state, game_map, "a", 5)
         json_str = view.model_dump_json()
         restored = PlayerView.model_validate_json(json_str)
         assert len(restored.patches) == len(view.patches)

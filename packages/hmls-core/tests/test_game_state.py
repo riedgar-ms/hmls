@@ -3,14 +3,11 @@
 import pytest
 
 from hmls.core.game_state import GameState
-from hmls.core.map import GameMap
 from hmls.core.tank import Tank
 from hmls.core.types import Direction, Position
 
 
 def _make_state(
-    width: int = 5,
-    height: int = 5,
     tanks: list[Tank] | None = None,
     turn_order: list[str] | None = None,
 ) -> GameState:
@@ -23,7 +20,6 @@ def _make_state(
     if turn_order is None:
         turn_order = [t.id for t in tanks]
     return GameState(
-        game_map=GameMap(width=width, height=height),
         tanks=tanks,
         turn_order=turn_order,
     )

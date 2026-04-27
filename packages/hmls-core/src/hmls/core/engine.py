@@ -49,12 +49,15 @@ class GameResult(BaseModel):
 
     Attributes:
         winner: Team name of the winning side, or ``None`` for a draw.
+        game_map: The map the game was played on (stored once here
+            rather than duplicated in every history entry).
         final_state: The game state when the game ended.
         history: Ordered list of every action taken during the game.
         turns_played: Total number of individual turns taken.
     """
 
     winner: str | None
+    game_map: GameMap
     final_state: GameState
     history: list[HistoryEntry]
     turns_played: int
@@ -149,11 +152,11 @@ class GameEngine:
 
         turn_order = [t.id for t in tanks]
         self._state = GameState(
-            game_map=game_map,
             tanks=tanks,
             turn_order=turn_order,
             current_turn_index=0,
         )
+        self._game_map = game_map
         self._players = players
         self._max_turns = max_turns
         self._patch_size = patch_size
@@ -251,9 +254,9 @@ class GameEngine:
             state = _set_current_tank(state, tank_id)
 
             player = self._players[team]
-            view = build_player_view(state, team, self._patch_size)
+            view = build_player_view(state, self._game_map, team, self._patch_size)
             requested = player.choose_action(tank_id, view)
-            result = validate_action(state, tank_id, requested)
+            result = validate_action(state, self._game_map, tank_id, requested)
 
             if result.valid:
                 applied = requested
@@ -261,7 +264,7 @@ class GameEngine:
                 player.notify_invalid_action(tank_id, requested, result.reason)
                 applied = Action.PASS
 
-            state = apply_action(state, tank_id, applied)
+            state = apply_action(state, self._game_map, tank_id, applied)
             turns_taken += 1
 
             history.append(
@@ -281,8 +284,8 @@ class GameEngine:
 
         return self._make_result(state, history, turns_taken)
 
-    @staticmethod
     def _make_result(
+        self,
         state: GameState,
         history: list[HistoryEntry],
         turns_played: int,
@@ -299,6 +302,7 @@ class GameEngine:
             winner = leaders[0] if len(leaders) == 1 else None
         return GameResult(
             winner=winner,
+            game_map=self._game_map,
             final_state=state,
             history=history,
             turns_played=turns_played,

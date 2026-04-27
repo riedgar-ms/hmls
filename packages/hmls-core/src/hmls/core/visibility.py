@@ -14,7 +14,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, Field
 
 from hmls.core.game_state import GameState
-from hmls.core.map import CellType
+from hmls.core.map import CellType, GameMap
 from hmls.core.tank import Tank, TankId
 from hmls.core.types import Direction, Position
 
@@ -197,6 +197,7 @@ def _world_to_ego(
 
 def extract_patch(
     game_state: GameState,
+    game_map: GameMap,
     tank_id: TankId,
     patch_size: int,
 ) -> TankPatch:
@@ -208,7 +209,8 @@ def extract_patch(
     :class:`FogCell`.
 
     Args:
-        game_state: Current game state.
+        game_state: Current game state (tanks and turn info).
+        game_map: The map on which the game is played.
         tank_id: The tank to build the patch for.
         patch_size: Side length of the square patch (must be odd, ≥ 3).
 
@@ -257,11 +259,11 @@ def extract_patch(
             world_y = tank.position.y + world_dy
 
             # Out-of-bounds cells are fog.
-            if not game_state.game_map.in_bounds(world_x, world_y):
+            if not game_map.in_bounds(world_x, world_y):
                 row_cells.append(fog)
                 continue
 
-            cell_type = game_state.game_map[world_x, world_y]
+            cell_type = game_map[world_x, world_y]
             world_pos = Position(world_x, world_y)
             occupant = pos_to_tank.get(world_pos)
             row_cells.append(VisibleCell(cell_type=cell_type, tank=occupant))
@@ -278,6 +280,7 @@ def extract_patch(
 
 def build_player_view(
     game_state: GameState,
+    game_map: GameMap,
     team: str,
     patch_size: int,
 ) -> PlayerView:
@@ -288,7 +291,8 @@ def build_player_view(
     the team (alive or dead).
 
     Args:
-        game_state: Current game state.
+        game_state: Current game state (tanks and turn info).
+        game_map: The map on which the game is played.
         team: Team identifier (e.g. ``"alpha"``).
         patch_size: Side length of each visibility patch.
 
@@ -297,7 +301,7 @@ def build_player_view(
     """
     team_tanks = [t for t in game_state.tanks if t.team == team]
 
-    patches = [extract_patch(game_state, t.id, patch_size) for t in team_tanks if t.alive]
+    patches = [extract_patch(game_state, game_map, t.id, patch_size) for t in team_tanks if t.alive]
 
     tank_infos = [
         TankInfo(
