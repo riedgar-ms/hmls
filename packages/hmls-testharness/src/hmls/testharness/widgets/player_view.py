@@ -31,6 +31,7 @@ class PlayerViewRegion(Horizontal):
     PlayerViewRegion {
         height: auto;
         padding: 0 1;
+        overflow-x: auto;
     }
     """
 

@@ -46,6 +46,8 @@ class PatchView(Static):
         border: solid $surface-lighten-2;
         padding: 0 1;
         margin: 0 1 0 0;
+        width: auto;
+        height: auto;
     }
     PatchView.active-patch {
         border: heavy $warning;

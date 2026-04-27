@@ -94,11 +94,9 @@ class TestHarnessApp(App[None]):
     }
     #player-a-region {
         height: auto;
-        max-height: 14;
     }
     #player-b-region {
         height: auto;
-        max-height: 14;
     }
     #status-bar {
         dock: bottom;
