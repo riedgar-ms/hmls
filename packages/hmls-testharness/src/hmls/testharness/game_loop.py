@@ -7,33 +7,12 @@ at a time.
 
 from __future__ import annotations
 
-from pydantic import BaseModel
-
 from hmls.core.actions import ActionResult, apply_action, validate_action
+from hmls.core.engine import HistoryEntry
 from hmls.core.game_state import GameState
 from hmls.core.map import GameMap
 from hmls.core.tank import TankId
 from hmls.core.types import Action
-
-
-class HistoryEntry(BaseModel):
-    """Record of a single turn in the interactive game.
-
-    Attributes:
-        tank_id: The tank that acted.
-        requested_action: The action the user chose.
-        applied_action: The action actually applied.
-        valid: Whether the requested action was legal.
-        reason: Explanation if the action was invalid.
-        state_after: Game state after the action was applied.
-    """
-
-    tank_id: TankId
-    requested_action: Action
-    applied_action: Action
-    valid: bool
-    reason: str = ""
-    state_after: GameState
 
 
 class GameLoop:

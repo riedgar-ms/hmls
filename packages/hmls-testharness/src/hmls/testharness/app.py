@@ -231,7 +231,6 @@ class TestHarnessApp(App[None]):
         path = Path(path_str)
         try:
             from hmls.core.engine import GameResult
-            from hmls.core.engine import HistoryEntry as CoreHistoryEntry
 
             result = GameResult(
                 winner=self._game_loop.winner,
@@ -239,17 +238,7 @@ class TestHarnessApp(App[None]):
                 initial_state=self._game_loop.history[0].state_after
                 if self._game_loop.history
                 else self._state,
-                history=[
-                    CoreHistoryEntry(
-                        tank_id=entry.tank_id,
-                        requested_action=entry.requested_action,
-                        applied_action=entry.applied_action,
-                        valid=entry.valid,
-                        reason=entry.reason,
-                        state_after=entry.state_after,
-                    )
-                    for entry in self._game_loop.history
-                ],
+                history=self._game_loop.history,
                 turns_played=self._game_loop.turns_taken,
             )
             path.write_text(result.model_dump_json(indent=2), encoding="utf-8")
