@@ -4,12 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from hmls.core.engine import (
-    GameEngine,
-    GameResult,
-    HistoryEntry,
-    _build_interleaved_turn_order,
-)
+from hmls.core.engine import GameEngine, GameResult, HistoryEntry
 from hmls.core.map import CellType, GameMap
 from hmls.core.player import Player
 from hmls.core.tank import Tank, TankId
@@ -63,43 +58,6 @@ def _two_tank_setup() -> tuple[GameMap, list[Tank], dict[str, Player]]:
         "beta": PassPlayer("beta"),
     }
     return game_map, tanks, players
-
-
-# ── Turn order ────────────────────────────────────────────────────────
-
-
-class TestInterleavedTurnOrder:
-    """Tests for _build_interleaved_turn_order."""
-
-    def test_equal_teams(self) -> None:
-        tanks = [
-            Tank(id="a0", team="alpha", position=Position(0, 0), direction=Direction.NORTH),
-            Tank(id="a1", team="alpha", position=Position(1, 0), direction=Direction.NORTH),
-            Tank(id="b0", team="beta", position=Position(0, 1), direction=Direction.SOUTH),
-            Tank(id="b1", team="beta", position=Position(1, 1), direction=Direction.SOUTH),
-        ]
-        order = _build_interleaved_turn_order(tanks)
-        assert order == ["a0", "b0", "a1", "b1"]
-
-    def test_unequal_teams(self) -> None:
-        tanks = [
-            Tank(id="a0", team="alpha", position=Position(0, 0), direction=Direction.NORTH),
-            Tank(id="a1", team="alpha", position=Position(1, 0), direction=Direction.NORTH),
-            Tank(id="a2", team="alpha", position=Position(2, 0), direction=Direction.NORTH),
-            Tank(id="b0", team="beta", position=Position(0, 1), direction=Direction.SOUTH),
-        ]
-        order = _build_interleaved_turn_order(tanks)
-        # alpha: [a0, a1, a2], beta: [b0]
-        # Shorter team cycles: a0, b0, a1, b0, a2, b0
-        assert order == ["a0", "b0", "a1", "b0", "a2", "b0"]
-
-    def test_teams_sorted_alphabetically(self) -> None:
-        tanks = [
-            Tank(id="z0", team="zulu", position=Position(0, 0), direction=Direction.NORTH),
-            Tank(id="a0", team="alpha", position=Position(1, 0), direction=Direction.SOUTH),
-        ]
-        order = _build_interleaved_turn_order(tanks)
-        assert order == ["a0", "z0"]
 
 
 # ── Engine validation ─────────────────────────────────────────────────
@@ -195,6 +153,119 @@ class TestEngineValidation:
             GameEngine(game_map, tanks, players, max_rounds=10)
 
 
+# ── Turn alternation ──────────────────────────────────────────────────
+
+
+class TestTurnAlternation:
+    """Tests that players alternate turns and cycle tanks correctly."""
+
+    def test_1v1_alternates_players(self) -> None:
+        """In a 1v1, players strictly alternate: a0, b0, a0, b0, ..."""
+        game_map, tanks, players = _two_tank_setup()
+        engine = GameEngine(game_map, tanks, players, max_rounds=2)
+        result = engine.run()
+        tank_ids = [e.tank_id for e in result.history]
+        assert tank_ids == ["a0", "b0", "a0", "b0"]
+
+    def test_2v2_alternates_and_cycles(self) -> None:
+        """With 2v2, each player cycles: a0, b0, a1, b1, then repeats."""
+        game_map = _default_map()
+        tanks = [
+            Tank(id="a0", team="alpha", position=Position(1, 1), direction=Direction.EAST),
+            Tank(id="a1", team="alpha", position=Position(1, 3), direction=Direction.EAST),
+            Tank(id="b0", team="beta", position=Position(7, 1), direction=Direction.WEST),
+            Tank(id="b1", team="beta", position=Position(7, 3), direction=Direction.WEST),
+        ]
+        players: dict[str, Player] = {
+            "alpha": PassPlayer("alpha"),
+            "beta": PassPlayer("beta"),
+        }
+        engine = GameEngine(game_map, tanks, players, max_rounds=1)
+        result = engine.run()
+        tank_ids = [e.tank_id for e in result.history]
+        # Round has max(2,2)=2 slots, alternating: a0,b0,a1,b1
+        assert tank_ids == ["a0", "b0", "a1", "b1"]
+
+    def test_3v1_shorter_team_cycles(self) -> None:
+        """With 3v1, the single-tank team cycles to match.
+
+        Expected: a0, b0, a1, b0, a2, b0
+        """
+        game_map = _default_map()
+        tanks = [
+            Tank(id="a0", team="alpha", position=Position(1, 1), direction=Direction.EAST),
+            Tank(id="a1", team="alpha", position=Position(1, 3), direction=Direction.EAST),
+            Tank(id="a2", team="alpha", position=Position(1, 5), direction=Direction.EAST),
+            Tank(id="b0", team="beta", position=Position(7, 4), direction=Direction.WEST),
+        ]
+        players: dict[str, Player] = {
+            "alpha": PassPlayer("alpha"),
+            "beta": PassPlayer("beta"),
+        }
+        engine = GameEngine(game_map, tanks, players, max_rounds=1)
+        result = engine.run()
+        tank_ids = [e.tank_id for e in result.history]
+        assert tank_ids == ["a0", "b0", "a1", "b0", "a2", "b0"]
+
+    def test_destroyed_tank_skipped_dynamically(self) -> None:
+        """After a tank is destroyed, the player's cursor skips it.
+
+        Setup: alpha has [a0, a1, a2], beta has [b0, b1, b2].
+        a0 is pre-killed.  Expected round 1: a1, b0, a2, b1, a1, b2
+        (alpha cycles a1, a2, a1 — skipping dead a0).
+        """
+        game_map = _default_map()
+        tanks = [
+            Tank(
+                id="a0",
+                team="alpha",
+                position=Position(1, 1),
+                direction=Direction.EAST,
+                alive=False,
+            ),
+            Tank(id="a1", team="alpha", position=Position(1, 3), direction=Direction.EAST),
+            Tank(id="a2", team="alpha", position=Position(1, 5), direction=Direction.EAST),
+            Tank(id="b0", team="beta", position=Position(7, 1), direction=Direction.WEST),
+            Tank(id="b1", team="beta", position=Position(7, 3), direction=Direction.WEST),
+            Tank(id="b2", team="beta", position=Position(7, 5), direction=Direction.WEST),
+        ]
+        players: dict[str, Player] = {
+            "alpha": PassPlayer("alpha"),
+            "beta": PassPlayer("beta"),
+        }
+        engine = GameEngine(game_map, tanks, players, max_rounds=1)
+        result = engine.run()
+        tank_ids = [e.tank_id for e in result.history]
+        # beta has 3 alive → 3 turns per player.
+        # alpha cycles: a1, a2, a1 (skipping dead a0).
+        assert tank_ids == ["a1", "b0", "a2", "b1", "a1", "b2"]
+
+    def test_mid_round_destruction_skips_tank(self) -> None:
+        """When a tank is destroyed mid-round, it's skipped on subsequent turns.
+
+        Setup: alpha=[a0] facing east at (4,4), beta=[b0] at (5,4) facing west.
+        a0 fires and destroys b0 on the first action → game ends immediately.
+        """
+        game_map = _default_map()
+        tanks = [
+            Tank(id="a0", team="alpha", position=Position(4, 4), direction=Direction.EAST),
+            Tank(id="b0", team="beta", position=Position(5, 4), direction=Direction.WEST),
+        ]
+        alpha_player = ScriptedPlayer("alpha", [Action.FIRE])
+        beta_player = ScriptedPlayer("beta", [Action.PASS])
+        players: dict[str, Player] = {"alpha": alpha_player, "beta": beta_player}
+
+        engine = GameEngine(game_map, tanks, players, max_rounds=100)
+        result = engine.run()
+
+        assert result.winner == "alpha"
+        assert result.rounds_played == 1
+        # Only alpha fired; beta was destroyed before its turn.
+        assert len(result.history) == 1
+        assert result.history[0].tank_id == "a0"
+        assert result.history[0].applied_action == Action.FIRE
+
+
 # ── Game execution ────────────────────────────────────────────────────
 
 
@@ -213,7 +284,7 @@ class TestGameExecution:
         game_map, tanks, players = _two_tank_setup()
         engine = GameEngine(game_map, tanks, players, max_rounds=1)
         result = engine.run()
-        # 2 tanks, 1 round → 2 history entries
+        # 1v1, 1 round → 2 history entries
         assert len(result.history) == 2
         for entry in result.history:
             assert isinstance(entry, HistoryEntry)
@@ -221,43 +292,23 @@ class TestGameExecution:
             assert entry.requested_action == Action.PASS
             assert entry.applied_action == Action.PASS
 
-    def test_interleaved_turn_order_in_history(self) -> None:
-        game_map, tanks, players = _two_tank_setup()
-        engine = GameEngine(game_map, tanks, players, max_rounds=2)
-        result = engine.run()
-        tank_ids = [e.tank_id for e in result.history]
-        # alpha first (alphabetical), then beta, repeated
-        assert tank_ids == ["a0", "b0", "a0", "b0"]
-
-    def test_early_termination_on_destruction(self) -> None:
-        """Game stops early when one side is fully destroyed."""
-        game_map = _default_map()
-        tanks = [
-            Tank(id="a0", team="alpha", position=Position(4, 4), direction=Direction.EAST),
-            Tank(id="b0", team="beta", position=Position(5, 4), direction=Direction.WEST),
-        ]
-        # alpha fires (hitting b0), beta never gets to act
-        alpha_player = ScriptedPlayer("alpha", [Action.FIRE])
-        beta_player = ScriptedPlayer("beta", [Action.PASS])
-        players: dict[str, Player] = {"alpha": alpha_player, "beta": beta_player}
-
-        engine = GameEngine(game_map, tanks, players, max_rounds=100)
-        result = engine.run()
-
-        assert result.winner == "alpha"
-        assert result.rounds_played == 1
-        # Only one action should have been taken (alpha fires, game ends)
-        assert len(result.history) == 1
-        assert result.history[0].tank_id == "a0"
-        assert result.history[0].applied_action == Action.FIRE
-
     def test_invalid_action_triggers_notification(self) -> None:
         """Invalid actions cause notification and PASS substitution."""
         game_map = _default_map()
         # Place tank facing the wall at the edge
         tanks = [
-            Tank(id="a0", team="alpha", position=Position(0, 0), direction=Direction.NORTH),
-            Tank(id="b0", team="beta", position=Position(8, 8), direction=Direction.SOUTH),
+            Tank(
+                id="a0",
+                team="alpha",
+                position=Position(0, 0),
+                direction=Direction.NORTH,
+            ),
+            Tank(
+                id="b0",
+                team="beta",
+                position=Position(8, 8),
+                direction=Direction.SOUTH,
+            ),
         ]
         alpha_player = ScriptedPlayer("alpha", [Action.MOVE_FORWARD])
         beta_player = PassPlayer("beta")
@@ -274,35 +325,9 @@ class TestGameExecution:
 
         # Player was notified
         assert len(alpha_player.invalid_notifications) == 1
-        tid, action, reason = alpha_player.invalid_notifications[0]
+        tid, action, _reason = alpha_player.invalid_notifications[0]
         assert tid == "a0"
         assert action == Action.MOVE_FORWARD
-
-    def test_dead_tanks_skipped(self) -> None:
-        """Dead tanks don't get turns."""
-        game_map = _default_map()
-        tanks = [
-            Tank(id="a0", team="alpha", position=Position(2, 4), direction=Direction.EAST),
-            Tank(id="a1", team="alpha", position=Position(2, 6), direction=Direction.EAST),
-            Tank(id="b0", team="beta", position=Position(6, 4), direction=Direction.WEST),
-            Tank(id="b1", team="beta", position=Position(6, 6), direction=Direction.WEST),
-        ]
-        # Kill a0 by marking it dead from the start
-        tanks[0] = tanks[0].model_copy(update={"alive": False})
-
-        players: dict[str, Player] = {
-            "alpha": PassPlayer("alpha"),
-            "beta": PassPlayer("beta"),
-        }
-        engine = GameEngine(game_map, tanks, players, max_rounds=1)
-        result = engine.run()
-
-        acted_ids = [e.tank_id for e in result.history]
-        assert "a0" not in acted_ids
-        # a1, b0, b1 should have acted
-        assert "a1" in acted_ids
-        assert "b0" in acted_ids
-        assert "b1" in acted_ids
 
     def test_draw_with_equal_survivors(self) -> None:
         """Equal alive counts result in a draw."""
@@ -352,8 +377,18 @@ class TestGameExecution:
 
         game_map = _default_map()
         tanks = [
-            Tank(id="a0", team="alpha", position=Position(2, 4), direction=Direction.EAST),
-            Tank(id="b0", team="beta", position=Position(6, 4), direction=Direction.WEST),
+            Tank(
+                id="a0",
+                team="alpha",
+                position=Position(2, 4),
+                direction=Direction.EAST,
+            ),
+            Tank(
+                id="b0",
+                team="beta",
+                position=Position(6, 4),
+                direction=Direction.WEST,
+            ),
         ]
         alpha = ViewCapturingPlayer("alpha")
         beta = ViewCapturingPlayer("beta")
@@ -373,8 +408,18 @@ class TestGameExecution:
         """A valid move should update the tank's position in subsequent states."""
         game_map = _default_map()
         tanks = [
-            Tank(id="a0", team="alpha", position=Position(4, 4), direction=Direction.EAST),
-            Tank(id="b0", team="beta", position=Position(0, 0), direction=Direction.SOUTH),
+            Tank(
+                id="a0",
+                team="alpha",
+                position=Position(4, 4),
+                direction=Direction.EAST,
+            ),
+            Tank(
+                id="b0",
+                team="beta",
+                position=Position(0, 0),
+                direction=Direction.SOUTH,
+            ),
         ]
         alpha = ScriptedPlayer("alpha", [Action.MOVE_FORWARD])
         beta = PassPlayer("beta")

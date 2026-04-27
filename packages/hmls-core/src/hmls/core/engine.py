@@ -1,8 +1,10 @@
 """Game engine: orchestrates a complete tank-game match.
 
-The engine manages turn order (interleaved by team), fog-of-war
-visibility, action validation, and history recording.  It runs for
-a fixed number of rounds or until one side is fully destroyed.
+The engine alternates between players on every turn.  Each player
+independently cycles through their alive tanks, so the shorter team's
+tanks are reused to match the longer team's count.  The engine manages
+fog-of-war visibility, action validation, and history recording.  It
+runs for a fixed number of rounds or until one side is fully destroyed.
 """
 
 from __future__ import annotations
@@ -62,41 +64,6 @@ class GameResult(BaseModel):
 # ── Helpers ───────────────────────────────────────────────────────────
 
 
-def _build_interleaved_turn_order(tanks: list[Tank]) -> list[TankId]:
-    """Build an interleaved turn order from a list of tanks.
-
-    Tanks are grouped by team (preserving within-team order), then
-    interleaved: first tank of team A, first tank of team B, second
-    tank of team A, second tank of team B, etc.  Teams are sorted
-    alphabetically for determinism.
-
-    Each team's tanks cycle independently so that every slot is filled.
-    For example, if team A has ``[a0, a1]`` and team B has ``[b0]``,
-    one round is ``[a0, b0, a1, b0]`` — team B's single tank appears
-    twice to match team A's two tanks.  The round length equals
-    ``max(team_size) * num_teams``.
-
-    Args:
-        tanks: All tanks in the game.
-
-    Returns:
-        Flat list of tank IDs in interleaved order for one round.
-    """
-    teams: dict[str, list[TankId]] = {}
-    for t in tanks:
-        teams.setdefault(t.team, []).append(t.id)
-
-    sorted_team_names = sorted(teams)
-    team_lists = [teams[name] for name in sorted_team_names]
-
-    max_len = max(len(tl) for tl in team_lists)
-    order: list[TankId] = []
-    for slot_idx in range(max_len):
-        for tl in team_lists:
-            order.append(tl[slot_idx % len(tl)])
-    return order
-
-
 def _count_alive_by_team(state: GameState) -> dict[str, int]:
     """Return a mapping from team name to number of alive tanks."""
     counts: dict[str, int] = {}
@@ -106,16 +73,58 @@ def _count_alive_by_team(state: GameState) -> dict[str, int]:
     return counts
 
 
+def _next_alive_tank(state: GameState, team: str, cursor: int) -> tuple[TankId, int]:
+    """Pick the next alive tank for *team*, cycling from *cursor*.
+
+    The cursor indexes into the team's original tank list (alive or
+    dead).  This function walks forward, wrapping around, until it
+    finds an alive tank.
+
+    Args:
+        state: Current game state.
+        team: Team whose tanks to cycle through.
+        cursor: Starting index into the team's tank list.
+
+    Returns:
+        ``(tank_id, next_cursor)`` where *next_cursor* is the index
+        after the chosen tank (for the next call).
+
+    Raises:
+        StopIteration: If the team has no alive tanks.
+    """
+    team_tanks = [t for t in state.tanks if t.team == team]
+    n = len(team_tanks)
+    for i in range(n):
+        idx = (cursor + i) % n
+        if team_tanks[idx].alive:
+            return team_tanks[idx].id, (idx + 1) % n
+    raise StopIteration(f"No alive tanks for team {team!r}")
+
+
+def _set_current_tank(state: GameState, tank_id: TankId) -> GameState:
+    """Return a copy of *state* with ``current_turn_index`` pointing to *tank_id*.
+
+    The tank must appear in ``state.turn_order``.
+    """
+    idx = state.turn_order.index(tank_id)
+    return state.model_copy(update={"current_turn_index": idx})
+
+
 # ── Engine ────────────────────────────────────────────────────────────
 
 
 class GameEngine:
     """Orchestrates a turn-based tank-game match.
 
-    The engine alternates between players, asking each for the desired
-    action for each of their tanks in interleaved order.  Actions are
-    validated; invalid actions trigger a notification to the player and
-    a :data:`~hmls.core.types.Action.PASS` is substituted.
+    Players always alternate turns.  On each turn the engine asks the
+    current player for an action for their next alive tank, cycling
+    through the player's tanks independently.  This means the shorter
+    team's tanks are reused to match the longer team's count within
+    each round.
+
+    A *round* consists of ``max(alive_team_size)`` turns **per player**
+    (recalculated at the start of each round), for a total of
+    ``max(alive_team_size) * 2`` individual actions.
 
     Args:
         game_map: The map to play on.
@@ -141,7 +150,10 @@ class GameEngine:
     ) -> None:
         self._validate_inputs(game_map, tanks, players, max_rounds, patch_size)
 
-        turn_order = _build_interleaved_turn_order(tanks)
+        # turn_order is a flat list of all unique tank IDs — the engine
+        # manages alternation itself and points current_turn_index at
+        # the correct tank before each apply_action call.
+        turn_order = [t.id for t in tanks]
         self._state = GameState(
             game_map=game_map,
             tanks=tanks,
@@ -151,6 +163,8 @@ class GameEngine:
         self._players = players
         self._max_rounds = max_rounds
         self._patch_size = patch_size
+        # Teams sorted alphabetically for deterministic alternation.
+        self._team_order: list[str] = sorted({t.team for t in tanks})
 
     # ── Input validation ──────────────────────────────────────────
 
@@ -215,10 +229,10 @@ class GameEngine:
     def run(self) -> GameResult:
         """Execute the game and return the result.
 
-        The game runs for at most :attr:`max_rounds` full rounds.  A
-        round consists of every tank in the turn order acting once
-        (dead tanks are skipped).  The game ends early if all tanks
-        of one team are destroyed.
+        The game runs for at most *max_rounds* full rounds.  Each round
+        has ``max(alive_team_size) * 2`` turns (players alternate, with
+        the shorter team cycling its tanks).  The game ends early if all
+        tanks of one team are destroyed.
 
         Returns:
             A :class:`GameResult` with the winner, final state, and
@@ -226,52 +240,57 @@ class GameEngine:
         """
         state = self._state
         history: list[HistoryEntry] = []
-        turn_order = state.turn_order
-        num_tanks = len(turn_order)
+
+        # Per-team cursors into their tank lists (survives across rounds).
+        cursors: dict[str, int] = {t: 0 for t in self._team_order}
 
         for round_num in range(self._max_rounds):
-            for _slot in range(num_tanks):
-                # The game state tracks whose turn it is.
-                current_tid = state.current_tank_id
-                tank = state.get_tank(current_tid)
+            # How many turns per player this round?
+            alive_counts = _count_alive_by_team(state)
+            if len(alive_counts) < 2:
+                # One side already eliminated.
+                break
+            turns_per_player = max(alive_counts.values())
 
-                # Dead tanks are skipped by GameState.current_tank_id,
-                # but if all tanks are dead we should stop.
-                if not tank.alive:
-                    break
+            for _slot in range(turns_per_player):
+                for team in self._team_order:
+                    # Skip if team is fully eliminated.
+                    if team not in _count_alive_by_team(state):
+                        continue
 
-                team = tank.team
-                player = self._players[team]
-                view = build_player_view(state, team, self._patch_size)
+                    tank_id, cursors[team] = _next_alive_tank(state, team, cursors[team])
 
-                requested = player.choose_action(current_tid, view)
-                result = validate_action(state, current_tid, requested)
+                    # Point GameState at the chosen tank so apply_action
+                    # accepts it as the current turn.
+                    state = _set_current_tank(state, tank_id)
 
-                if result.valid:
-                    applied = requested
-                else:
-                    player.notify_invalid_action(current_tid, requested, result.reason)
-                    applied = Action.PASS
+                    player = self._players[team]
+                    view = build_player_view(state, team, self._patch_size)
+                    requested = player.choose_action(tank_id, view)
+                    result = validate_action(state, tank_id, requested)
 
-                state = apply_action(state, current_tid, applied)
+                    if result.valid:
+                        applied = requested
+                    else:
+                        player.notify_invalid_action(tank_id, requested, result.reason)
+                        applied = Action.PASS
 
-                history.append(
-                    HistoryEntry(
-                        tank_id=current_tid,
-                        requested_action=requested,
-                        applied_action=applied,
-                        valid=result.valid,
-                        reason=result.reason,
-                        state_after=state,
+                    state = apply_action(state, tank_id, applied)
+
+                    history.append(
+                        HistoryEntry(
+                            tank_id=tank_id,
+                            requested_action=requested,
+                            applied_action=applied,
+                            valid=result.valid,
+                            reason=result.reason,
+                            state_after=state,
+                        )
                     )
-                )
 
-                # Early termination: check if one side is fully destroyed.
-                alive_counts = _count_alive_by_team(state)
-                if any(
-                    team_name not in alive_counts for team_name in {t.team for t in state.tanks}
-                ):
-                    return self._make_result(state, history, round_num + 1)
+                    # Early termination: one side fully destroyed.
+                    if len(_count_alive_by_team(state)) < 2:
+                        return self._make_result(state, history, round_num + 1)
 
         return self._make_result(state, history, self._max_rounds)
 
