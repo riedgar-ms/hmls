@@ -74,7 +74,22 @@ class TestValidateAction:
         assert not result.valid
         assert "occupied" in result.reason.lower()
 
-    def test_turn_always_valid(self) -> None:
+    def test_move_forward_blocked_by_wreckage(self) -> None:
+        """Moving forward into a cell occupied by destroyed wreckage is invalid."""
+        tanks = [
+            Tank(id="a1", team="alpha", position=Position(2, 2), direction=Direction.NORTH),
+            Tank(
+                id="b1",
+                team="beta",
+                position=Position(2, 1),
+                direction=Direction.SOUTH,
+                alive=False,
+            ),
+        ]
+        state = _make_state(tanks=tanks, turn_order=["a1"])
+        result = validate_action(state, "a1", Action.MOVE_FORWARD)
+        assert not result.valid
+        assert "occupied" in result.reason.lower() or "wreckage" in result.reason.lower()
         """Turning is always valid."""
         state = _make_state()
         assert validate_action(state, "a1", Action.TURN_LEFT).valid
@@ -191,6 +206,23 @@ class TestApplyAction:
         state.game_map[2, 1] = CellType.IMPASSABLE
         new = apply_action(state, "a1", Action.FIRE)
         assert all(t.alive for t in new.tanks)
+
+    def test_fire_into_wreckage(self) -> None:
+        """Firing into a destroyed tank (wreckage) has no additional effect."""
+        tanks = [
+            Tank(id="a1", team="alpha", position=Position(2, 2), direction=Direction.NORTH),
+            Tank(
+                id="b1",
+                team="beta",
+                position=Position(2, 1),
+                direction=Direction.SOUTH,
+                alive=False,
+            ),
+        ]
+        state = _make_state(tanks=tanks, turn_order=["a1"])
+        new = apply_action(state, "a1", Action.FIRE)
+        # b1 was already dead — should remain dead, no error.
+        assert not new.get_tank("b1").alive
 
     def test_pass_does_nothing(self) -> None:
         """Passing leaves the state unchanged except for turn advancement."""

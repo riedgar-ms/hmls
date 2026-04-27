@@ -64,18 +64,18 @@ class TestGameStateLookup:
             state.get_tank("no_such")
 
     def test_tank_positions(self) -> None:
-        """tank_positions maps position → tank ID for alive tanks."""
+        """tank_positions maps position → tank ID for all tanks."""
         state = _make_state()
         positions = state.tank_positions
         assert positions[Position(0, 0)] == "a1"
         assert positions[Position(4, 4)] == "b1"
 
-    def test_tank_positions_excludes_dead(self) -> None:
-        """Dead tanks are not included in tank_positions."""
+    def test_tank_positions_includes_dead(self) -> None:
+        """Dead tanks (wreckage) are included in tank_positions."""
         state = _make_state()
         state.tanks[1] = state.tanks[1].model_copy(update={"alive": False})
         positions = state.tank_positions
-        assert Position(4, 4) not in positions
+        assert Position(4, 4) in positions
 
     def test_current_tank_id(self) -> None:
         """current_tank_id returns the first alive tank in turn order."""

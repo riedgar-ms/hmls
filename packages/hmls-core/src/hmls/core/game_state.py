@@ -37,11 +37,13 @@ class GameState(BaseModel):
 
     @property
     def tank_positions(self) -> dict[Position, TankId]:
-        """Build a mapping from position to tank ID for alive tanks.
+        """Build a mapping from position to tank ID for all tanks.
 
-        Useful for quick occupancy checks during move validation.
+        Both alive tanks and destroyed wreckage occupy space on the map,
+        so this includes every tank regardless of ``alive`` status.
+        Useful for occupancy checks during move validation.
         """
-        return {t.position: t.id for t in self.tanks if t.alive}
+        return {t.position: t.id for t in self.tanks}
 
     def get_tank(self, tank_id: TankId) -> Tank:
         """Look up a tank by its ID.

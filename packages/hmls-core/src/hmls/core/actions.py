@@ -71,7 +71,9 @@ def validate_action(state: GameState, tank_id: TankId, action: Action) -> Action
 
         occupied = state.tank_positions
         if dest in occupied and occupied[dest] != tank_id:
-            return ActionResult(valid=False, reason="Destination cell is occupied by another tank")
+            return ActionResult(
+                valid=False, reason="Destination cell is occupied by a tank or wreckage"
+            )
 
     return ActionResult(valid=True)
 
@@ -107,9 +109,9 @@ def apply_action(state: GameState, tank_id: TankId, action: Action) -> GameState
     * ``MOVE_FORWARD``: if the destination is valid the tank moves;
       otherwise the turn is silently lost (no error raised).
     * ``TURN_LEFT`` / ``TURN_RIGHT``: rotate the tank 90°.
-    * ``FIRE``: check the single cell directly ahead.  If an alive enemy
-      tank occupies it, that tank is destroyed.  Friendly fire also
-      destroys the target.
+    * ``FIRE``: check the single cell directly ahead.  If an alive tank
+      occupies it, that tank is destroyed (friendly fire included).
+      Firing into wreckage (a dead tank) has no additional effect.
     * ``PASS``: do nothing.
 
     After the action, ``current_turn_index`` advances to the next alive
@@ -153,8 +155,9 @@ def apply_action(state: GameState, tank_id: TankId, action: Action) -> GameState
             target_id = occupied[target_pos]
             if target_id != tank_id:
                 target_tank = state.get_tank(target_id)
-                destroyed = target_tank.model_copy(update={"alive": False})
-                new_tanks = _replace_tank(new_tanks, destroyed)
+                if target_tank.alive:
+                    destroyed = target_tank.model_copy(update={"alive": False})
+                    new_tanks = _replace_tank(new_tanks, destroyed)
 
     # PASS: nothing to do
 
