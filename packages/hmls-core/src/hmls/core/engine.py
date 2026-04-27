@@ -4,6 +4,14 @@ The engine alternates between players on every turn.  Each player
 independently cycles through their alive tanks.  The engine manages
 fog-of-war visibility, action validation, and history recording.  It
 runs for a fixed number of turns or until one side is fully destroyed.
+
+The engine supports two usage patterns:
+
+* **Batch mode** — call :meth:`GameEngine.run` to play an entire game
+  and receive a :class:`GameResult`.
+* **Step mode** — call :meth:`GameEngine.step` repeatedly to advance
+  one turn at a time, inspecting :attr:`~GameEngine.state`,
+  :attr:`~GameEngine.game_over`, etc. between steps.
 """
 
 from __future__ import annotations
@@ -123,6 +131,21 @@ def _set_current_tank(state: GameState, tank_id: TankId) -> GameState:
     return state.model_copy(update={"current_turn_index": idx})
 
 
+def _determine_winner(state: GameState) -> str | None:
+    """Determine the winner from the current game state.
+
+    Returns the team name of the winning side, or ``None`` for a draw.
+    """
+    alive_counts = _count_alive_by_team(state)
+    if not alive_counts:
+        return None
+    if len(alive_counts) == 1:
+        return next(iter(alive_counts))
+    max_count = max(alive_counts.values())
+    leaders = [t for t, c in alive_counts.items() if c == max_count]
+    return leaders[0] if len(leaders) == 1 else None
+
+
 # ── Engine ────────────────────────────────────────────────────────────
 
 
@@ -136,6 +159,14 @@ class GameEngine:
     The game runs for at most *max_turns* individual turns (each turn
     is one player acting with one tank) or until one side is fully
     destroyed.
+
+    The engine supports two usage patterns:
+
+    * **Batch mode** — call :meth:`run` to play the entire game and
+      receive a :class:`GameResult`.
+    * **Step mode** — call :meth:`step` one turn at a time.  Between
+      steps, inspect :attr:`state`, :attr:`game_over`,
+      :attr:`current_tank_id`, :attr:`current_team`, etc.
 
     Args:
         game_map: The map to play on.
@@ -167,12 +198,93 @@ class GameEngine:
             turn_order=turn_order,
             current_turn_index=0,
         )
+        self._initial_state = self._state
         self._game_map = game_map
         self._players = players
         self._max_turns = max_turns
         self._patch_size = patch_size
+
         # Teams sorted alphabetically for deterministic alternation.
         self._team_order: list[str] = sorted({t.team for t in tanks})
+        # Per-team cursors for cycling through tanks.
+        self._cursors: dict[str, int] = {t: 0 for t in self._team_order}
+        # Global turn counter (indexes into team_order for alternation).
+        self._global_turn: int = 0
+        self._turns_taken: int = 0
+        self._history: list[HistoryEntry] = []
+
+        # Advance to the first valid tank.
+        self._advance_to_next_tank()
+
+    # ── Public properties ─────────────────────────────────────────
+
+    @property
+    def state(self) -> GameState:
+        """Current game state."""
+        return self._state
+
+    @property
+    def game_map(self) -> GameMap:
+        """The game map."""
+        return self._game_map
+
+    @property
+    def players(self) -> dict[str, Player]:
+        """Mapping from team name to player."""
+        return self._players
+
+    @property
+    def history(self) -> list[HistoryEntry]:
+        """All turns taken so far."""
+        return list(self._history)
+
+    @property
+    def turns_taken(self) -> int:
+        """Number of individual turns taken."""
+        return self._turns_taken
+
+    @property
+    def max_turns(self) -> int:
+        """Maximum number of turns allowed."""
+        return self._max_turns
+
+    @property
+    def patch_size(self) -> int:
+        """Visibility patch size."""
+        return self._patch_size
+
+    @property
+    def current_tank_id(self) -> TankId:
+        """ID of the tank that should act next.
+
+        Only meaningful when :attr:`game_over` is ``False``.
+        """
+        return self._state.current_tank_id
+
+    @property
+    def current_team(self) -> str:
+        """Team of the tank that should act next.
+
+        Only meaningful when :attr:`game_over` is ``False``.
+        """
+        tank = self._state.get_tank(self.current_tank_id)
+        return tank.team
+
+    @property
+    def game_over(self) -> bool:
+        """Whether the game has ended."""
+        if self._turns_taken >= self._max_turns:
+            return True
+        alive_teams = {t.team for t in self._state.alive_tanks}
+        return len(alive_teams) < 2
+
+    @property
+    def winner(self) -> str | None:
+        """The winning team, or ``None`` for a draw.
+
+        Only meaningful when :attr:`game_over` is ``True``.
+        """
+        return _determine_winner(self._state)
 
     # ── Input validation ──────────────────────────────────────────
 
@@ -232,7 +344,81 @@ class GameEngine:
             if game_map[t.position.x, t.position.y] != CellType.PASSABLE:
                 raise ValueError(f"Tank {t.id!r} starts on an impassable cell at {t.position}")
 
-    # ── Game loop ─────────────────────────────────────────────────
+    # ── Turn management ───────────────────────────────────────────
+
+    def _advance_to_next_tank(self) -> None:
+        """Advance internal state to point at the next alive tank.
+
+        Walks through the team alternation, skipping eliminated teams,
+        and sets ``current_turn_index`` on the state.
+        """
+        team_count = len(self._team_order)
+        for _ in range(team_count):
+            team = self._team_order[self._global_turn % team_count]
+            alive_counts = _count_alive_by_team(self._state)
+
+            if team not in alive_counts:
+                self._global_turn += 1
+                continue
+
+            tank_id, self._cursors[team] = _next_alive_tank(self._state, team, self._cursors[team])
+            self._state = _set_current_tank(self._state, tank_id)
+            return
+
+    # ── Step-by-step execution ────────────────────────────────────
+
+    def step(self) -> HistoryEntry:
+        """Execute one turn and return the history entry.
+
+        Determines whose turn it is, asks the player for an action
+        (via :meth:`Player.choose_action`), validates it, applies it,
+        records history, and advances to the next tank.
+
+        Returns:
+            A :class:`HistoryEntry` recording what happened.
+
+        Raises:
+            RuntimeError: If the game is already over.
+        """
+        if self.game_over:
+            raise RuntimeError("Game is already over")
+
+        tank_id = self.current_tank_id
+        team = self.current_team
+
+        player = self._players[team]
+        view = build_player_view(self._state, self._game_map, team, self._patch_size)
+        requested = player.choose_action(tank_id, view)
+        result = validate_action(self._state, self._game_map, tank_id, requested)
+
+        if result.valid:
+            applied = requested
+        else:
+            player.notify_invalid_action(tank_id, requested, result.reason)
+            applied = Action.PASS
+
+        self._state = apply_action(self._state, self._game_map, tank_id, applied)
+        self._turns_taken += 1
+
+        entry = HistoryEntry(
+            tank_id=tank_id,
+            requested_action=requested,
+            applied_action=applied,
+            valid=result.valid,
+            reason=result.reason,
+            state_after=self._state,
+        )
+        self._history.append(entry)
+
+        self._global_turn += 1
+
+        # Advance to the next tank (if game not over).
+        if not self.game_over:
+            self._advance_to_next_tank()
+
+        return entry
+
+    # ── Batch execution ───────────────────────────────────────────
 
     def run(self) -> GameResult:
         """Execute the game and return the result.
@@ -245,78 +431,23 @@ class GameEngine:
             A :class:`GameResult` with the winner, final state, and
             full action history.
         """
-        state = self._state
-        initial_state = state
-        history: list[HistoryEntry] = []
-        cursors: dict[str, int] = {t: 0 for t in self._team_order}
-        team_count = len(self._team_order)
-        turns_taken = 0
+        while not self.game_over:
+            self.step()
+        return self.make_result()
 
-        for turn_num in range(self._max_turns):
-            team = self._team_order[turn_num % team_count]
+    def make_result(self) -> GameResult:
+        """Build a :class:`GameResult` from the current engine state.
 
-            # Skip if team is fully eliminated.
-            if team not in _count_alive_by_team(state):
-                continue
+        This can be called at any point — during or after the game — to
+        snapshot the result.  Useful for the TUI save dialog.
 
-            tank_id, cursors[team] = _next_alive_tank(state, team, cursors[team])
-
-            # Point GameState at the chosen tank so apply_action
-            # accepts it as the current turn.
-            state = _set_current_tank(state, tank_id)
-
-            player = self._players[team]
-            view = build_player_view(state, self._game_map, team, self._patch_size)
-            requested = player.choose_action(tank_id, view)
-            result = validate_action(state, self._game_map, tank_id, requested)
-
-            if result.valid:
-                applied = requested
-            else:
-                player.notify_invalid_action(tank_id, requested, result.reason)
-                applied = Action.PASS
-
-            state = apply_action(state, self._game_map, tank_id, applied)
-            turns_taken += 1
-
-            history.append(
-                HistoryEntry(
-                    tank_id=tank_id,
-                    requested_action=requested,
-                    applied_action=applied,
-                    valid=result.valid,
-                    reason=result.reason,
-                    state_after=state,
-                )
-            )
-
-            # Early termination: one side fully destroyed.
-            if len(_count_alive_by_team(state)) < 2:
-                return self._make_result(state, initial_state, history, turns_taken)
-
-        return self._make_result(state, initial_state, history, turns_taken)
-
-    def _make_result(
-        self,
-        state: GameState,
-        initial_state: GameState,
-        history: list[HistoryEntry],
-        turns_played: int,
-    ) -> GameResult:
-        """Determine the winner and build the final :class:`GameResult`."""
-        alive_counts = _count_alive_by_team(state)
-        if not alive_counts:
-            winner = None
-        elif len(alive_counts) == 1:
-            winner = next(iter(alive_counts))
-        else:
-            max_count = max(alive_counts.values())
-            leaders = [t for t, c in alive_counts.items() if c == max_count]
-            winner = leaders[0] if len(leaders) == 1 else None
+        Returns:
+            A :class:`GameResult` reflecting the current state.
+        """
         return GameResult(
-            winner=winner,
+            winner=_determine_winner(self._state),
             game_map=self._game_map,
-            initial_state=initial_state,
-            history=history,
-            turns_played=turns_played,
+            initial_state=self._initial_state,
+            history=list(self._history),
+            turns_played=self._turns_taken,
         )

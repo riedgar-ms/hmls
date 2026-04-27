@@ -16,11 +16,13 @@ from textual.events import Key
 from textual.screen import ModalScreen
 from textual.widgets import Footer, Header, Input, Label, Static
 
+from hmls.core.engine import GameEngine
 from hmls.core.game_state import GameState
 from hmls.core.map import GameMap
+from hmls.core.player import Player
 from hmls.core.types import Action
 from hmls.testharness.cli import build_initial_state, load_map, parse_args, place_tanks
-from hmls.testharness.game_loop import GameLoop
+from hmls.testharness.interactive_player import InteractivePlayer
 from hmls.testharness.widgets.map_view import MapView
 from hmls.testharness.widgets.player_view import PlayerViewRegion
 
@@ -118,11 +120,11 @@ class TestHarnessApp(App[None]):
         self,
         game_map: GameMap,
         initial_state: GameState,
-        game_loop: GameLoop,
+        engine: GameEngine,
     ) -> None:
         super().__init__()
         self._game_map = game_map
-        self._game_loop = game_loop
+        self._engine = engine
         self._state = initial_state
 
     def compose(self) -> ComposeResult:
@@ -140,16 +142,16 @@ class TestHarnessApp(App[None]):
             "A",
             self._game_map,
             self._state,
-            patch_size=self._game_loop.patch_size,
-            active_tank_id=self._game_loop.current_tank_id,
+            patch_size=self._engine.patch_size,
+            active_tank_id=self._engine.current_tank_id,
             id="player-a-region",
         )
         yield PlayerViewRegion(
             "B",
             self._game_map,
             self._state,
-            patch_size=self._game_loop.patch_size,
-            active_tank_id=self._game_loop.current_tank_id,
+            patch_size=self._engine.patch_size,
+            active_tank_id=self._engine.current_tank_id,
             id="player-b-region",
         )
 
@@ -162,17 +164,17 @@ class TestHarnessApp(App[None]):
 
     def _build_status_text(self) -> str:
         """Build the status bar text."""
-        gl = self._game_loop
-        if gl.game_over:
-            winner = gl.winner
+        eng = self._engine
+        if eng.game_over:
+            winner = eng.winner
             if winner:
-                return f"GAME OVER — Team {winner} wins! | Turns: {gl.turns_taken}"
-            return f"GAME OVER — Draw! | Turns: {gl.turns_taken}"
+                return f"GAME OVER — Team {winner} wins! | Turns: {eng.turns_taken}"
+            return f"GAME OVER — Draw! | Turns: {eng.turns_taken}"
 
-        tank_id = gl.current_tank_id
-        team = gl.current_team
+        tank_id = eng.current_tank_id
+        team = eng.current_team
         return (
-            f"Turn {gl.turns_taken + 1}/{gl.max_turns} | "
+            f"Turn {eng.turns_taken + 1}/{eng.max_turns} | "
             f"Active: {tank_id} (Team {team})\n"
             f"W=Forward  A=Left  D=Right  Space=Fire  Tab=Pass  Q=Quit"
         )
@@ -180,22 +182,28 @@ class TestHarnessApp(App[None]):
     def _update_active_highlight(self) -> None:
         """Update the active tank highlight on the map view."""
         map_view = self.query_one("#map-view", MapView)
-        map_view.active_tank_id = self._game_loop.current_tank_id
+        map_view.active_tank_id = self._engine.current_tank_id
 
     def _do_action(self, action: Action) -> None:
         """Execute an action and refresh the UI."""
-        if self._game_loop.game_over:
+        if self._engine.game_over:
             return
 
-        self._game_loop.step(action)
-        self._state = self._game_loop.state
+        # Pre-load the action on the current team's InteractivePlayer.
+        team = self._engine.current_team
+        player = self._engine.players[team]
+        if not isinstance(player, InteractivePlayer):
+            return
+        player.set_next_action(action)
+        self._engine.step()
+        self._state = self._engine.state
 
         # Update the map view.
         map_view = self.query_one("#map-view", MapView)
         map_view.update_state(self._state)
 
-        if not self._game_loop.game_over:
-            map_view.active_tank_id = self._game_loop.current_tank_id
+        if not self._engine.game_over:
+            map_view.active_tank_id = self._engine.current_tank_id
         else:
             map_view.active_tank_id = ""
 
@@ -207,12 +215,12 @@ class TestHarnessApp(App[None]):
         status.update(self._build_status_text())
 
         # Check game over.
-        if self._game_loop.game_over:
+        if self._engine.game_over:
             self._show_game_over()
 
     async def _refresh_player_views(self) -> None:
         """Refresh both player view regions."""
-        active_id = self._game_loop.current_tank_id if not self._game_loop.game_over else ""
+        active_id = self._engine.current_tank_id if not self._engine.game_over else ""
         for region_id in ("#player-a-region", "#player-b-region"):
             region = self.query_one(region_id, PlayerViewRegion)
             await region.refresh_patches(self._state, active_id)
@@ -230,17 +238,7 @@ class TestHarnessApp(App[None]):
 
         path = Path(path_str)
         try:
-            from hmls.core.engine import GameResult
-
-            result = GameResult(
-                winner=self._game_loop.winner,
-                game_map=self._game_map,
-                initial_state=self._game_loop.history[0].state_after
-                if self._game_loop.history
-                else self._state,
-                history=self._game_loop.history,
-                turns_played=self._game_loop.turns_taken,
-            )
+            result = self._engine.make_result()
             path.write_text(result.model_dump_json(indent=2), encoding="utf-8")
             status.update(self._build_status_text() + f"\nSaved to {path.resolve()}")
         except Exception as exc:
@@ -272,14 +270,20 @@ def main() -> None:
     game_map = load_map(args.map_file)
     tanks = place_tanks(game_map, args.tanks_per_player, seed=args.seed)
     initial_state = build_initial_state(tanks)
-    game_loop = GameLoop(
+
+    players: dict[str, Player] = {
+        "A": InteractivePlayer("A"),
+        "B": InteractivePlayer("B"),
+    }
+    engine = GameEngine(
         game_map,
-        initial_state,
+        tanks,
+        players,
         max_turns=args.max_turns,
         patch_size=args.patch_size,
     )
 
-    app = TestHarnessApp(game_map, initial_state, game_loop)
+    app = TestHarnessApp(game_map, initial_state, engine)
     app.title = "HMLS Test Harness"
     app.run()
 
