@@ -1,7 +1,7 @@
 [project]
-name = "hmls-testharness"
+name = "hmls-replayviewer"
 version = "0.1.0"
-description = "Interactive TUI test harness for the HMLS tank game"
+description = "TUI replay viewer for HMLS tank game history files"
 requires-python = ">=3.14"
 dependencies = [
     "hmls-core",
@@ -14,7 +14,7 @@ hmls-core = { workspace = true }
 hmls-uxcommon = { workspace = true }
 
 [project.scripts]
-hmls-testharness = "hmls.testharness.app:main"
+hmls-replay = "hmls.replayviewer.app:main"
 
 [build-system]
 requires = ["hatchling"]

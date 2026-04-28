@@ -7,7 +7,7 @@ from textual.widgets import Static
 
 from hmls.core.tank import TankId
 from hmls.core.visibility import FogCell, TankPatch, VisibleCell
-from hmls.testharness.styles import (
+from hmls.uxcommon.styles import (
     CELL_CHARS,
     CELL_WIDTH,
     DEAD_MARKER,
