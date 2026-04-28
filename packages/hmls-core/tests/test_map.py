@@ -66,12 +66,6 @@ class TestGameMapAccess:
         assert m[1, 0] == CellType.PASSABLE
         assert m[0, 1] == CellType.PASSABLE
 
-    def test_set_cell(self) -> None:
-        """set_cell changes the value at the given position."""
-        m = GameMap(width=3, height=2)
-        m.set_cell(1, 1, CellType.IMPASSABLE)
-        assert m[1, 1] == CellType.IMPASSABLE
-
     def test_getitem_out_of_bounds(self) -> None:
         """Accessing an out-of-bounds cell should raise IndexError."""
         m = GameMap(width=2, height=2)
@@ -87,12 +81,6 @@ class TestGameMapAccess:
         m = GameMap(width=2, height=2)
         with pytest.raises(IndexError):
             m[2, 0] = CellType.IMPASSABLE
-
-    def test_set_cell_out_of_bounds(self) -> None:
-        """Setting an out-of-bounds cell via set_cell should raise IndexError."""
-        m = GameMap(width=2, height=2)
-        with pytest.raises(IndexError):
-            m.set_cell(2, 0, CellType.IMPASSABLE)
 
 
 class TestBoundsAndNeighbours:

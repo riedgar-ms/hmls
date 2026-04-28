@@ -87,18 +87,7 @@ class GameMap(BaseModel):
             )
         self.cells[y * self.width + x] = cell_type
 
-    def set_cell(self, x: int, y: int, cell_type: CellType) -> None:
-        """Set the cell type at ``(x, y)``.
-
-        Convenience wrapper around :meth:`__setitem__` for callers that
-        prefer positional arguments.
-
-        Raises:
-            IndexError: If the position is out of bounds.
-        """
-        self[x, y] = cell_type
-
-    # ── Iteration helpers ─────────────────────────────────────────────
+    # ── Iteration helpers─────────────────────────────────────────────
 
     def all_positions(self) -> Iterator[tuple[int, int]]:
         """Yield every ``(x, y)`` position in the map, row by row."""
