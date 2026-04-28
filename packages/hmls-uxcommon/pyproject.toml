@@ -1,20 +1,15 @@
 [project]
-name = "hmls-testharness"
+name = "hmls-uxcommon"
 version = "0.1.0"
-description = "Interactive TUI test harness for the HMLS tank game"
+description = "Shared TUI widgets and styles for HMLS tank game applications"
 requires-python = ">=3.14"
 dependencies = [
     "hmls-core",
-    "hmls-uxcommon",
     "textual>=0.40",
 ]
 
 [tool.uv.sources]
 hmls-core = { workspace = true }
-hmls-uxcommon = { workspace = true }
-
-[project.scripts]
-hmls-testharness = "hmls.testharness.app:main"
 
 [build-system]
 requires = ["hatchling"]

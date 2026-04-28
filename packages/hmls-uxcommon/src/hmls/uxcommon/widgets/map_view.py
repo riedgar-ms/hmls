@@ -10,7 +10,7 @@ from hmls.core.game_state import GameState
 from hmls.core.map import CellType, GameMap
 from hmls.core.tank import TankId
 from hmls.core.types import Position
-from hmls.testharness.styles import (
+from hmls.uxcommon.styles import (
     ACTIVE_HIGHLIGHT_STYLE,
     CELL_CHARS,
     CELL_WIDTH,

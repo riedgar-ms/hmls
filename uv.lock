@@ -10,7 +10,9 @@ resolution-markers = [
 members = [
     "hmls-core",
     "hmls-mapgenerator",
+    "hmls-replayviewer",
     "hmls-testharness",
+    "hmls-uxcommon",
     "hmls-workspace",
 ]
 
@@ -59,9 +61,43 @@ requires-dist = [
 ]
 
 [[package]]
+name = "hmls-replayviewer"
+version = "0.1.0"
+source = { editable = "packages/hmls-replayviewer" }
+dependencies = [
+    { name = "hmls-core" },
+    { name = "hmls-uxcommon" },
+    { name = "textual" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "hmls-core", editable = "packages/hmls-core" },
+    { name = "hmls-uxcommon", editable = "packages/hmls-uxcommon" },
+    { name = "textual", specifier = ">=0.40" },
+]
+
+[[package]]
 name = "hmls-testharness"
 version = "0.1.0"
 source = { editable = "packages/hmls-testharness" }
+dependencies = [
+    { name = "hmls-core" },
+    { name = "hmls-uxcommon" },
+    { name = "textual" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "hmls-core", editable = "packages/hmls-core" },
+    { name = "hmls-uxcommon", editable = "packages/hmls-uxcommon" },
+    { name = "textual", specifier = ">=0.40" },
+]
+
+[[package]]
+name = "hmls-uxcommon"
+version = "0.1.0"
+source = { editable = "packages/hmls-uxcommon" }
 dependencies = [
     { name = "hmls-core" },
     { name = "textual" },

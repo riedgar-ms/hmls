@@ -23,8 +23,8 @@ from hmls.core.player import Player
 from hmls.core.types import Action
 from hmls.testharness.cli import build_initial_state, load_map, parse_args, place_tanks
 from hmls.testharness.interactive_player import InteractivePlayer
-from hmls.testharness.widgets.map_view import MapView
-from hmls.testharness.widgets.player_view import PlayerViewRegion
+from hmls.uxcommon.widgets.map_view import MapView
+from hmls.uxcommon.widgets.player_view import PlayerViewRegion
 
 # ── Save dialog ───────────────────────────────────────────────────────
 

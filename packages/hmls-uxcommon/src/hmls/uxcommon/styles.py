@@ -1,4 +1,4 @@
-"""Shared style constants for the test harness TUI."""
+"""Shared style constants for HMLS TUI applications."""
 
 from __future__ import annotations
 

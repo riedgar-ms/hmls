@@ -10,7 +10,7 @@ from hmls.core.game_state import GameState
 from hmls.core.map import GameMap
 from hmls.core.tank import TankId
 from hmls.core.visibility import build_player_view
-from hmls.testharness.widgets.patch_view import PatchView
+from hmls.uxcommon.widgets.patch_view import PatchView
 
 
 class PlayerViewRegion(Horizontal):
