@@ -71,17 +71,6 @@ class PatchView(Static):
         """Render the patch when the widget is first mounted."""
         self._render_patch()
 
-    def update_patch(self, patch: TankPatch, *, is_active: bool = False) -> None:
-        """Update the patch data and re-render.
-
-        Args:
-            patch: New visibility patch data.
-            is_active: Whether this is the active tank.
-        """
-        self._patch = patch
-        self._is_active = is_active
-        self._render_patch()
-
     def _render_patch(self) -> None:
         """Build a Rich Text representation of the patch."""
         patch = self._patch
