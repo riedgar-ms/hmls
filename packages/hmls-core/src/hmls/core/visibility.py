@@ -163,38 +163,6 @@ def compute_visibility_mask(n: int) -> list[list[bool]]:
 # ── Patch extraction ──────────────────────────────────────────────────
 
 
-def _world_to_ego(
-    dx: int,
-    dy: int,
-    forward: tuple[int, int],
-    right: tuple[int, int],
-    half: int,
-) -> tuple[int, int]:
-    """Convert a world-space offset to egocentric (row, col).
-
-    Uses the basis-vector approach: project the world offset onto the
-    tank's forward and right axes, then map to patch coordinates where
-    forward = decreasing row and right = increasing column.
-
-    Args:
-        dx: World-space x offset from the tank.
-        dy: World-space y offset from the tank.
-        forward: ``(fx, fy)`` unit vector for the tank's forward direction.
-        right: ``(rx, ry)`` unit vector for the tank's right direction.
-        half: Centre index of the patch (``n // 2``).
-
-    Returns:
-        ``(row, col)`` in the egocentric patch.
-    """
-    fx, fy = forward
-    rx, ry = right
-    forward_steps = dx * fx + dy * fy
-    right_steps = dx * rx + dy * ry
-    row = half - forward_steps
-    col = half + right_steps
-    return row, col
-
-
 def extract_patch(
     game_state: GameState,
     game_map: GameMap,
@@ -243,8 +211,7 @@ def extract_patch(
                 row_cells.append(fog)
                 continue
 
-            # Map egocentric (row, col) back to world offset.
-            # Inverse of _world_to_ego: given ego row/col, find (dx, dy).
+            # Map egocentric (row, col) back to world offset (ego→world).
             # forward_steps = half - ego_row
             # right_steps = ego_col - half
             # (dx, dy) = forward_steps * forward + right_steps * right
