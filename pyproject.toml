@@ -31,4 +31,4 @@ explicit_package_bases = true
 python_version = "3.14"
 
 [tool.pytest.ini_options]
-testpaths = ["packages/hmls-core/tests", "packages/hmls-mapgenerator/tests"]
+testpaths = ["packages/hmls-core/tests", "packages/hmls-mapgenerator/tests", "packages/hmls-replayviewer/tests"]
