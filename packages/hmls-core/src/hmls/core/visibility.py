@@ -163,7 +163,6 @@ def compute_visibility_mask(n: int) -> list[list[bool]]:
 # ── Patch extraction ──────────────────────────────────────────────────
 
 
-
 def extract_patch(
     game_state: GameState,
     game_map: GameMap,
