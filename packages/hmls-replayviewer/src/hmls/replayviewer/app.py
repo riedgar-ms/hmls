@@ -61,15 +61,17 @@ class ReplayViewerApp(App[None]):
     }
     """
 
+    ENABLE_COMMAND_PALETTE = False
+
     BINDINGS = [
         Binding("q", "quit", "Quit", priority=True, show=True),
-        Binding("space", "toggle_play", "Play/Pause", show=True),
-        Binding("left", "step_back", "← Back", show=True),
-        Binding("right", "step_forward", "→ Forward", show=True),
-        Binding("up", "speed_up", "Speed up", show=True),
-        Binding("down", "slow_down", "Slow down", show=True),
-        Binding("home", "jump_start", "Start", show=True),
-        Binding("end", "jump_end", "End", show=True),
+        Binding("space", "toggle_play", "Play/Pause", priority=True, show=True),
+        Binding("left", "step_back", "← Back", priority=True, show=True),
+        Binding("right", "step_forward", "→ Forward", priority=True, show=True),
+        Binding("up", "speed_up", "Speed up", priority=True, show=True),
+        Binding("down", "slow_down", "Slow down", priority=True, show=True),
+        Binding("home", "jump_start", "Start", priority=True, show=True),
+        Binding("end", "jump_end", "End", priority=True, show=True),
     ]
 
     def __init__(
