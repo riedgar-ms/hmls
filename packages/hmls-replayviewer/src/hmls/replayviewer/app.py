@@ -18,7 +18,6 @@ from hmls.core.game_state import GameState
 from hmls.core.map import GameMap
 from hmls.replayviewer.cli import build_state_timeline, load_game_result, parse_args
 from hmls.uxcommon.widgets.map_view import MapView
-from hmls.uxcommon.widgets.player_view import PlayerViewRegion
 
 # ── Constants ─────────────────────────────────────────────────────────
 
@@ -54,46 +53,34 @@ class ReplayViewerApp(App[None]):
         height: 1fr;
         min-height: 10;
     }
-    #player-a-region {
-        height: auto;
-    }
-    #player-b-region {
-        height: auto;
-    }
     #status-bar {
         dock: bottom;
         height: 3;
         padding: 0 1;
         background: $surface;
     }
-    .team-label {
-        width: 10;
-        text-style: bold;
-    }
     """
 
     BINDINGS = [
-        Binding("q", "quit", "Quit", priority=True),
-        Binding("space", "toggle_play", "Play/Pause"),
-        Binding("left", "step_back", "← Back"),
-        Binding("right", "step_forward", "→ Forward"),
-        Binding("up", "speed_up", "Speed up"),
-        Binding("down", "slow_down", "Slow down"),
-        Binding("home", "jump_start", "Start"),
-        Binding("end", "jump_end", "End"),
+        Binding("q", "quit", "Quit", priority=True, show=True),
+        Binding("space", "toggle_play", "Play/Pause", show=True),
+        Binding("left", "step_back", "← Back", show=True),
+        Binding("right", "step_forward", "→ Forward", show=True),
+        Binding("up", "speed_up", "Speed up", show=True),
+        Binding("down", "slow_down", "Slow down", show=True),
+        Binding("home", "jump_start", "Start", show=True),
+        Binding("end", "jump_end", "End", show=True),
     ]
 
     def __init__(
         self,
         result: GameResult,
-        patch_size: int = 7,
     ) -> None:
         super().__init__()
         self._result = result
         self._game_map: GameMap = result.game_map
         self._states: list[GameState] = build_state_timeline(result)
         self._history: list[HistoryEntry] = list(result.history)
-        self._patch_size = patch_size
 
         self._current_step: int = 0
         self._playing: bool = False
@@ -112,23 +99,6 @@ class ReplayViewerApp(App[None]):
                 self._states[0],
                 id="map-view",
             )
-
-        yield PlayerViewRegion(
-            "A",
-            self._game_map,
-            self._states[0],
-            patch_size=self._patch_size,
-            active_tank_id=self._active_tank_id(),
-            id="player-a-region",
-        )
-        yield PlayerViewRegion(
-            "B",
-            self._game_map,
-            self._states[0],
-            patch_size=self._patch_size,
-            active_tank_id=self._active_tank_id(),
-            id="player-b-region",
-        )
 
         yield Static(self._build_status_text(), id="status-bar")
         yield Footer()
@@ -179,22 +149,9 @@ class ReplayViewerApp(App[None]):
         map_view.update_state(state)
         map_view.active_tank_id = active_id
 
-        # Refresh player view regions.
-        self.run_worker(self._refresh_player_views(state, active_id))
-
         # Update status bar.
         status = self.query_one("#status-bar", Static)
         status.update(self._build_status_text())
-
-    async def _refresh_player_views(
-        self,
-        state: GameState,
-        active_id: str,
-    ) -> None:
-        """Refresh both player view regions."""
-        for region_id in ("#player-a-region", "#player-b-region"):
-            region = self.query_one(region_id, PlayerViewRegion)
-            await region.refresh_patches(state, active_id)
 
     # ── Status bar ────────────────────────────────────────────────
 
@@ -223,11 +180,7 @@ class ReplayViewerApp(App[None]):
             else:
                 winner_str = " | Draw"
 
-        return (
-            f"Step {step}/{total} | {play_state} | Delay: {delay_str}{winner_str}\n"
-            f"{action_info}\n"
-            f"←/→ Step  Space=Play/Pause  ↑/↓ Speed  Home/End=Jump  Q=Quit"
-        )
+        return f"Step {step}/{total} | {play_state} | Delay: {delay_str}{winner_str}\n{action_info}"
 
     # ── Auto-play ─────────────────────────────────────────────────
 
@@ -319,7 +272,7 @@ def main() -> None:
     args = parse_args()
     result = load_game_result(args.history_file)
 
-    app = ReplayViewerApp(result, patch_size=args.patch_size)
+    app = ReplayViewerApp(result)
     app.title = "HMLS Replay Viewer"
     app.run()
 

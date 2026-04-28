@@ -28,12 +28,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=Path,
         help="Path to a JSON game history file (GameResult format).",
     )
-    parser.add_argument(
-        "--patch-size",
-        type=int,
-        default=7,
-        help="Visibility patch side length (default: 7).",
-    )
     return parser.parse_args(argv)
 
 
