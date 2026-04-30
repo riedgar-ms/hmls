@@ -14,6 +14,7 @@ import websockets.asyncio.client
 from pydantic import TypeAdapter
 from rich.text import Text
 from textual.app import App, ComposeResult
+from textual.containers import Horizontal
 from textual.events import Key
 from textual.widgets import Footer, Header, RichLog, Static
 
@@ -33,6 +34,20 @@ from hmls.protocol import (
     WaitingMessage,
     YourTurnMessage,
 )
+from hmls.uxcommon.styles import (
+    ACTIVE_HIGHLIGHT_STYLE,
+    CELL_CHARS,
+    CELL_WIDTH,
+    DEAD_MARKER,
+    DEAD_STYLE,
+    DIRECTION_ARROWS,
+    FOG_STYLE,
+    IMPASSABLE_STYLE,
+    PASSABLE_STYLE,
+    TEAM_A_STYLE,
+    TEAM_B_STYLE,
+)
+from hmls.uxcommon.widgets import PatchView
 
 # ── Type adapter for server messages ─────────────────────────────────
 
@@ -41,17 +56,25 @@ _server_message_adapter: TypeAdapter[ServerMessage] = TypeAdapter(ServerMessage)
 # ── Automap widget ────────────────────────────────────────────────────
 
 
+_TEAM_STYLES: dict[str, str] = {
+    "A": TEAM_A_STYLE,
+    "B": TEAM_B_STYLE,
+}
+
+
 class AutoMapView(Static):
     """Renders the automapped terrain in the TUI.
 
-    Shows explored cells as ``.`` (passable) or ``#`` (impassable),
-    unknown cells as a dim ``·``, and tank positions with directional arrows.
+    Shows explored cells using the shared uxcommon rendering style (2-char
+    block cells), unknown/fog cells in fog style, and tank positions with
+    directional arrows.
     """
 
-    def __init__(self, width: int, height: int, *, id: str | None = None) -> None:
+    def __init__(self, width: int, height: int, *, team: str = "A", id: str | None = None) -> None:
         super().__init__(id=id)
         self._map_width = width
         self._map_height = height
+        self._team = team
         self._automap: AutoMap | None = None
         self._tank_infos: list[TankInfo] = []
         self._active_tank_id: TankId = ""
@@ -77,9 +100,6 @@ class AutoMapView(Static):
             self.update("Waiting for game data...")
             return
 
-        # Direction arrows (world-space).
-        direction_arrows = {0: "▲", 1: "►", 2: "▼", 3: "◄"}
-
         # Build position → tank lookup.
         tank_positions: dict[Position, TankInfo] = {}
         for t in self._tank_infos:
@@ -91,23 +111,29 @@ class AutoMapView(Static):
                 pos = Position(x, y)
                 if pos in tank_positions:
                     tank = tank_positions[pos]
-                    char = direction_arrows.get(int(tank.direction), "?")
+                    is_active = tank.tank_id == self._active_tank_id
+
                     if not tank.alive:
-                        text.append(char, style="dim red strikethrough")
-                    elif tank.tank_id == self._active_tank_id:
-                        text.append(char, style="bold yellow on blue")
+                        style = ACTIVE_HIGHLIGHT_STYLE if is_active else DEAD_STYLE
+                        text.append(DEAD_MARKER, style=style)
                     else:
-                        text.append(char, style="bold green")
+                        arrow = DIRECTION_ARROWS.get(int(tank.direction), "? ")
+                        if is_active:
+                            style = ACTIVE_HIGHLIGHT_STYLE
+                        else:
+                            style = _TEAM_STYLES.get(self._team, TEAM_A_STYLE)
+                        text.append(arrow, style=style)
                 else:
                     cell = self._automap[x, y]
                     if cell == CellState.PASSABLE:
-                        text.append(".", style="dim white")
+                        text.append(CELL_CHARS, style=PASSABLE_STYLE)
                     elif cell == CellState.IMPASSABLE:
-                        text.append("#", style="bold white on rgb(60,60,60)")
+                        text.append(CELL_CHARS, style=IMPASSABLE_STYLE)
                     else:
-                        text.append("·", style="dim rgb(80,80,80)")
+                        text.append(CELL_CHARS, style=FOG_STYLE)
             text.append("\n")
 
+        self.styles.min_width = self._map_width * CELL_WIDTH
         self.update(text)
 
 
@@ -134,6 +160,11 @@ class ClientApp(App[None]):
     #automap-view {
         height: 2fr;
         min-height: 10;
+    }
+    #patches-panel {
+        height: auto;
+        min-height: 5;
+        overflow-x: auto;
     }
     #log-panel {
         height: 1fr;
@@ -165,6 +196,7 @@ class ClientApp(App[None]):
         """Compose the client TUI layout."""
         yield Header()
         yield AutoMapView(1, 1, id="automap-view")  # Placeholder until assign.
+        yield Horizontal(id="patches-panel")
         yield RichLog(id="log-panel", highlight=True, markup=True)
         yield Static("Connecting...", id="status-bar")
         yield Footer()
@@ -252,7 +284,7 @@ class ClientApp(App[None]):
 
         # Replace the placeholder AutoMapView with correctly sized one.
         old_view = self.query_one("#automap-view", AutoMapView)
-        new_view = AutoMapView(msg.map_width, msg.map_height, id="automap-view")
+        new_view = AutoMapView(msg.map_width, msg.map_height, team=msg.team, id="automap-view")
         await old_view.remove()
         await self.mount(new_view, before="#log-panel")
         new_view.set_automap(self._automap)
@@ -277,6 +309,23 @@ class ClientApp(App[None]):
             map_view = self.query_one("#automap-view", AutoMapView)
             map_view.refresh_display()
             map_view.update_tanks(self._tanks, self._active_tank_id)
+        except Exception:
+            pass
+
+        # Rebuild patches panel with current visibility patches.
+        try:
+            patches_panel = self.query_one("#patches-panel", Horizontal)
+            await patches_panel.remove_children()
+            patch_widgets: list[PatchView] = [
+                PatchView(
+                    patch.tank_id,
+                    patch,
+                    is_active=(patch.tank_id == msg.tank_id),
+                )
+                for patch in msg.view.patches
+            ]
+            if patch_widgets:
+                await patches_panel.mount_all(patch_widgets)
         except Exception:
             pass
 

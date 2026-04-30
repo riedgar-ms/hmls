@@ -174,35 +174,33 @@ class GameSession:
         logger.info("Observer '%s' connected", msg.observer_name)
         self._observers.append(websocket)
 
-        # If game has already started, send current state immediately.
-        if self._game_started:
-            game_start_msg = GameStartMessage(
-                game_map=self.game_map,
-                tanks=self.tanks,
-                player_names=self.player_names,
-                patch_size=self.patch_size,
-                max_turns=self.max_turns,
+        # Always send the map so the observer can render immediately,
+        # even before all players have joined.
+        game_start_msg = GameStartMessage(
+            game_map=self.game_map,
+            tanks=self.tanks,
+            player_names=self.player_names,
+            patch_size=self.patch_size,
+            max_turns=self.max_turns,
+        )
+        try:
+            await websocket.send_text(game_start_msg.model_dump_json())
+        except Exception:
+            self._observers.remove(websocket)
+            return
+
+        # If the game is already in progress, also send the current state.
+        if self._game_started and self.engine:
+            state_msg = StateUpdateMessage(
+                state=self.engine.state,
+                current_tank_id=self.engine.current_tank_id if not self.engine.game_over else "",
+                turns_taken=self.engine.turns_taken,
             )
             try:
-                await websocket.send_text(game_start_msg.model_dump_json())
+                await websocket.send_text(state_msg.model_dump_json())
             except Exception:
                 self._observers.remove(websocket)
                 return
-
-            # Send current state.
-            if self.engine:
-                state_msg = StateUpdateMessage(
-                    state=self.engine.state,
-                    current_tank_id=self.engine.current_tank_id
-                    if not self.engine.game_over
-                    else "",
-                    turns_taken=self.engine.turns_taken,
-                )
-                try:
-                    await websocket.send_text(state_msg.model_dump_json())
-                except Exception:
-                    self._observers.remove(websocket)
-                    return
 
         # Keep connection alive until game ends or disconnect.
         try:

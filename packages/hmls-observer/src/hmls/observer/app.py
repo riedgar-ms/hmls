@@ -151,7 +151,7 @@ class ObserverApp(App[None]):
             self._write_log(f"[red]Server error: {msg.message}[/red]")
 
     async def _handle_game_start(self, msg: GameStartMessage) -> None:
-        """Handle the game_start message: set up the map view."""
+        """Handle the game_start message: set up or update the map view."""
         self._game_map = msg.game_map
         self._tanks = msg.tanks
         self._player_names = msg.player_names
@@ -165,13 +165,21 @@ class ObserverApp(App[None]):
         for team, name in msg.player_names.items():
             self._write_log(f"  Team {team}: {name}")
 
-        # Replace the placeholder with a MapView.
         scroll = self.query_one("#map-scroll", ScrollableContainer)
-        placeholder = self.query_one("#map-placeholder", Static)
-        await placeholder.remove()
 
-        map_view = MapView(self._game_map, self._state, id="map-view")
-        await scroll.mount(map_view)
+        # If the MapView already exists (e.g. from an earlier pre-game
+        # GameStartMessage), update it in place.  Otherwise, replace the
+        # placeholder with a fresh MapView.
+        existing = self.query("#map-view")
+        if existing:
+            map_view = existing.first(MapView)
+            map_view._game_map = msg.game_map
+            map_view.update_state(self._state)
+        else:
+            placeholder = self.query_one("#map-placeholder", Static)
+            await placeholder.remove()
+            map_view = MapView(self._game_map, self._state, id="map-view")
+            await scroll.mount(map_view)
 
         names = " vs ".join(f"{name} ({team})" for team, name in self._player_names.items())
         self._update_status(f"Game in progress: {names}")
