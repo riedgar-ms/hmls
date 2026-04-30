@@ -184,6 +184,7 @@ class ClientApp(App[None]):
         self._server_url = server_url
         self._player_name = player_name
         self._automap: AutoMap | None = None
+        self._map_view: AutoMapView | None = None
         self._team: str = ""
         self._tanks: list[TankInfo] = []
         self._active_tank_id: TankId = ""
@@ -287,6 +288,7 @@ class ClientApp(App[None]):
         new_view = AutoMapView(msg.map_width, msg.map_height, team=msg.team, id="automap-view")
         await old_view.remove()
         await self.mount(new_view, before="#log-panel")
+        self._map_view = new_view
         new_view.set_automap(self._automap)
         new_view.update_tanks(self._tanks)
 
@@ -305,12 +307,9 @@ class ClientApp(App[None]):
         self._active_tank_id = msg.tank_id
 
         # Refresh the display.
-        try:
-            map_view = self.query_one("#automap-view", AutoMapView)
-            map_view.refresh_display()
-            map_view.update_tanks(self._tanks, self._active_tank_id)
-        except Exception:
-            pass
+        if self._map_view is not None:
+            self._map_view.refresh_display()
+            self._map_view.update_tanks(self._tanks, self._active_tank_id)
 
         # Rebuild patches panel with current visibility patches.
         try:
