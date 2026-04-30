@@ -8,8 +8,9 @@ Assorted Experiments in AI
 |---|---|
 | `hmls.core` | Core data types (`GameMap`, `CellType`), game engine, and visibility system |
 | `hmls.protocol` | Wire protocol models for server/client WebSocket communication |
-| `hmls.server` | WebSocket game server with Textual TUI (full map + log) |
+| `hmls.server` | Headless WebSocket game server (FastAPI + Uvicorn) |
 | `hmls.client` | WebSocket game client with Textual TUI and automapper |
+| `hmls.observer` | TUI observer client — connects to a running server and displays the full game map and event log in real-time (no fog-of-war) |
 | `hmls.testharness` | Interactive TUI for manually testing tank game behaviour |
 | `hmls.replayviewer` | TUI replay viewer for game history files |
 | `hmls.mapgenerator` | Randomised map generation with Textual TUI |
@@ -70,9 +71,10 @@ full game history as JSON.
 
 ### Game Server
 
-The game server hosts a single game over WebSocket, accepting two clients
-(one per team). It displays a god-view TUI showing the full map and a
-scrollable game log.
+The game server is a headless WebSocket server (FastAPI + Uvicorn) that
+hosts a single game, accepting two player clients (one per team) and any
+number of observer clients. It logs events to the console but has no TUI
+of its own — use `hmls-observer` to watch the game visually.
 
 ```bash
 uv run hmls-server path/to/map.json 3
@@ -88,6 +90,23 @@ uv run hmls-server path/to/map.json 3
 | `--seed N` | Random seed for tank placement (optional) |
 | `--max-turns N` | Maximum individual turns before the game ends (default 200) |
 | `--patch-size N` | Visibility patch size, odd ≥ 3 (default 7) |
+
+### Game Observer
+
+The observer connects to a running server and displays a full god-view
+map alongside a real-time event log. Observers see the complete game
+state without fog-of-war restrictions and do not affect gameplay.
+
+```bash
+uv run hmls-observer --url ws://localhost:8765/ws --name "Spectator"
+```
+
+**Arguments:**
+
+| Argument | Description |
+|---|---|
+| `--url URL` | WebSocket server URL (default `ws://localhost:8765/ws`) |
+| `--name NAME` | Display name for this observer (default "Observer") |
 
 ### Game Client
 
