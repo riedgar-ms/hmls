@@ -1,27 +1,23 @@
-"""Main server application: FastAPI WebSocket server + Textual TUI.
+"""Main server application: headless FastAPI WebSocket game server.
 
-The server runs Uvicorn in a background thread and uses Textual as the
-main application for displaying the full map and game log.
+The server runs Uvicorn directly and manages game sessions. It accepts
+player connections (via ``JoinMessage``) and observer connections (via
+``ObserveMessage``). Observers receive the full game state after each turn.
 """
 
 from __future__ import annotations
 
 import asyncio
+import logging
 import random
 import sys
-import threading
-from collections.abc import Callable
 from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from pydantic import TypeAdapter
-from textual.app import App, ComposeResult
-from textual.containers import ScrollableContainer
-from textual.widgets import Footer, Header, RichLog, Static
 
 from hmls.core.engine import GameEngine
-from hmls.core.game_state import GameState
 from hmls.core.map import CellType, GameMap
 from hmls.core.player import Player
 from hmls.core.tank import Tank
@@ -33,14 +29,18 @@ from hmls.protocol import (
     ClientMessage,
     ErrorMessage,
     GameOverMessage,
+    GameStartMessage,
     JoinMessage,
+    ObserveMessage,
+    StateUpdateMessage,
     TurnResultMessage,
     WaitingMessage,
     YourTurnMessage,
 )
 from hmls.server.cli import parse_args
 from hmls.server.remote_player import RemotePlayer
-from hmls.uxcommon.widgets.map_view import MapView
+
+logger = logging.getLogger("hmls.server")
 
 # ── Type adapters for protocol parsing ────────────────────────────────
 
@@ -120,13 +120,11 @@ class GameSession:
         tanks: list[Tank],
         max_turns: int,
         patch_size: int,
-        log_callback: Callable[[str], None],
     ) -> None:
         self.game_map = game_map
         self.tanks = tanks
         self.max_turns = max_turns
         self.patch_size = patch_size
-        self._log = log_callback
 
         self.players: dict[str, RemotePlayer] = {
             "A": RemotePlayer("A"),
@@ -134,14 +132,11 @@ class GameSession:
         }
         self.websockets: dict[str, WebSocket] = {}
         self.player_names: dict[str, str] = {}
+        self._observers: list[WebSocket] = []
         self._both_connected: asyncio.Event = asyncio.Event()
         self._game_over: bool = False
+        self._game_started: bool = False
         self.engine: GameEngine | None = None
-        self._state_callback: Callable[[GameState], None] | None = None
-
-    def set_state_callback(self, callback: Callable[[GameState], None]) -> None:
-        """Set a callback invoked after each state change."""
-        self._state_callback = callback
 
     @property
     def game_over(self) -> bool:
@@ -149,9 +144,84 @@ class GameSession:
         return self._game_over
 
     async def handle_connection(self, websocket: WebSocket) -> None:
-        """Handle a new WebSocket connection from a client."""
+        """Handle a new WebSocket connection from a client.
+
+        The first message determines whether this is a player (JoinMessage)
+        or an observer (ObserveMessage).
+        """
         await websocket.accept()
 
+        # Wait for identification message.
+        try:
+            raw = await websocket.receive_text()
+            msg = _client_message_adapter.validate_json(raw)
+        except (WebSocketDisconnect, Exception) as exc:
+            logger.warning("Connection error before identification: %s", exc)
+            return
+
+        if isinstance(msg, ObserveMessage):
+            await self._handle_observer(websocket, msg)
+        elif isinstance(msg, JoinMessage):
+            await self._handle_player_join(websocket, msg)
+        else:
+            await websocket.send_text(
+                ErrorMessage(message="Expected 'join' or 'observe' message").model_dump_json()
+            )
+            await websocket.close()
+
+    async def _handle_observer(self, websocket: WebSocket, msg: ObserveMessage) -> None:
+        """Register an observer and stream game state to it."""
+        logger.info("Observer '%s' connected", msg.observer_name)
+        self._observers.append(websocket)
+
+        # If game has already started, send current state immediately.
+        if self._game_started:
+            game_start_msg = GameStartMessage(
+                game_map=self.game_map,
+                tanks=self.tanks,
+                player_names=self.player_names,
+                patch_size=self.patch_size,
+                max_turns=self.max_turns,
+            )
+            try:
+                await websocket.send_text(game_start_msg.model_dump_json())
+            except Exception:
+                self._observers.remove(websocket)
+                return
+
+            # Send current state.
+            if self.engine:
+                state_msg = StateUpdateMessage(
+                    state=self.engine.state,
+                    current_tank_id=self.engine.current_tank_id
+                    if not self.engine.game_over
+                    else "",
+                    turns_taken=self.engine.turns_taken,
+                )
+                try:
+                    await websocket.send_text(state_msg.model_dump_json())
+                except Exception:
+                    self._observers.remove(websocket)
+                    return
+
+        # Keep connection alive until game ends or disconnect.
+        try:
+            while not self._game_over:
+                # Observers don't send meaningful messages, but we need to
+                # keep the connection alive and detect disconnects.
+                try:
+                    await asyncio.wait_for(websocket.receive_text(), timeout=1.0)
+                except asyncio.TimeoutError:
+                    continue
+        except WebSocketDisconnect:
+            pass
+        finally:
+            if websocket in self._observers:
+                self._observers.remove(websocket)
+            logger.info("Observer '%s' disconnected", msg.observer_name)
+
+    async def _handle_player_join(self, websocket: WebSocket, msg: JoinMessage) -> None:
+        """Handle a player joining the game."""
         # Determine which team slot is free.
         if "A" not in self.websockets:
             team = "A"
@@ -162,24 +232,9 @@ class GameSession:
             await websocket.close()
             return
 
-        # Wait for join message.
-        try:
-            raw = await websocket.receive_text()
-            msg = _client_message_adapter.validate_json(raw)
-        except (WebSocketDisconnect, Exception) as exc:
-            self._log(f"Connection error before join: {exc}")
-            return
-
-        if not isinstance(msg, JoinMessage):
-            await websocket.send_text(
-                ErrorMessage(message="Expected 'join' message").model_dump_json()
-            )
-            await websocket.close()
-            return
-
         self.websockets[team] = websocket
         self.player_names[team] = msg.player_name
-        self._log(f"Player '{msg.player_name}' joined as Team {team}")
+        logger.info("Player '%s' joined as Team %s", msg.player_name, team)
 
         # If first player, tell them to wait.
         if len(self.websockets) == 1:
@@ -194,7 +249,7 @@ class GameSession:
         try:
             await self._client_loop(team, websocket)
         except WebSocketDisconnect:
-            self._log(f"Team {team} ({self.player_names.get(team, '?')}) disconnected")
+            logger.info("Team %s (%s) disconnected", team, self.player_names.get(team, "?"))
             if not self._game_over:
                 self._game_over = True
                 other_team = "B" if team == "A" else "A"
@@ -238,6 +293,17 @@ class GameSession:
                     ).model_dump_json()
                 )
 
+    async def _broadcast_to_observers(self, message: str) -> None:
+        """Send a message to all connected observers."""
+        disconnected: list[WebSocket] = []
+        for ws in self._observers:
+            try:
+                await ws.send_text(message)
+            except Exception:
+                disconnected.append(ws)
+        for ws in disconnected:
+            self._observers.remove(ws)
+
     async def run_game(self) -> None:
         """Run the game loop once both players are connected."""
         await self._both_connected.wait()
@@ -263,7 +329,18 @@ class GameSession:
             )
             await self.websockets[team].send_text(assign_msg.model_dump_json())
 
-        self._log("Both players connected. Starting game!")
+        logger.info("Both players connected. Starting game!")
+        self._game_started = True
+
+        # Broadcast game_start to observers.
+        game_start_msg = GameStartMessage(
+            game_map=self.game_map,
+            tanks=self.tanks,
+            player_names=self.player_names,
+            patch_size=self.patch_size,
+            max_turns=self.max_turns,
+        )
+        await self._broadcast_to_observers(game_start_msg.model_dump_json())
 
         # Create the engine.
         players: dict[str, Player] = {
@@ -278,8 +355,13 @@ class GameSession:
             patch_size=self.patch_size,
         )
 
-        if self._state_callback:
-            self._state_callback(self.engine.state)
+        # Send initial state to observers.
+        state_msg = StateUpdateMessage(
+            state=self.engine.state,
+            current_tank_id=self.engine.current_tank_id,
+            turns_taken=0,
+        )
+        await self._broadcast_to_observers(state_msg.model_dump_json())
 
         loop = asyncio.get_event_loop()
 
@@ -298,7 +380,7 @@ class GameSession:
             try:
                 await self.websockets[team].send_text(your_turn_msg.model_dump_json())
             except Exception:
-                self._log(f"Failed to send your_turn to Team {team}")
+                logger.warning("Failed to send your_turn to Team %s", team)
                 self._game_over = True
                 break
 
@@ -306,24 +388,31 @@ class GameSession:
             try:
                 await asyncio.wait_for(player.wait_for_action(), timeout=300.0)
             except asyncio.TimeoutError:
-                self._log(f"Team {team} timed out. Ending game.")
+                logger.warning("Team %s timed out. Ending game.", team)
                 self._game_over = True
                 break
             except RuntimeError:
-                self._log(f"Team {team} action error. Ending game.")
+                logger.warning("Team %s action error. Ending game.", team)
                 self._game_over = True
                 break
 
             # Execute the step.
             entry = self.engine.step()
-            self._log(
-                f"Turn {self.engine.turns_taken}: {entry.tank_id} → "
-                f"{entry.applied_action.value}"
-                f"{'' if entry.valid else f' (INVALID: {entry.reason})'}"
+            logger.info(
+                "Turn %d: %s → %s%s",
+                self.engine.turns_taken,
+                entry.tank_id,
+                entry.applied_action.value,
+                "" if entry.valid else f" (INVALID: {entry.reason})",
             )
 
-            if self._state_callback:
-                self._state_callback(self.engine.state)
+            # Broadcast updated state to observers.
+            state_msg = StateUpdateMessage(
+                state=self.engine.state,
+                current_tank_id=self.engine.current_tank_id if not self.engine.game_over else "",
+                turns_taken=self.engine.turns_taken,
+            )
+            await self._broadcast_to_observers(state_msg.model_dump_json())
 
             # Send turn_result to both clients.
             result_msg = TurnResultMessage(
@@ -339,6 +428,9 @@ class GameSession:
                     except Exception:
                         pass
 
+            # Also send turn_result to observers so they get the log info.
+            await self._broadcast_to_observers(result_msg.model_dump_json())
+
         # Game over.
         self._game_over = True
         winner = self.engine.winner if self.engine else None
@@ -349,15 +441,19 @@ class GameSession:
             else:
                 reason = "Draw — turn limit reached"
 
-        self._log(f"Game over: {reason}")
+        logger.info("Game over: %s", reason)
 
         game_over_msg = GameOverMessage(winner=winner, reason=reason)
+        game_over_json = game_over_msg.model_dump_json()
         for t in ["A", "B"]:
             if t in self.websockets:
                 try:
-                    await self.websockets[t].send_text(game_over_msg.model_dump_json())
+                    await self.websockets[t].send_text(game_over_json)
                 except Exception:
                     pass
+
+        # Broadcast game over to observers.
+        await self._broadcast_to_observers(game_over_json)
 
 
 # ── FastAPI application ───────────────────────────────────────────────
@@ -381,166 +477,45 @@ def create_fastapi_app(session: GameSession) -> FastAPI:
     return app
 
 
-# ── Textual TUI ───────────────────────────────────────────────────────
-
-
-class ServerApp(App[None]):
-    """Textual TUI for the HMLS game server.
-
-    Displays the full game map and a scrollable log panel.
-    """
-
-    CSS = """
-    #map-scroll {
-        height: 2fr;
-        min-height: 10;
-    }
-    #log-panel {
-        height: 1fr;
-        min-height: 5;
-        border-top: solid $primary;
-    }
-    #status-bar {
-        dock: bottom;
-        height: 1;
-        padding: 0 1;
-        background: $surface;
-    }
-    """
-
-    def __init__(
-        self,
-        game_map: GameMap,
-        initial_state: GameState,
-        session: GameSession,
-        port: int,
-    ) -> None:
-        super().__init__()
-        self._game_map = game_map
-        self._state = initial_state
-        self._session = session
-        self._port = port
-        self._log_messages: list[str] = []
-
-    def compose(self) -> ComposeResult:
-        """Compose the server TUI layout."""
-        yield Header()
-        with ScrollableContainer(id="map-scroll"):
-            yield MapView(self._game_map, self._state, id="map-view")
-        yield RichLog(id="log-panel", highlight=True, markup=True)
-        yield Static(f"Server listening on ws://0.0.0.0:{self._port}/ws", id="status-bar")
-        yield Footer()
-
-    def on_mount(self) -> None:
-        """Start the game loop after mount."""
-        log_panel = self.query_one("#log-panel", RichLog)
-        log_panel.write("[bold]HMLS Game Server[/bold]")
-        log_panel.write(f"Listening on ws://0.0.0.0:{self._port}/ws")
-        log_panel.write("Waiting for players to connect...")
-
-        # Process any log messages that arrived before mount.
-        for msg in self._log_messages:
-            log_panel.write(msg)
-        self._log_messages.clear()
-
-        # Start the game loop as a worker.
-        self.run_worker(self._game_loop())
-
-    def log_message(self, message: str) -> None:
-        """Add a message to the log panel (thread-safe via call_from_thread)."""
-        try:
-            log_panel = self.query_one("#log-panel", RichLog)
-            log_panel.write(message)
-        except Exception:
-            self._log_messages.append(message)
-
-    def update_game_state(self, state: GameState) -> None:
-        """Update the map view with new game state."""
-        try:
-            map_view = self.query_one("#map-view", MapView)
-            map_view.update_state(state)
-            if self._session.engine and not self._session.engine.game_over:
-                map_view.active_tank_id = self._session.engine.current_tank_id
-            else:
-                map_view.active_tank_id = ""
-        except Exception:
-            pass
-
-    async def _game_loop(self) -> None:
-        """Run the game session."""
-        await self._session.run_game()
-
-        # Update status bar.
-        try:
-            status = self.query_one("#status-bar", Static)
-            if self._session.engine:
-                winner = self._session.engine.winner
-                if winner:
-                    status.update(f"GAME OVER — Team {winner} wins!")
-                else:
-                    status.update("GAME OVER — Draw!")
-            else:
-                status.update("GAME OVER — Disconnection")
-        except Exception:
-            pass
-
-
 # ── Entry point ───────────────────────────────────────────────────────
 
 
 def main() -> None:
     """Entry point for the server application."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
     args = parse_args()
     game_map = _load_map(args.map_file)
     tanks = _place_tanks(game_map, args.tanks_per_player, seed=args.seed)
-    initial_state = GameState(tanks=tanks)
-
-    # We need to bridge log messages from the server thread to the TUI.
-    # The TUI will be set up after app creation.
-    app_ref: list[ServerApp] = []
-
-    def log_callback(message: str) -> None:
-        if app_ref:
-            app_ref[0].call_from_thread(app_ref[0].log_message, message)
-        else:
-            print(message)
-
-    def state_callback(state: GameState) -> None:
-        if app_ref:
-            app_ref[0].call_from_thread(app_ref[0].update_game_state, state)
 
     session = GameSession(
         game_map=game_map,
         tanks=tanks,
         max_turns=args.max_turns,
         patch_size=args.patch_size,
-        log_callback=log_callback,
     )
-    session.set_state_callback(state_callback)
 
     # Create FastAPI app.
     fastapi_app = create_fastapi_app(session)
 
-    # Run uvicorn in a background thread.
-    config = uvicorn.Config(
+    # Start the game loop as a background task once uvicorn is running.
+    @fastapi_app.on_event("startup")
+    async def start_game() -> None:
+        asyncio.create_task(session.run_game())
+
+    logger.info("Starting HMLS Game Server on port %d", args.port)
+
+    # Run uvicorn directly (single-threaded async — no TUI).
+    uvicorn.run(
         fastapi_app,
         host="0.0.0.0",
         port=args.port,
-        log_level="warning",
+        log_level="info",
     )
-    server = uvicorn.Server(config)
-
-    def run_server() -> None:
-        asyncio.run(server.serve())
-
-    server_thread = threading.Thread(target=run_server, daemon=True)
-    server_thread.start()
-
-    # Run the Textual TUI.
-    app = ServerApp(game_map, initial_state, session, args.port)
-    app_ref.append(app)
-    app.title = "HMLS Game Server"
-    app.run()
 
 
 if __name__ == "__main__":

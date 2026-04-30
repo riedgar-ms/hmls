@@ -1,21 +1,23 @@
 [project]
-name = "hmls-server"
+name = "hmls-observer"
 version = "0.1.0"
-description = "WebSocket game server for the HMLS tank game"
+description = "TUI observer client for the HMLS tank game server"
 requires-python = ">=3.14"
 dependencies = [
     "hmls-core",
     "hmls-protocol",
-    "fastapi>=0.110",
-    "uvicorn[standard]>=0.29",
+    "hmls-uxcommon",
+    "textual>=0.40",
+    "websockets>=13",
 ]
 
 [tool.uv.sources]
 hmls-core = { workspace = true }
 hmls-protocol = { workspace = true }
+hmls-uxcommon = { workspace = true }
 
 [project.scripts]
-hmls-server = "hmls.server.app:main"
+hmls-observer = "hmls.observer.app:main"
 
 [build-system]
 requires = ["hatchling"]

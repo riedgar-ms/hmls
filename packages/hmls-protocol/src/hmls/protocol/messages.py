@@ -11,7 +11,9 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
-from hmls.core.tank import TankId
+from hmls.core.game_state import GameState
+from hmls.core.map import GameMap
+from hmls.core.tank import Tank, TankId
 from hmls.core.types import Action
 from hmls.core.visibility import PlayerView, TankInfo
 
@@ -111,13 +113,60 @@ class ErrorMessage(BaseModel):
     message: str
 
 
+# ── Server → Observer messages ────────────────────────────────────────
+
+
+class GameStartMessage(BaseModel):
+    """Sent to an observer once it connects (or once the game starts).
+
+    Provides the full map, initial tank positions, player names, and
+    configuration so the observer can render the complete game state.
+
+    Attributes:
+        type: Discriminator, always ``"game_start"``.
+        game_map: The full game map.
+        tanks: All tanks with initial positions.
+        player_names: Mapping of team name to player display name.
+        patch_size: Visibility patch size used by the engine.
+        max_turns: Maximum number of individual turns.
+    """
+
+    type: Literal["game_start"] = "game_start"
+    game_map: GameMap
+    tanks: list[Tank]
+    player_names: dict[str, str]
+    patch_size: int
+    max_turns: int
+
+
+class StateUpdateMessage(BaseModel):
+    """Sent to observers after each state change (turn resolution).
+
+    Carries the full game state so observers can render the complete
+    board without fog-of-war.
+
+    Attributes:
+        type: Discriminator, always ``"state_update"``.
+        state: The current full game state.
+        current_tank_id: The tank that will act next (empty if game over).
+        turns_taken: Number of turns completed so far.
+    """
+
+    type: Literal["state_update"] = "state_update"
+    state: GameState
+    current_tank_id: TankId = ""
+    turns_taken: int = 0
+
+
 ServerMessage = Annotated[
     WaitingMessage
     | AssignMessage
     | YourTurnMessage
     | TurnResultMessage
     | GameOverMessage
-    | ErrorMessage,
+    | ErrorMessage
+    | GameStartMessage
+    | StateUpdateMessage,
     Field(discriminator="type"),
 ]
 """Union of all messages the server can send to a client."""
@@ -138,6 +187,20 @@ class JoinMessage(BaseModel):
     player_name: str
 
 
+class ObserveMessage(BaseModel):
+    """Sent by an observer client immediately after connecting.
+
+    Identifies the connection as an observer rather than a player.
+
+    Attributes:
+        type: Discriminator, always ``"observe"``.
+        observer_name: Optional human-readable name for this observer.
+    """
+
+    type: Literal["observe"] = "observe"
+    observer_name: str = "Observer"
+
+
 class ActionMessage(BaseModel):
     """Sent by a client in response to a ``your_turn`` message.
 
@@ -151,7 +214,7 @@ class ActionMessage(BaseModel):
 
 
 ClientMessage = Annotated[
-    JoinMessage | ActionMessage,
+    JoinMessage | ObserveMessage | ActionMessage,
     Field(discriminator="type"),
 ]
 """Union of all messages a client can send to the server."""
