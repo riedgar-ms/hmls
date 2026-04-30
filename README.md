@@ -6,9 +6,14 @@ Assorted Experiments in AI
 
 | Package | Description |
 |---|---|
-| `hmls.core` | Core data types (`GameMap`, `CellType`) |
-| `hmls.mapgenerator` | Randomised map generation with Textual TUI |
+| `hmls.core` | Core data types (`GameMap`, `CellType`), game engine, and visibility system |
+| `hmls.protocol` | Wire protocol models for server/client WebSocket communication |
+| `hmls.server` | WebSocket game server with Textual TUI (full map + log) |
+| `hmls.client` | WebSocket game client with Textual TUI and automapper |
 | `hmls.testharness` | Interactive TUI for manually testing tank game behaviour |
+| `hmls.replayviewer` | TUI replay viewer for game history files |
+| `hmls.mapgenerator` | Randomised map generation with Textual TUI |
+| `hmls.uxcommon` | Shared TUI widgets and styles |
 
 ## Getting started
 
@@ -62,6 +67,55 @@ uv run hmls-testharness path/to/map.json 3
 
 When the game ends, a summary is shown and you are prompted to save the
 full game history as JSON.
+
+### Game Server
+
+The game server hosts a single game over WebSocket, accepting two clients
+(one per team). It displays a god-view TUI showing the full map and a
+scrollable game log.
+
+```bash
+uv run hmls-server path/to/map.json 3
+```
+
+**Arguments:**
+
+| Argument | Description |
+|---|---|
+| `map_file` | Path to a JSON map file (as saved by `hmls-mapgen`) |
+| `tanks_per_player` | Number of tanks each team starts with |
+| `--port N` | WebSocket server port (default 8765) |
+| `--seed N` | Random seed for tank placement (optional) |
+| `--max-turns N` | Maximum individual turns before the game ends (default 200) |
+| `--patch-size N` | Visibility patch size, odd ≥ 3 (default 7) |
+
+### Game Client
+
+The game client connects to a running server and provides an interactive
+TUI with an automapper. As your tanks explore, the automapper reveals
+passable/impassable terrain, removing fog-of-war from previously seen areas.
+
+```bash
+uv run hmls-client ws://localhost:8765/ws --name "Alice"
+```
+
+**Arguments:**
+
+| Argument | Description |
+|---|---|
+| `server_url` | WebSocket server URL (e.g. `ws://localhost:8765/ws`) |
+| `--name NAME` | Player name sent to the server (default "Player") |
+
+**Controls** (same as test harness):
+
+| Key | Action |
+|---|---|
+| `W` | Move forward |
+| `A` | Turn left |
+| `D` | Turn right |
+| `Space` | Fire |
+| `Tab` | Pass (skip turn) |
+| `Q` | Quit |
 
 ## Development
 
