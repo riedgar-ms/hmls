@@ -69,6 +69,21 @@ uv run hmls-testharness path/to/map.json 3
 When the game ends, a summary is shown and you are prompted to save the
 full game history as JSON.
 
+### Replay Viewer
+
+The replay viewer lets you step through a saved game history file,
+viewing the full game state at each turn.
+
+```bash
+uv run hmls-replayviewer path/to/history.json
+```
+
+**Arguments:**
+
+| Argument | Description |
+|---|---|
+| `history_file` | Path to a JSON game history file (as saved by the test harness or server) |
+
 ### Game Server
 
 The game server is a headless WebSocket server (FastAPI + Uvicorn) that

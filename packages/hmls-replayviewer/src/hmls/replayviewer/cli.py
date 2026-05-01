@@ -20,7 +20,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         Parsed namespace with ``history_file`` attribute.
     """
     parser = argparse.ArgumentParser(
-        prog="hmls-replay",
+        prog="hmls-replayviewer",
         description="Replay an HMLS tank game from a history file.",
     )
     parser.add_argument(
