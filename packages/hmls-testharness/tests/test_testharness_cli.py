@@ -32,7 +32,7 @@ class TestParseArgs:
     def test_defaults(self) -> None:
         """Optional arguments have sensible defaults."""
         ns = parse_args(["map.json", "2"])
-        assert ns.patch_size == 7
+        assert ns.patch_size == 9
         assert ns.max_turns == 200
         assert ns.seed is None
 

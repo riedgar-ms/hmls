@@ -53,7 +53,7 @@ uv run hmls-testharness path/to/map.json 3
 | `tanks_per_player` | Number of tanks each of the two teams starts with |
 | `--seed N` | Random seed for tank placement (optional) |
 | `--max-turns N` | Maximum individual turns before the game ends (default 200) |
-| `--patch-size N` | Visibility patch size, odd ≥ 3 (default 7) |
+| `--patch-size N` | Visibility patch size, odd ≥ 3 (default 9) |
 
 **Controls:**
 
@@ -89,7 +89,7 @@ uv run hmls-server path/to/map.json 3
 | `--port N` | WebSocket server port (default 8765) |
 | `--seed N` | Random seed for tank placement (optional) |
 | `--max-turns N` | Maximum individual turns before the game ends (default 200) |
-| `--patch-size N` | Visibility patch size, odd ≥ 3 (default 7) |
+| `--patch-size N` | Visibility patch size, odd ≥ 3 (default 9) |
 
 ### Game Observer
 

@@ -188,7 +188,7 @@ class GameEngine:
         tanks: list[Tank],
         players: dict[str, Player],
         max_turns: int,
-        patch_size: int = 7,
+        patch_size: int = 9,
     ) -> None:
         self._validate_inputs(game_map, tanks, players, max_turns, patch_size)
 
