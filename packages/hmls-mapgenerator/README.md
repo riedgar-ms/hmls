@@ -12,7 +12,7 @@ From the workspace root:
 uv sync --all-packages
 
 # Launch the TUI
-uv run hmls-mapgen
+uv run hmls-mapgenerator
 # or equivalently:
 uv run python -m hmls.mapgenerator
 ```

@@ -7,7 +7,7 @@ and strategy selection with dynamically-generated parameter widgets.
 
 Run with::
 
-    uv run hmls-mapgen
+    uv run hmls-mapgenerator
     # or
     uv run python -m hmls.mapgenerator
 """

@@ -12,7 +12,7 @@ dependencies = [
 hmls-core = { workspace = true }
 
 [project.scripts]
-hmls-mapgen = "hmls.mapgenerator.app:main"
+hmls-mapgenerator = "hmls.mapgenerator.app:main"
 
 [build-system]
 requires = ["hatchling"]
