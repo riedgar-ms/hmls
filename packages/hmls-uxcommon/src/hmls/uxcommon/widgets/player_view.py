@@ -40,7 +40,7 @@ class PlayerViewRegion(Horizontal):
         team: str,
         game_map: GameMap,
         state: GameState,
-        patch_size: int = 7,
+        patch_size: int = 9,
         active_tank_id: TankId = "",
         *,
         id: str | None = None,

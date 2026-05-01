@@ -14,7 +14,7 @@ hmls-core = { workspace = true }
 hmls-uxcommon = { workspace = true }
 
 [project.scripts]
-hmls-replay = "hmls.replayviewer.app:main"
+hmls-replayviewer = "hmls.replayviewer.app:main"
 
 [build-system]
 requires = ["hatchling"]

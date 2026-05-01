@@ -38,8 +38,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--patch-size",
         type=int,
-        default=7,
-        help="Visibility patch size (odd, >= 3; default 7)",
+        default=9,
+        help="Visibility patch size (odd, >= 3; default 9)",
     )
     parser.add_argument(
         "--max-turns",
@@ -53,4 +53,25 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Random seed for tank placement (default: random)",
     )
-    return parser.parse_args(argv)
+
+    history_group = parser.add_mutually_exclusive_group()
+    history_group.add_argument(
+        "--history-file",
+        type=Path,
+        default=Path("history.json"),
+        help="Path to save game history JSON after the game ends (default: history.json)",
+    )
+    history_group.add_argument(
+        "--no-history",
+        action="store_true",
+        default=False,
+        help="Disable saving game history after the game ends",
+    )
+
+    ns = parser.parse_args(argv)
+
+    # Normalise: if --no-history was passed, set history_file to None.
+    if ns.no_history:
+        ns.history_file = None
+
+    return ns

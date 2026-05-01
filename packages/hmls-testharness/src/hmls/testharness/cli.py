@@ -39,8 +39,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--patch-size",
         type=int,
-        default=7,
-        help="Visibility patch size (odd, >= 3; default 7)",
+        default=9,
+        help="Visibility patch size (odd, >= 3; default 9)",
     )
     parser.add_argument(
         "--max-turns",
