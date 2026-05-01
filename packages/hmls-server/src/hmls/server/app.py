@@ -412,19 +412,18 @@ class GameSession:
             )
             await self._broadcast_to_observers(state_msg.model_dump_json())
 
-            # Send turn_result to both clients.
+            # Send turn_result only to the acting player's team.
             result_msg = TurnResultMessage(
                 tank_id=entry.tank_id,
                 action=entry.applied_action,
                 valid=entry.valid,
                 reason=entry.reason,
             )
-            for t in ["A", "B"]:
-                if t in self.websockets:
-                    try:
-                        await self.websockets[t].send_text(result_msg.model_dump_json())
-                    except Exception:
-                        pass
+            if team in self.websockets:
+                try:
+                    await self.websockets[team].send_text(result_msg.model_dump_json())
+                except Exception:
+                    pass
 
             # Also send turn_result to observers so they get the log info.
             await self._broadcast_to_observers(result_msg.model_dump_json())

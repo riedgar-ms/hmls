@@ -70,7 +70,10 @@ class YourTurnMessage(BaseModel):
 
 
 class TurnResultMessage(BaseModel):
-    """Sent to both clients after each turn resolves.
+    """Sent to the acting player's client after each turn resolves.
+
+    Only the team whose tank acted receives this message; the opponent
+    does not, to preserve fog-of-war.  Observers also receive a copy.
 
     Attributes:
         type: Discriminator, always ``"turn_result"``.
