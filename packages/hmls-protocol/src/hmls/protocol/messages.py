@@ -81,6 +81,9 @@ class TurnResultMessage(BaseModel):
         action: The action that was applied.
         valid: Whether the requested action was legal.
         reason: Explanation if the action was invalid.
+        hit: Whether a fire action hit an enemy tank.  ``True`` if a
+            tank was destroyed, ``False`` if the shot missed, ``None``
+            for non-fire actions.
     """
 
     type: Literal["turn_result"] = "turn_result"
@@ -88,6 +91,7 @@ class TurnResultMessage(BaseModel):
     action: Action
     valid: bool
     reason: str = ""
+    hit: bool | None = None
 
 
 class GameOverMessage(BaseModel):

@@ -156,8 +156,8 @@ class TestApplyAction:
         """Moving forward updates the tank's position."""
         state = _make_state()
         game_map = _make_map()
-        new = apply_action(state, game_map, "a1", Action.MOVE_FORWARD)
-        tank = new.get_tank("a1")
+        result = apply_action(state, game_map, "a1", Action.MOVE_FORWARD)
+        tank = result.state.get_tank("a1")
         assert tank.position == Position(2, 1)
 
     def test_move_forward_invalid_loses_turn(self) -> None:
@@ -168,25 +168,25 @@ class TestApplyAction:
         ]
         state = _make_state(tanks=tanks)
         game_map = _make_map()
-        new = apply_action(state, game_map, "a1", Action.MOVE_FORWARD)
+        result = apply_action(state, game_map, "a1", Action.MOVE_FORWARD)
         # Position unchanged.
-        assert new.get_tank("a1").position == Position(2, 0)
+        assert result.state.get_tank("a1").position == Position(2, 0)
         # Turn is NOT advanced — the engine owns scheduling.
-        assert new.current_tank_id == "a1"
+        assert result.state.current_tank_id == "a1"
 
     def test_turn_left(self) -> None:
         """Turning left rotates the tank 90° counter-clockwise."""
         state = _make_state()
         game_map = _make_map()
-        new = apply_action(state, game_map, "a1", Action.TURN_LEFT)
-        assert new.get_tank("a1").direction == Direction.WEST
+        result = apply_action(state, game_map, "a1", Action.TURN_LEFT)
+        assert result.state.get_tank("a1").direction == Direction.WEST
 
     def test_turn_right(self) -> None:
         """Turning right rotates the tank 90° clockwise."""
         state = _make_state()
         game_map = _make_map()
-        new = apply_action(state, game_map, "a1", Action.TURN_RIGHT)
-        assert new.get_tank("a1").direction == Direction.EAST
+        result = apply_action(state, game_map, "a1", Action.TURN_RIGHT)
+        assert result.state.get_tank("a1").direction == Direction.EAST
 
     def test_fire_destroys_enemy(self) -> None:
         """Firing at an adjacent enemy tank destroys it."""
@@ -196,8 +196,9 @@ class TestApplyAction:
         ]
         state = _make_state(tanks=tanks)
         game_map = _make_map()
-        new = apply_action(state, game_map, "a1", Action.FIRE)
-        assert not new.get_tank("b1").alive
+        result = apply_action(state, game_map, "a1", Action.FIRE)
+        assert not result.state.get_tank("b1").alive
+        assert result.hit is True
 
     def test_fire_destroys_friendly(self) -> None:
         """Friendly fire also destroys the target."""
@@ -207,23 +208,26 @@ class TestApplyAction:
         ]
         state = _make_state(tanks=tanks)
         game_map = _make_map()
-        new = apply_action(state, game_map, "a1", Action.FIRE)
-        assert not new.get_tank("a2").alive
+        result = apply_action(state, game_map, "a1", Action.FIRE)
+        assert not result.state.get_tank("a2").alive
+        assert result.hit is True
 
     def test_fire_into_empty_cell(self) -> None:
         """Firing into an empty cell has no effect on tanks."""
         state = _make_state()
         game_map = _make_map()
-        new = apply_action(state, game_map, "a1", Action.FIRE)
-        assert all(t.alive for t in new.tanks)
+        result = apply_action(state, game_map, "a1", Action.FIRE)
+        assert all(t.alive for t in result.state.tanks)
+        assert result.hit is False
 
     def test_fire_into_wall(self) -> None:
         """Firing into an impassable cell does nothing harmful."""
         state = _make_state()
         game_map = _make_map()
         game_map[2, 1] = CellType.IMPASSABLE
-        new = apply_action(state, game_map, "a1", Action.FIRE)
-        assert all(t.alive for t in new.tanks)
+        result = apply_action(state, game_map, "a1", Action.FIRE)
+        assert all(t.alive for t in result.state.tanks)
+        assert result.hit is False
 
     def test_fire_into_wreckage(self) -> None:
         """Firing into a destroyed tank (wreckage) has no additional effect."""
@@ -239,25 +243,27 @@ class TestApplyAction:
         ]
         state = _make_state(tanks=tanks)
         game_map = _make_map()
-        new = apply_action(state, game_map, "a1", Action.FIRE)
+        result = apply_action(state, game_map, "a1", Action.FIRE)
         # b1 was already dead — should remain dead, no error.
-        assert not new.get_tank("b1").alive
+        assert not result.state.get_tank("b1").alive
+        assert result.hit is False
 
     def test_pass_does_nothing(self) -> None:
         """Passing leaves the state unchanged (including current_tank_id)."""
         state = _make_state()
         game_map = _make_map()
-        new = apply_action(state, game_map, "a1", Action.PASS)
-        assert new.get_tank("a1").position == Position(2, 2)
-        assert new.get_tank("a1").direction == Direction.NORTH
-        assert new.current_tank_id == "a1"
+        result = apply_action(state, game_map, "a1", Action.PASS)
+        assert result.state.get_tank("a1").position == Position(2, 2)
+        assert result.state.get_tank("a1").direction == Direction.NORTH
+        assert result.state.current_tank_id == "a1"
+        assert result.hit is None
 
     def test_turn_not_advanced(self) -> None:
         """apply_action does not advance the turn — the engine owns scheduling."""
         state = _make_state()
         game_map = _make_map()
-        new = apply_action(state, game_map, "a1", Action.PASS)
-        assert new.current_tank_id == "a1"
+        result = apply_action(state, game_map, "a1", Action.PASS)
+        assert result.state.current_tank_id == "a1"
 
     def test_apply_dead_tank_raises(self) -> None:
         """Applying an action for a dead tank raises ValueError."""
@@ -313,24 +319,24 @@ class TestTankListOrderPreserved:
         state = _make_state()
         game_map = _make_map()
         original = _tank_ids(state)
-        new = apply_action(state, game_map, "a1", Action.MOVE_FORWARD)
-        assert _tank_ids(new) == original
+        result = apply_action(state, game_map, "a1", Action.MOVE_FORWARD)
+        assert _tank_ids(result.state) == original
 
     def test_turn_left_preserves_order(self) -> None:
         """Turning left does not change the tank list order."""
         state = _make_state()
         game_map = _make_map()
         original = _tank_ids(state)
-        new = apply_action(state, game_map, "a1", Action.TURN_LEFT)
-        assert _tank_ids(new) == original
+        result = apply_action(state, game_map, "a1", Action.TURN_LEFT)
+        assert _tank_ids(result.state) == original
 
     def test_turn_right_preserves_order(self) -> None:
         """Turning right does not change the tank list order."""
         state = _make_state()
         game_map = _make_map()
         original = _tank_ids(state)
-        new = apply_action(state, game_map, "a1", Action.TURN_RIGHT)
-        assert _tank_ids(new) == original
+        result = apply_action(state, game_map, "a1", Action.TURN_RIGHT)
+        assert _tank_ids(result.state) == original
 
     def test_fire_kill_preserves_order(self) -> None:
         """Destroying a tank via fire does not change the tank list order."""
@@ -341,25 +347,25 @@ class TestTankListOrderPreserved:
         state = _make_state(tanks=tanks)
         game_map = _make_map()
         original = _tank_ids(state)
-        new = apply_action(state, game_map, "a1", Action.FIRE)
-        assert not new.get_tank("b1").alive
-        assert _tank_ids(new) == original
+        result = apply_action(state, game_map, "a1", Action.FIRE)
+        assert not result.state.get_tank("b1").alive
+        assert _tank_ids(result.state) == original
 
     def test_fire_miss_preserves_order(self) -> None:
         """Firing into an empty cell does not change the tank list order."""
         state = _make_state()
         game_map = _make_map()
         original = _tank_ids(state)
-        new = apply_action(state, game_map, "a1", Action.FIRE)
-        assert _tank_ids(new) == original
+        result = apply_action(state, game_map, "a1", Action.FIRE)
+        assert _tank_ids(result.state) == original
 
     def test_pass_preserves_order(self) -> None:
         """Passing does not change the tank list order."""
         state = _make_state()
         game_map = _make_map()
         original = _tank_ids(state)
-        new = apply_action(state, game_map, "a1", Action.PASS)
-        assert _tank_ids(new) == original
+        result = apply_action(state, game_map, "a1", Action.PASS)
+        assert _tank_ids(result.state) == original
 
     def test_multi_turn_preserves_order(self) -> None:
         """Tank list order is stable across multiple turns."""
@@ -372,11 +378,11 @@ class TestTankListOrderPreserved:
         game_map = _make_map()
         original = _tank_ids(state)
         # Play several turns with varied actions, manually advancing turns.
-        state = apply_action(state, game_map, "a1", Action.MOVE_FORWARD)
+        state = apply_action(state, game_map, "a1", Action.MOVE_FORWARD).state
         state = state.model_copy(update={"current_tank_id": "b1"})
-        state = apply_action(state, game_map, "b1", Action.TURN_LEFT)
+        state = apply_action(state, game_map, "b1", Action.TURN_LEFT).state
         state = state.model_copy(update={"current_tank_id": "a2"})
-        state = apply_action(state, game_map, "a2", Action.PASS)
+        state = apply_action(state, game_map, "a2", Action.PASS).state
         state = state.model_copy(update={"current_tank_id": "a1"})
-        state = apply_action(state, game_map, "a1", Action.TURN_RIGHT)
+        state = apply_action(state, game_map, "a1", Action.TURN_RIGHT).state
         assert _tank_ids(state) == original

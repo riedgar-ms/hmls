@@ -41,6 +41,9 @@ class HistoryEntry(BaseModel):
         valid: Whether the requested action was legal.
         reason: Explanation when the action is invalid (empty string
             when valid).
+        hit: Whether a fire action hit an enemy tank.  ``True`` if a
+            tank was destroyed, ``False`` if the shot missed, ``None``
+            for non-fire actions.
         state_after: The full game state *after* the action was applied.
     """
 
@@ -49,6 +52,7 @@ class HistoryEntry(BaseModel):
     applied_action: Action
     valid: bool
     reason: str = ""
+    hit: bool | None = None
     state_after: GameState
 
 
@@ -397,7 +401,8 @@ class GameEngine:
             player.notify_invalid_action(tank_id, requested, result.reason)
             applied = Action.PASS
 
-        self._state = apply_action(self._state, self._game_map, tank_id, applied)
+        apply_result = apply_action(self._state, self._game_map, tank_id, applied)
+        self._state = apply_result.state
         self._turns_taken += 1
         self._global_turn += 1
 
@@ -412,6 +417,7 @@ class GameEngine:
             applied_action=applied,
             valid=result.valid,
             reason=result.reason,
+            hit=apply_result.hit,
             state_after=self._state,
         )
         self._history.append(entry)

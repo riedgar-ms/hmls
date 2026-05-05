@@ -14,9 +14,9 @@ from textual.binding import Binding
 from textual.containers import ScrollableContainer, VerticalScroll
 from textual.events import Key
 from textual.screen import ModalScreen
-from textual.widgets import Footer, Header, Input, Label, Static
+from textual.widgets import Footer, Header, Input, Label, RichLog, Static
 
-from hmls.core.engine import GameEngine
+from hmls.core.engine import GameEngine, HistoryEntry
 from hmls.core.game_state import GameState
 from hmls.core.map import GameMap
 from hmls.core.player import Player
@@ -100,6 +100,11 @@ class TestHarnessApp(App[None]):
     #player-b-region {
         height: auto;
     }
+    #action-log {
+        height: auto;
+        max-height: 5;
+        border-top: solid $primary;
+    }
     #status-bar {
         dock: bottom;
         height: 3;
@@ -155,6 +160,7 @@ class TestHarnessApp(App[None]):
             id="player-b-region",
         )
 
+        yield RichLog(id="action-log", highlight=True, markup=True, max_lines=50)
         yield Static(self._build_status_text(), id="status-bar")
         yield Footer()
 
@@ -184,6 +190,22 @@ class TestHarnessApp(App[None]):
         map_view = self.query_one("#map-view", MapView)
         map_view.active_tank_id = self._engine.current_tank_id
 
+    def _log_action_result(self, tank_id: str, entry: HistoryEntry) -> None:
+        """Log an action result to the action log panel."""
+        if not entry.valid:
+            status = f"✗ ({entry.reason})"
+        elif entry.hit is True:
+            status = "[bold green]HIT![/bold green]"
+        elif entry.hit is False:
+            status = "miss"
+        else:
+            status = "✓"
+        try:
+            log = self.query_one("#action-log", RichLog)
+            log.write(f"  {tank_id} → {entry.applied_action.value} {status}")
+        except Exception:
+            pass
+
     def _do_action(self, action: Action) -> None:
         """Execute an action and refresh the UI."""
         if self._engine.game_over:
@@ -191,12 +213,16 @@ class TestHarnessApp(App[None]):
 
         # Pre-load the action on the current team's InteractivePlayer.
         team = self._engine.current_team
+        tank_id = self._engine.current_tank_id
         player = self._engine.players[team]
         if not isinstance(player, InteractivePlayer):
             return
         player.set_next_action(action)
-        self._engine.step()
+        entry = self._engine.step()
         self._state = self._engine.state
+
+        # Log the action result.
+        self._log_action_result(tank_id, entry)
 
         # Update the map view.
         map_view = self.query_one("#map-view", MapView)

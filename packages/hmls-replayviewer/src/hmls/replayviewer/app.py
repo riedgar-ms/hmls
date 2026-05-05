@@ -170,8 +170,15 @@ class ReplayViewerApp(App[None]):
         else:
             entry = self._history[step - 1]
             action_str = entry.applied_action.value
-            validity = "" if entry.valid else f" (INVALID: {entry.reason})"
-            action_info = f"Tank {entry.tank_id}: {action_str}{validity}"
+            if not entry.valid:
+                suffix = f" (INVALID: {entry.reason})"
+            elif entry.hit is True:
+                suffix = " — HIT!"
+            elif entry.hit is False:
+                suffix = " — miss"
+            else:
+                suffix = ""
+            action_info = f"Tank {entry.tank_id}: {action_str}{suffix}"
 
         # Winner info.
         winner = self._result.winner
