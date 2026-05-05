@@ -400,12 +400,20 @@ class GameSession:
 
             # Execute the step.
             entry = self.engine.step()
+            if not entry.valid:
+                result_info = f" (INVALID: {entry.reason})"
+            elif entry.hit is True:
+                result_info = " — HIT"
+            elif entry.hit is False:
+                result_info = " — miss"
+            else:
+                result_info = ""
             logger.info(
                 "Turn %d: %s → %s%s",
                 self.engine.turns_taken,
                 entry.tank_id,
                 entry.applied_action.value,
-                "" if entry.valid else f" (INVALID: {entry.reason})",
+                result_info,
             )
 
             # Broadcast updated state to observers.
