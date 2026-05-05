@@ -11,12 +11,13 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import ScrollableContainer
 from textual.timer import Timer
-from textual.widgets import Footer, Header, Static
+from textual.widgets import Footer, Header, RichLog, Static
 
 from hmls.core.engine import GameResult, HistoryEntry
 from hmls.core.game_state import GameState
 from hmls.core.map import GameMap
 from hmls.replayviewer.cli import build_state_timeline, load_game_result, parse_args
+from hmls.uxcommon import LogStatusMixin
 from hmls.uxcommon.widgets.map_view import MapView
 
 # ── Constants ─────────────────────────────────────────────────────────
@@ -34,7 +35,7 @@ _DELAY_STEP: float = 0.1
 """Amount to change delay per key press."""
 
 
-class ReplayViewerApp(App[None]):
+class ReplayViewerApp(LogStatusMixin, App[None]):
     """TUI application for replaying HMLS tank game history files.
 
     Key bindings:
@@ -52,6 +53,11 @@ class ReplayViewerApp(App[None]):
     #map-scroll {
         height: 1fr;
         min-height: 10;
+    }
+    #log-panel {
+        height: auto;
+        max-height: 5;
+        border-top: solid $primary;
     }
     #status-bar {
         dock: bottom;
@@ -102,6 +108,7 @@ class ReplayViewerApp(App[None]):
                 id="map-view",
             )
 
+        yield RichLog(id="log-panel", highlight=True, markup=True, max_lines=200)
         yield Static(self._build_status_text(), id="status-bar")
         yield Footer()
 
@@ -151,11 +158,30 @@ class ReplayViewerApp(App[None]):
         map_view.update_state(state)
         map_view.active_tank_id = active_id
 
+        # Rebuild the log panel with entries up to current step.
+        self._rebuild_log()
+
         # Update status bar.
         status = self.query_one("#status-bar", Static)
         status.update(self._build_status_text())
 
     # ── Status bar ────────────────────────────────────────────────
+
+    def _rebuild_log(self) -> None:
+        """Clear and rebuild the log panel with entries up to the current step."""
+        try:
+            log_panel = self.query_one("#log-panel", RichLog)
+        except Exception:
+            return
+        log_panel.clear()
+        for entry in self._history[: self._current_step]:
+            self._log_turn_result(
+                entry.tank_id,
+                entry.applied_action.value,
+                entry.valid,
+                entry.reason,
+                entry.hit,
+            )
 
     def _build_status_text(self) -> str:
         """Build the status bar text showing current position and controls."""
@@ -163,22 +189,6 @@ class ReplayViewerApp(App[None]):
         total = self._max_step
         play_state = "▶ Playing" if self._playing else "⏸ Paused"
         delay_str = f"{self._delay:.1f}s"
-
-        # Action info for current step.
-        if step == 0:
-            action_info = "Initial state"
-        else:
-            entry = self._history[step - 1]
-            action_str = entry.applied_action.value
-            if not entry.valid:
-                suffix = f" (INVALID: {entry.reason})"
-            elif entry.hit is True:
-                suffix = " — HIT!"
-            elif entry.hit is False:
-                suffix = " — miss"
-            else:
-                suffix = ""
-            action_info = f"Tank {entry.tank_id}: {action_str}{suffix}"
 
         # Winner info.
         winner = self._result.winner
@@ -189,7 +199,7 @@ class ReplayViewerApp(App[None]):
             else:
                 winner_str = " | Draw"
 
-        return f"Step {step}/{total} | {play_state} | Delay: {delay_str}{winner_str}\n{action_info}"
+        return f"Step {step}/{total} | {play_state} | Delay: {delay_str}{winner_str}"
 
     # ── Auto-play ─────────────────────────────────────────────────
 

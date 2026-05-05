@@ -112,6 +112,7 @@ source = { editable = "packages/hmls-client" }
 dependencies = [
     { name = "hmls-core" },
     { name = "hmls-protocol" },
+    { name = "hmls-uxcommon" },
     { name = "textual" },
     { name = "websockets" },
 ]
@@ -120,6 +121,7 @@ dependencies = [
 requires-dist = [
     { name = "hmls-core", editable = "packages/hmls-core" },
     { name = "hmls-protocol", editable = "packages/hmls-protocol" },
+    { name = "hmls-uxcommon", editable = "packages/hmls-uxcommon" },
     { name = "textual", specifier = ">=0.40" },
     { name = "websockets", specifier = ">=13" },
 ]

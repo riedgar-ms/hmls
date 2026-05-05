@@ -29,6 +29,7 @@ from hmls.protocol import (
     TurnResultMessage,
     WaitingMessage,
 )
+from hmls.uxcommon.mixins import LogStatusMixin
 from hmls.uxcommon.widgets.map_view import MapView
 
 # ── Type adapter for server messages ─────────────────────────────────
@@ -39,7 +40,7 @@ _server_message_adapter: TypeAdapter[ServerMessage] = TypeAdapter(ServerMessage)
 # ── Observer TUI ──────────────────────────────────────────────────────
 
 
-class ObserverApp(App[None]):
+class ObserverApp(LogStatusMixin, App[None]):
     """Textual TUI for observing an HMLS game in progress.
 
     Displays the full game map (no fog-of-war) and a scrollable event log.
@@ -90,22 +91,6 @@ class ObserverApp(App[None]):
         log_panel.write("[bold]HMLS Game Observer[/bold]")
         log_panel.write(f"Connecting to {self._server_url}...")
         self.run_worker(self._connection_loop())
-
-    def _write_log(self, message: str) -> None:
-        """Write a message to the log panel."""
-        try:
-            log_panel = self.query_one("#log-panel", RichLog)
-            log_panel.write(message)
-        except Exception:
-            pass
-
-    def _update_status(self, text: str) -> None:
-        """Update the status bar."""
-        try:
-            status = self.query_one("#status-bar", Static)
-            status.update(text)
-        except Exception:
-            pass
 
     async def _connection_loop(self) -> None:
         """Manage the WebSocket connection and message handling."""
@@ -202,15 +187,7 @@ class ObserverApp(App[None]):
 
     def _handle_turn_result(self, msg: TurnResultMessage) -> None:
         """Handle a turn result: log the action."""
-        if not msg.valid:
-            status = f"[red]✗ ({msg.reason})[/red]"
-        elif msg.hit is True:
-            status = "[bold green]HIT![/bold green]"
-        elif msg.hit is False:
-            status = "[dim]miss[/dim]"
-        else:
-            status = "✓"
-        self._write_log(f"  {msg.tank_id} → {msg.action.value} — {status}")
+        self._log_turn_result(msg.tank_id, msg.action.value, msg.valid, msg.reason, msg.hit)
 
     def _handle_game_over(self, msg: GameOverMessage) -> None:
         """Handle game over notification."""

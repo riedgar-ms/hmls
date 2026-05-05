@@ -34,6 +34,7 @@ from hmls.protocol import (
     WaitingMessage,
     YourTurnMessage,
 )
+from hmls.uxcommon.mixins import LogStatusMixin
 from hmls.uxcommon.styles import (
     ACTIVE_HIGHLIGHT_STYLE,
     CELL_CHARS,
@@ -140,7 +141,7 @@ class AutoMapView(Static):
 # ── Main client TUI ──────────────────────────────────────────────────
 
 
-class ClientApp(App[None]):
+class ClientApp(LogStatusMixin, App[None]):
     """Textual TUI for the HMLS game client.
 
     Displays the automapped terrain, tank positions, and a log panel.
@@ -208,22 +209,6 @@ class ClientApp(App[None]):
         log_panel.write(f"[bold]HMLS Game Client[/bold] — {self._player_name}")
         log_panel.write(f"Connecting to {self._server_url}...")
         self.run_worker(self._connection_loop())
-
-    def _write_log(self, message: str) -> None:
-        """Write a message to the log panel."""
-        try:
-            log_panel = self.query_one("#log-panel", RichLog)
-            log_panel.write(message)
-        except Exception:
-            pass
-
-    def _update_status(self, text: str) -> None:
-        """Update the status bar."""
-        try:
-            status = self.query_one("#status-bar", Static)
-            status.update(text)
-        except Exception:
-            pass
 
     async def _connection_loop(self) -> None:
         """Manage the WebSocket connection and message handling."""
@@ -345,15 +330,7 @@ class ClientApp(App[None]):
 
     def _handle_turn_result(self, msg: TurnResultMessage) -> None:
         """Handle a turn result notification."""
-        if not msg.valid:
-            status = f"[red]✗ ({msg.reason})[/red]"
-        elif msg.hit is True:
-            status = "[bold green]HIT![/bold green]"
-        elif msg.hit is False:
-            status = "[dim]miss[/dim]"
-        else:
-            status = "✓"
-        self._write_log(f"  {msg.tank_id} → {msg.action.value} — {status}")
+        self._log_turn_result(msg.tank_id, msg.action.value, msg.valid, msg.reason, msg.hit)
 
     def _handle_game_over(self, msg: GameOverMessage) -> None:
         """Handle game over."""
