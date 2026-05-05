@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 
+from hmls.protocol.cli_args import add_connection_args
+
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse command-line arguments for the observer client.
@@ -18,16 +20,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         prog="hmls-observer",
         description="TUI observer client for the HMLS tank game server",
     )
-    parser.add_argument(
-        "--url",
-        type=str,
-        default="ws://localhost:8765/ws",
-        help="WebSocket URL of the game server (default: ws://localhost:8765/ws)",
-    )
-    parser.add_argument(
-        "--name",
-        type=str,
-        default="Observer",
-        help="Display name for this observer (default: Observer)",
+    add_connection_args(
+        parser,
+        name_default="Observer",
+        name_help="Display name for this observer",
     )
     return parser.parse_args(argv)

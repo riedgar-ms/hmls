@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from hmls.core.cli_args import add_game_setup_args
+
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse command-line arguments for the game server.
@@ -19,39 +21,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         prog="hmls-server",
         description="WebSocket game server for the HMLS tank game",
     )
-    parser.add_argument(
-        "map_file",
-        type=Path,
-        help="Path to a JSON map file (GameMap)",
-    )
-    parser.add_argument(
-        "tanks_per_player",
-        type=int,
-        help="Number of tanks each player starts with",
-    )
+    add_game_setup_args(parser)
     parser.add_argument(
         "--port",
         type=int,
         default=8765,
         help="WebSocket server port (default: 8765)",
-    )
-    parser.add_argument(
-        "--patch-size",
-        type=int,
-        default=9,
-        help="Visibility patch size (odd, >= 3; default 9)",
-    )
-    parser.add_argument(
-        "--max-turns",
-        type=int,
-        default=200,
-        help="Maximum number of individual turns (default 200)",
-    )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=None,
-        help="Random seed for tank placement (default: random)",
     )
 
     history_group = parser.add_mutually_exclusive_group()

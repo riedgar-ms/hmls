@@ -113,14 +113,14 @@ map alongside a real-time event log. Observers see the complete game
 state without fog-of-war restrictions and do not affect gameplay.
 
 ```bash
-uv run hmls-observer --url ws://localhost:8765/ws --name "Spectator"
+uv run hmls-observer ws://localhost:8765/ws --name "Spectator"
 ```
 
 **Arguments:**
 
 | Argument | Description |
 |---|---|
-| `--url URL` | WebSocket server URL (default `ws://localhost:8765/ws`) |
+| `server_url` | WebSocket server URL (e.g. `ws://localhost:8765/ws`) |
 | `--name NAME` | Display name for this observer (default "Observer") |
 
 ### Game Client
