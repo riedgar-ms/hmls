@@ -1,6 +1,10 @@
 # hmls
 
-Assorted Experiments in AI
+Assorted Experiments in AI.
+This is a collection of packages for playing a simple tank game.
+Two players take turns moving their tanks around a landscape (with cells which are either passable or impassable), subject to fog-of-war.
+On each turn, the active tank can move forward, turn left, turn right, fire or pass.
+The ultimate goal is to train a model to play this game.
 
 ## Packages
 
