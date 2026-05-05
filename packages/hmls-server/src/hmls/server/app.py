@@ -422,6 +422,7 @@ class GameSession:
                 action=entry.applied_action,
                 valid=entry.valid,
                 reason=entry.reason,
+                hit=entry.hit,
             )
             if team in self.websockets:
                 try:

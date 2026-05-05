@@ -1,6 +1,6 @@
 """HMLS Core – foundational types for the tank game."""
 
-from hmls.core.actions import ActionResult, apply_action, validate_action
+from hmls.core.actions import ActionResult, ApplyResult, apply_action, validate_action
 from hmls.core.engine import GameEngine, GameResult, HistoryEntry
 from hmls.core.game_state import GameState
 from hmls.core.map import CellType, GameMap
@@ -22,6 +22,7 @@ from hmls.core.visibility import (
 __all__ = [
     "Action",
     "ActionResult",
+    "ApplyResult",
     "CellType",
     "Direction",
     "FogCell",

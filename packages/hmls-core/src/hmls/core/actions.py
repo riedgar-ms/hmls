@@ -26,6 +26,21 @@ class ActionResult(BaseModel):
     reason: str = ""
 
 
+class ApplyResult(BaseModel):
+    """Outcome of applying an action.
+
+    Attributes:
+        state: The new game state after the action is applied.
+        hit: Whether a fire action hit an enemy tank.  ``True`` if an
+            alive enemy was destroyed, ``False`` if the shot missed (no
+            target, out of bounds, or target already dead).  ``None`` for
+            non-fire actions.
+    """
+
+    state: GameState
+    hit: bool | None = None
+
+
 # ── Validation ────────────────────────────────────────────────────────
 
 
@@ -94,8 +109,10 @@ def _replace_tank(tanks: list[Tank], updated: Tank) -> list[Tank]:
     return [updated if t.id == updated.id else t for t in tanks]
 
 
-def apply_action(state: GameState, game_map: GameMap, tank_id: TankId, action: Action) -> GameState:
-    """Apply *action* for *tank_id* and return a new :class:`GameState`.
+def apply_action(
+    state: GameState, game_map: GameMap, tank_id: TankId, action: Action
+) -> ApplyResult:
+    """Apply *action* for *tank_id* and return an :class:`ApplyResult`.
 
     **Move semantics:**
 
@@ -117,6 +134,9 @@ def apply_action(state: GameState, game_map: GameMap, tank_id: TankId, action: A
         tank_id: The tank performing the action.
         action: The action to apply.
 
+    Returns:
+        An :class:`ApplyResult` with the new state and hit information.
+
     Raises:
         KeyError: If *tank_id* does not exist.
         ValueError: If the tank is dead or it is not their turn.
@@ -128,6 +148,7 @@ def apply_action(state: GameState, game_map: GameMap, tank_id: TankId, action: A
         raise ValueError(f"It is not tank {tank_id!r}'s turn (current: {state.current_tank_id!r})")
 
     new_tanks = list(state.tanks)
+    hit: bool | None = None
 
     if action == Action.MOVE_FORWARD:
         result = validate_action(state, game_map, tank_id, action)
@@ -148,6 +169,7 @@ def apply_action(state: GameState, game_map: GameMap, tank_id: TankId, action: A
         new_tanks = _replace_tank(new_tanks, turned)
 
     elif action == Action.FIRE:
+        hit = False
         dx, dy = tank.direction.forward_delta()
         target_pos = Position(tank.position.x + dx, tank.position.y + dy)
         occupied = state.tank_positions
@@ -158,8 +180,9 @@ def apply_action(state: GameState, game_map: GameMap, tank_id: TankId, action: A
                 if target_tank.alive:
                     destroyed = target_tank.model_copy(update={"alive": False})
                     new_tanks = _replace_tank(new_tanks, destroyed)
+                    hit = True
 
     # PASS: nothing to do
 
     new_state = state.model_copy(update={"tanks": new_tanks})
-    return new_state
+    return ApplyResult(state=new_state, hit=hit)

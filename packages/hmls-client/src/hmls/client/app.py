@@ -345,7 +345,14 @@ class ClientApp(App[None]):
 
     def _handle_turn_result(self, msg: TurnResultMessage) -> None:
         """Handle a turn result notification."""
-        status = "✓" if msg.valid else f"✗ ({msg.reason})"
+        if not msg.valid:
+            status = f"✗ ({msg.reason})"
+        elif msg.hit is True:
+            status = "[bold green]HIT![/bold green]"
+        elif msg.hit is False:
+            status = "miss"
+        else:
+            status = "✓"
         self._write_log(f"  {msg.tank_id} → {msg.action.value} {status}")
 
     def _handle_game_over(self, msg: GameOverMessage) -> None:
