@@ -1,6 +1,10 @@
 # hmls
 
-Assorted Experiments in AI
+Assorted Experiments in AI.
+This is a collection of packages for playing a simple tank game.
+Two players take turns moving their tanks around a landscape (with cells which are either passable or impassable), subject to fog-of-war.
+On each turn, the active tank can move forward, turn left, turn right, fire or pass.
+The ultimate goal is to train a model to play this game.
 
 ## Packages
 
@@ -113,14 +117,14 @@ map alongside a real-time event log. Observers see the complete game
 state without fog-of-war restrictions and do not affect gameplay.
 
 ```bash
-uv run hmls-observer --url ws://localhost:8765/ws --name "Spectator"
+uv run hmls-observer ws://localhost:8765/ws --name "Spectator"
 ```
 
 **Arguments:**
 
 | Argument | Description |
 |---|---|
-| `--url URL` | WebSocket server URL (default `ws://localhost:8765/ws`) |
+| `server_url` | WebSocket server URL (e.g. `ws://localhost:8765/ws`) |
 | `--name NAME` | Display name for this observer (default "Observer") |
 
 ### Game Client

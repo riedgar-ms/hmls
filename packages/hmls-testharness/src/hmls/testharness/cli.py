@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import argparse
 import sys
-from pathlib import Path
 
+from hmls.core.cli_args import add_game_setup_args
 from hmls.core.game_state import GameState
 from hmls.core.map import CellType, GameMap  # noqa: F401
 from hmls.core.map import load_map as load_map
@@ -27,34 +27,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         prog="hmls-testharness",
         description="Interactive TUI test harness for the HMLS tank game",
     )
-    parser.add_argument(
-        "map_file",
-        type=Path,
-        help="Path to a JSON map file (GameMap)",
-    )
-    parser.add_argument(
-        "tanks_per_player",
-        type=int,
-        help="Number of tanks each player starts with",
-    )
-    parser.add_argument(
-        "--patch-size",
-        type=int,
-        default=9,
-        help="Visibility patch size (odd, >= 3; default 9)",
-    )
-    parser.add_argument(
-        "--max-turns",
-        type=int,
-        default=200,
-        help="Maximum number of individual turns (default 200)",
-    )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=None,
-        help="Random seed for tank placement (default: random)",
-    )
+    add_game_setup_args(parser)
     return parser.parse_args(argv)
 
 

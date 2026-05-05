@@ -209,7 +209,7 @@ class ObserverApp(LogStatusMixin, App[None]):
 def main() -> None:
     """Entry point for the observer application."""
     args = parse_args()
-    app = ObserverApp(args.url, args.name)
+    app = ObserverApp(args.server_url, args.name)
     app.title = "HMLS Game Observer"
     app.run()
 

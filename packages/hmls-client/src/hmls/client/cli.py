@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 
+from hmls.protocol.cli_args import add_connection_args
+
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse command-line arguments for the game client.
@@ -18,15 +20,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         prog="hmls-client",
         description="WebSocket game client for the HMLS tank game",
     )
-    parser.add_argument(
-        "server_url",
-        type=str,
-        help="WebSocket server URL (e.g. ws://localhost:8765/ws)",
-    )
-    parser.add_argument(
-        "--name",
-        type=str,
-        default="Player",
-        help="Player name sent to the server (default: 'Player')",
+    add_connection_args(
+        parser,
+        name_default="Player",
+        name_help="Player name sent to the server",
     )
     return parser.parse_args(argv)
