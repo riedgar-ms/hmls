@@ -101,9 +101,7 @@ class RemotePlayer(PendingActionPlayer):
             "The game loop must await wait_for_action() before engine.step()."
         )
 
-    def _on_action_consumed(
-        self, tank_id: TankId, view: PlayerView, action: Action
-    ) -> None:
+    def _on_action_consumed(self, tank_id: TankId, view: PlayerView, action: Action) -> None:
         """Reset async turn state after action is consumed."""
         self._action_future = None
         self._current_view = None

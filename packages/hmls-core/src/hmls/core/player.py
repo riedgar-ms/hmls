@@ -111,9 +111,7 @@ class PendingActionPlayer(Player):
             "Pre-load an action before calling engine.step()."
         )
 
-    def _on_action_consumed(
-        self, tank_id: TankId, view: PlayerView, action: Action
-    ) -> None:
+    def _on_action_consumed(self, tank_id: TankId, view: PlayerView, action: Action) -> None:
         """Hook called after the pending action is consumed.
 
         Override to reset additional state (e.g. async futures, UI flags).

@@ -52,9 +52,7 @@ class InteractivePlayer(PendingActionPlayer):
             "Call set_next_action() before engine.step()."
         )
 
-    def _on_action_consumed(
-        self, tank_id: TankId, view: PlayerView, action: Action
-    ) -> None:
+    def _on_action_consumed(self, tank_id: TankId, view: PlayerView, action: Action) -> None:
         """Clear the last-invalid tracking when a new action is consumed."""
         self._last_invalid = None
 
