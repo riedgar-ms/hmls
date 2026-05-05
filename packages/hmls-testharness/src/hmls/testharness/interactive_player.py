@@ -6,13 +6,13 @@ the TUI drives by pre-loading an action before each engine step.
 
 from __future__ import annotations
 
-from hmls.core.player import Player
+from hmls.core.player import PendingActionPlayer
 from hmls.core.tank import TankId
 from hmls.core.types import Action
 from hmls.core.visibility import PlayerView
 
 
-class InteractivePlayer(Player):
+class InteractivePlayer(PendingActionPlayer):
     """A player whose actions are supplied by the TUI.
 
     Before each call to :meth:`GameEngine.step`, the TUI calls
@@ -26,7 +26,6 @@ class InteractivePlayer(Player):
 
     def __init__(self, team: str) -> None:
         super().__init__(team)
-        self._pending_action: Action | None = None
         self._last_invalid: tuple[TankId, Action, str] | None = None
 
     def set_next_action(self, action: Action) -> None:
@@ -46,28 +45,16 @@ class InteractivePlayer(Player):
         """
         return self._last_invalid
 
-    def choose_action(self, tank_id: TankId, view: PlayerView) -> Action:
-        """Return the pre-loaded action.
+    def _no_action_message(self) -> str:
+        """Return error message specific to InteractivePlayer."""
+        return (
+            f"No action set for InteractivePlayer (team={self.team!r}). "
+            "Call set_next_action() before engine.step()."
+        )
 
-        Args:
-            tank_id: The tank that must act this turn.
-            view: Fog-of-war information for the player's team.
-
-        Returns:
-            The action previously set via :meth:`set_next_action`.
-
-        Raises:
-            RuntimeError: If no action has been pre-loaded.
-        """
-        if self._pending_action is None:
-            raise RuntimeError(
-                f"No action set for InteractivePlayer (team={self.team!r}). "
-                "Call set_next_action() before engine.step()."
-            )
-        action = self._pending_action
-        self._pending_action = None
+    def _on_action_consumed(self, tank_id: TankId, view: PlayerView, action: Action) -> None:
+        """Clear the last-invalid tracking when a new action is consumed."""
         self._last_invalid = None
-        return action
 
     def notify_invalid_action(self, tank_id: TankId, action: Action, reason: str) -> None:
         """Record the invalid action for the TUI to display.
