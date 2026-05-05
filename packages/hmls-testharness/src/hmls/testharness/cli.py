@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import argparse
-import random
 import sys
 from pathlib import Path
 
 from hmls.core.game_state import GameState
-from hmls.core.map import CellType, GameMap
+from hmls.core.map import CellType, GameMap  # noqa: F401
+from hmls.core.map import load_map as load_map
+from hmls.core.placement import InsufficientPassableCellsError
+from hmls.core.placement import place_tanks as _place_tanks_core
 from hmls.core.tank import Tank
-from hmls.core.types import Direction, Position
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -57,29 +58,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def load_map(path: Path) -> GameMap:
-    """Load a :class:`GameMap` from a JSON file.
-
-    Args:
-        path: Path to the JSON file.
-
-    Returns:
-        The deserialised game map.
-
-    Raises:
-        SystemExit: If the file does not exist or cannot be parsed.
-    """
-    if not path.exists():
-        print(f"Error: map file not found: {path}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        text = path.read_text(encoding="utf-8")
-        return GameMap.model_validate_json(text)
-    except Exception as exc:
-        print(f"Error loading map: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-
 def place_tanks(
     game_map: GameMap,
     tanks_per_player: int,
@@ -88,9 +66,9 @@ def place_tanks(
 ) -> list[Tank]:
     """Place tanks randomly on passable cells for two teams.
 
-    Teams are named ``"A"`` and ``"B"``.  Tanks are assigned IDs like
-    ``"A1"``, ``"A2"``, ``"B1"``, ``"B2"``, etc.  Each tank gets a
-    random direction.
+    Thin wrapper around :func:`hmls.core.placement.place_tanks` that
+    exits the process with an error message if there are not enough
+    passable cells.
 
     Args:
         game_map: The map to place tanks on.
@@ -103,35 +81,11 @@ def place_tanks(
     Raises:
         SystemExit: If there are not enough passable cells.
     """
-    total_needed = tanks_per_player * 2
-    passable_positions = [
-        Position(x, y) for x, y in game_map.all_positions() if game_map[x, y] == CellType.PASSABLE
-    ]
-    if len(passable_positions) < total_needed:
-        print(
-            f"Error: need {total_needed} passable cells but map only has {len(passable_positions)}",
-            file=sys.stderr,
-        )
+    try:
+        return _place_tanks_core(game_map, tanks_per_player, seed=seed)
+    except InsufficientPassableCellsError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
-
-    rng = random.Random(seed)
-    chosen = rng.sample(passable_positions, total_needed)
-    directions = list(Direction)
-    tanks: list[Tank] = []
-
-    for team_idx, team_name in enumerate(["A", "B"]):
-        for i in range(tanks_per_player):
-            pos = chosen[team_idx * tanks_per_player + i]
-            tanks.append(
-                Tank(
-                    id=f"{team_name}{i + 1}",
-                    team=team_name,
-                    position=pos,
-                    direction=rng.choice(directions),
-                )
-            )
-
-    return tanks
 
 
 def build_initial_state(tanks: list[Tank]) -> GameState:

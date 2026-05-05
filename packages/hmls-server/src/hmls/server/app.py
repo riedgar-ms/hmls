@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import random
 import sys
 from pathlib import Path
 
@@ -18,10 +17,10 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from pydantic import TypeAdapter
 
 from hmls.core.engine import GameEngine
-from hmls.core.map import CellType, GameMap
+from hmls.core.map import GameMap, load_map
+from hmls.core.placement import InsufficientPassableCellsError, place_tanks
 from hmls.core.player import Player
 from hmls.core.tank import Tank
-from hmls.core.types import Direction, Position
 from hmls.core.visibility import TankInfo, build_player_view
 from hmls.protocol import (
     ActionMessage,
@@ -49,55 +48,18 @@ _client_message_adapter: TypeAdapter[ClientMessage] = TypeAdapter(ClientMessage)
 # ── Helpers ───────────────────────────────────────────────────────────
 
 
-def _load_map(path: Path) -> GameMap:
-    """Load a GameMap from a JSON file."""
-    if not path.exists():
-        print(f"Error: map file not found: {path}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        text = path.read_text(encoding="utf-8")
-        return GameMap.model_validate_json(text)
-    except Exception as exc:
-        print(f"Error loading map: {exc}", file=sys.stderr)
-        sys.exit(1)
-
-
-def _place_tanks(
+def _place_tanks_or_exit(
     game_map: GameMap,
     tanks_per_player: int,
     *,
     seed: int | None = None,
 ) -> list[Tank]:
-    """Place tanks randomly on passable cells for two teams."""
-    total_needed = tanks_per_player * 2
-    passable_positions = [
-        Position(x, y) for x, y in game_map.all_positions() if game_map[x, y] == CellType.PASSABLE
-    ]
-    if len(passable_positions) < total_needed:
-        print(
-            f"Error: need {total_needed} passable cells but map only has {len(passable_positions)}",
-            file=sys.stderr,
-        )
+    """Place tanks, exiting the process on failure."""
+    try:
+        return place_tanks(game_map, tanks_per_player, seed=seed)
+    except InsufficientPassableCellsError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
-
-    rng = random.Random(seed)
-    chosen = rng.sample(passable_positions, total_needed)
-    directions = list(Direction)
-    tanks: list[Tank] = []
-
-    for team_idx, team_name in enumerate(["A", "B"]):
-        for i in range(tanks_per_player):
-            pos = chosen[team_idx * tanks_per_player + i]
-            tanks.append(
-                Tank(
-                    id=f"{team_name}{i + 1}",
-                    team=team_name,
-                    position=pos,
-                    direction=rng.choice(directions),
-                )
-            )
-
-    return tanks
 
 
 # ── Game session state ────────────────────────────────────────────────
@@ -508,8 +470,8 @@ def main() -> None:
     )
 
     args = parse_args()
-    game_map = _load_map(args.map_file)
-    tanks = _place_tanks(game_map, args.tanks_per_player, seed=args.seed)
+    game_map = load_map(args.map_file)
+    tanks = _place_tanks_or_exit(game_map, args.tanks_per_player, seed=args.seed)
 
     session = GameSession(
         game_map=game_map,
