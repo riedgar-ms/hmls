@@ -23,6 +23,7 @@ from hmls.core.player import Player
 from hmls.core.types import Action
 from hmls.testharness.cli import build_initial_state, load_map, parse_args, place_tanks
 from hmls.testharness.interactive_player import InteractivePlayer
+from hmls.uxcommon import LogStatusMixin
 from hmls.uxcommon.widgets.map_view import MapView
 from hmls.uxcommon.widgets.player_view import PlayerViewRegion
 
@@ -75,7 +76,7 @@ class SaveDialog(ModalScreen[str | None]):
 # ── Main application ──────────────────────────────────────────────────
 
 
-class TestHarnessApp(App[None]):
+class TestHarnessApp(LogStatusMixin, App[None]):
     """Interactive TUI for testing the HMLS tank game.
 
     The user controls each tank in turn using keyboard keys.
@@ -100,7 +101,7 @@ class TestHarnessApp(App[None]):
     #player-b-region {
         height: auto;
     }
-    #action-log {
+    #log-panel {
         height: auto;
         max-height: 5;
         border-top: solid $primary;
@@ -160,7 +161,7 @@ class TestHarnessApp(App[None]):
             id="player-b-region",
         )
 
-        yield RichLog(id="action-log", highlight=True, markup=True, max_lines=50)
+        yield RichLog(id="log-panel", highlight=True, markup=True, max_lines=50)
         yield Static(self._build_status_text(), id="status-bar")
         yield Footer()
 
@@ -191,20 +192,10 @@ class TestHarnessApp(App[None]):
         map_view.active_tank_id = self._engine.current_tank_id
 
     def _log_action_result(self, tank_id: str, entry: HistoryEntry) -> None:
-        """Log an action result to the action log panel."""
-        if not entry.valid:
-            status = f"✗ ({entry.reason})"
-        elif entry.hit is True:
-            status = "[bold green]HIT![/bold green]"
-        elif entry.hit is False:
-            status = "miss"
-        else:
-            status = "✓"
-        try:
-            log = self.query_one("#action-log", RichLog)
-            log.write(f"  {tank_id} → {entry.applied_action.value} {status}")
-        except Exception:
-            pass
+        """Log an action result to the log panel."""
+        self._log_turn_result(
+            tank_id, entry.applied_action.value, entry.valid, entry.reason, entry.hit
+        )
 
     def _do_action(self, action: Action) -> None:
         """Execute an action and refresh the UI."""
