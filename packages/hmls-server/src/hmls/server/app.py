@@ -18,7 +18,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from pydantic import TypeAdapter
 
 from hmls.core.engine import GameEngine
-from hmls.core.map import CellType, GameMap
+from hmls.core.map import CellType, GameMap, load_map
 from hmls.core.player import Player
 from hmls.core.tank import Tank
 from hmls.core.types import Direction, Position
@@ -47,19 +47,6 @@ logger = logging.getLogger("hmls.server")
 _client_message_adapter: TypeAdapter[ClientMessage] = TypeAdapter(ClientMessage)
 
 # ── Helpers ───────────────────────────────────────────────────────────
-
-
-def _load_map(path: Path) -> GameMap:
-    """Load a GameMap from a JSON file."""
-    if not path.exists():
-        print(f"Error: map file not found: {path}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        text = path.read_text(encoding="utf-8")
-        return GameMap.model_validate_json(text)
-    except Exception as exc:
-        print(f"Error loading map: {exc}", file=sys.stderr)
-        sys.exit(1)
 
 
 def _place_tanks(
@@ -508,7 +495,7 @@ def main() -> None:
     )
 
     args = parse_args()
-    game_map = _load_map(args.map_file)
+    game_map = load_map(args.map_file)
     tanks = _place_tanks(game_map, args.tanks_per_player, seed=args.seed)
 
     session = GameSession(

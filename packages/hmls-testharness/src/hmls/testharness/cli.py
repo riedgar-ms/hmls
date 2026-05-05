@@ -8,7 +8,8 @@ import sys
 from pathlib import Path
 
 from hmls.core.game_state import GameState
-from hmls.core.map import CellType, GameMap
+from hmls.core.map import CellType, GameMap  # noqa: F401
+from hmls.core.map import load_map as load_map
 from hmls.core.tank import Tank
 from hmls.core.types import Direction, Position
 
@@ -56,28 +57,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     return parser.parse_args(argv)
 
-
-def load_map(path: Path) -> GameMap:
-    """Load a :class:`GameMap` from a JSON file.
-
-    Args:
-        path: Path to the JSON file.
-
-    Returns:
-        The deserialised game map.
-
-    Raises:
-        SystemExit: If the file does not exist or cannot be parsed.
-    """
-    if not path.exists():
-        print(f"Error: map file not found: {path}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        text = path.read_text(encoding="utf-8")
-        return GameMap.model_validate_json(text)
-    except Exception as exc:
-        print(f"Error loading map: {exc}", file=sys.stderr)
-        sys.exit(1)
 
 
 def place_tanks(
