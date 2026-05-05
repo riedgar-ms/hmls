@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import asyncio
 
-from hmls.core.player import Player
+from hmls.core.player import PendingActionPlayer
 from hmls.core.tank import TankId
 from hmls.core.types import Action
 from hmls.core.visibility import PlayerView
 
 
-class RemotePlayer(Player):
+class RemotePlayer(PendingActionPlayer):
     """A player whose actions come from a remote WebSocket client.
 
     The game loop (async) sets up a pending turn by calling
@@ -25,9 +25,10 @@ class RemotePlayer(Player):
     The WebSocket handler calls :meth:`submit_action` when it receives
     the client's action message.
 
-    The synchronous :meth:`choose_action` (called by the engine) simply
-    returns the action that was already submitted — the game loop must
-    ensure the action is available before calling ``engine.step()``.
+    The synchronous :meth:`choose_action` (inherited from
+    :class:`PendingActionPlayer`) returns the action that was already
+    submitted — the game loop must ensure the action is available
+    before calling ``engine.step()``.
 
     Args:
         team: The team identifier this player controls.
@@ -35,7 +36,6 @@ class RemotePlayer(Player):
 
     def __init__(self, team: str) -> None:
         super().__init__(team)
-        self._pending_action: Action | None = None
         self._action_future: asyncio.Future[Action] | None = None
         self._current_view: PlayerView | None = None
         self._current_tank_id: TankId | None = None
@@ -94,34 +94,20 @@ class RemotePlayer(Player):
             raise RuntimeError("No pending turn or action already submitted")
         self._action_future.set_result(action)
 
-    def choose_action(self, tank_id: TankId, view: PlayerView) -> Action:
-        """Return the pre-submitted action.
+    def _no_action_message(self) -> str:
+        """Return error message specific to RemotePlayer."""
+        return (
+            f"No action submitted for RemotePlayer (team={self.team!r}). "
+            "The game loop must await wait_for_action() before engine.step()."
+        )
 
-        This is called by the engine synchronously. The game loop must
-        ensure :meth:`submit_action` has been called before invoking
-        ``engine.step()``.
-
-        Args:
-            tank_id: The tank that must act this turn.
-            view: Fog-of-war information (already sent to client).
-
-        Returns:
-            The action previously submitted via :meth:`submit_action`.
-
-        Raises:
-            RuntimeError: If no action has been submitted.
-        """
-        if self._pending_action is None:
-            raise RuntimeError(
-                f"No action submitted for RemotePlayer (team={self.team!r}). "
-                "The game loop must await wait_for_action() before engine.step()."
-            )
-        action = self._pending_action
-        self._pending_action = None
+    def _on_action_consumed(
+        self, tank_id: TankId, view: PlayerView, action: Action
+    ) -> None:
+        """Reset async turn state after action is consumed."""
         self._action_future = None
         self._current_view = None
         self._current_tank_id = None
-        return action
 
     def notify_invalid_action(self, tank_id: TankId, action: Action, reason: str) -> None:
         """Record invalid action notification (no-op for remote players).
