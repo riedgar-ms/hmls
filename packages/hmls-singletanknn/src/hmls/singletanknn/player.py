@@ -18,20 +18,10 @@ from hmls.core.player import Player
 from hmls.core.tank import TankId
 from hmls.core.types import Action, Position
 from hmls.core.visibility import PlayerView, TankPatch, VisibleCell
+from hmls.singletanknn.constants import ACTION_INDEX_TO_ACTION
 from hmls.singletanknn.encoding import encode_patch
 from hmls.singletanknn.model import TankPolicyNetwork
 from hmls.singletanknn.trajectory import Episode
-
-# Mapping from action index to Action enum (stable ordering).
-ACTION_INDEX_TO_ACTION: list[Action] = [
-    Action.MOVE_FORWARD,
-    Action.TURN_LEFT,
-    Action.TURN_RIGHT,
-    Action.FIRE,
-    Action.PASS,
-]
-
-ACTION_TO_INDEX: dict[Action, int] = {a: i for i, a in enumerate(ACTION_INDEX_TO_ACTION)}
 
 
 class NNPlayer(Player):
@@ -69,6 +59,9 @@ class NNPlayer(Player):
         self._hidden: torch.Tensor = model.initial_hidden(batch_size=1).squeeze(0)
         self._explored_positions: set[Position] = set()
         self._episode = Episode()
+        self._last_new_positions: int = 0
+        self._log_prob_tensors: list[torch.Tensor] = []
+        self._last_patch: TankPatch | None = None
 
     @property
     def mode(self) -> Literal["play", "learn"]:
@@ -100,6 +93,23 @@ class NNPlayer(Player):
         """Expected patch side length."""
         return self._patch_size
 
+    @property
+    def log_prob_tensors(self) -> list[torch.Tensor]:
+        """Log-probability tensors from the computation graph (learn mode).
+
+        These retain gradient information for backpropagation, unlike
+        the float log_probs stored in the Episode.
+        """
+        return self._log_prob_tensors
+
+    @property
+    def last_patch(self) -> TankPatch | None:
+        """The last egocentric patch seen by this player.
+
+        Set during :meth:`choose_action`; ``None`` before the first step.
+        """
+        return self._last_patch
+
     def reset_episode(self) -> None:
         """Reset state for a new episode.
 
@@ -109,6 +119,9 @@ class NNPlayer(Player):
         self._hidden = self._model.initial_hidden(batch_size=1).squeeze(0)
         self._explored_positions = set()
         self._episode = Episode()
+        self._last_new_positions = 0
+        self._log_prob_tensors = []
+        self._last_patch = None
 
     def choose_action(self, tank_id: TankId, view: PlayerView) -> Action:
         """Choose an action using the neural network.
@@ -138,6 +151,8 @@ class NNPlayer(Player):
             # Tank has no patch (shouldn't happen for alive tank)
             return Action.PASS
 
+        self._last_patch = patch
+
         # Validate patch size
         grid_size = len(patch.grid)
         if grid_size != self._patch_size:
@@ -147,7 +162,8 @@ class NNPlayer(Player):
             )
 
         # Update exploration tracking
-        self._update_exploration(patch)
+        new_positions = self._update_exploration(patch)
+        self._last_new_positions = new_positions
 
         # Encode patch to tensor
         patch_tensor = encode_patch(patch, self._team)
@@ -165,7 +181,9 @@ class NNPlayer(Player):
             dist = Categorical(probs)
             action_tensor = dist.sample()  # type: ignore[no-untyped-call]
             action_idx = int(action_tensor.item())
-            log_prob = float(dist.log_prob(action_tensor).item())  # type: ignore[no-untyped-call]
+            log_prob_tensor: torch.Tensor = dist.log_prob(action_tensor)  # type: ignore[no-untyped-call]
+            self._log_prob_tensors.append(log_prob_tensor)
+            log_prob = float(log_prob_tensor.item())
             self._episode.add_step(action_index=action_idx, log_prob=log_prob)
 
         return ACTION_INDEX_TO_ACTION[action_idx]
@@ -212,14 +230,5 @@ class NNPlayer(Player):
 
         This is a convenience for the reward function. Returns 0 if no
         step has been taken yet.
-
-        Note:
-            This value is computed during :meth:`choose_action` but not
-            stored per-step.  For accurate per-step tracking, the training
-            loop should call :meth:`_update_exploration` tracking externally
-            or this method immediately after choose_action.
         """
-        # This is handled internally — the training loop should track
-        # new_positions from the return value of _update_exploration.
-        # For external access we expose explored_positions directly.
-        return 0
+        return self._last_new_positions

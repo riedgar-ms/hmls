@@ -1,0 +1,237 @@
+# hmls-reinforcetrainer
+
+REINFORCE policy gradient trainer for HMLS single-tank neural network models.
+
+## Overview
+
+This package trains `singletanknn` neural network models by having two networks play against each other on randomly generated maps. It uses the REINFORCE algorithm (policy gradient with baseline normalisation) to improve each network's policy.
+
+## Installation
+
+From the workspace root:
+
+```bash
+uv sync
+```
+
+## Model Directory Structure
+
+Each model directory **must** contain two JSON configuration files before training starts:
+
+```
+models/player_a/
+├── model_config.json    # Neural network architecture
+├── reward_config.json   # Reward function parameters
+└── model.pt             # (created during training)
+```
+
+### `model_config.json`
+
+Defines the neural network architecture. Example:
+
+```json
+{
+  "patch_size": 9,
+  "cnn_channels": [32, 64],
+  "gru_hidden_size": 128
+}
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `patch_size` | int | `9` | Side length of input patch (≥ 3) |
+| `cnn_channels` | list[int] | `[32, 64]` | Output channels for each conv layer |
+| `gru_hidden_size` | int | `128` | Dimensionality of the GRU hidden state |
+
+The two models may have different `cnn_channels` and `gru_hidden_size`, but **`patch_size` must match** between them.
+
+### `reward_config.json`
+
+Defines the reward shaping parameters. Example:
+
+```json
+{
+  "hit_reward": 0.5,
+  "death_penalty": -1.0,
+  "win_reward": 1.0,
+  "loss_penalty": -1.0,
+  "step_penalty": -0.01,
+  "exploration_bonus": 0.02,
+  "invalid_move_penalty": -0.1,
+  "fire_miss_penalty": -0.05,
+  "missed_fire_penalty": -0.1,
+  "pass_penalty": -0.02,
+  "enemy_in_cone_reward": 0.01
+}
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `hit_reward` | float | `0.5` | Reward for hitting an enemy tank |
+| `death_penalty` | float | `-1.0` | Penalty when the player's tank dies |
+| `win_reward` | float | `1.0` | Reward for winning the game |
+| `loss_penalty` | float | `-1.0` | Penalty for losing the game |
+| `step_penalty` | float | `-0.01` | Per-step penalty (encourages faster play) |
+| `exploration_bonus` | float | `0.02` | Reward per newly discovered cell |
+| `invalid_move_penalty` | float | `-0.1` | Penalty for attempting an invalid action |
+| `fire_miss_penalty` | float | `-0.05` | Penalty for firing and missing |
+| `missed_fire_penalty` | float | `-0.1` | Penalty for not firing when an enemy is directly ahead |
+| `pass_penalty` | float | `-0.02` | Penalty for deliberately choosing to pass |
+| `enemy_in_cone_reward` | float | `0.01` | Per-enemy reward for visible enemies in the forward cone |
+
+Each model uses its own reward configuration, so you can experiment with different reward shaping strategies.
+
+## Usage
+
+### Basic self-play training (both models learn)
+
+Create a configuration file (e.g. `train_config.json`):
+
+```json
+{
+  "model_a": { "dir": "models/player_a" },
+  "model_b": { "dir": "models/player_b" }
+}
+```
+
+Then run:
+
+```bash
+uv run hmls-reinforcetrainer train_config.json
+```
+
+Both model directories must contain `model_config.json` and `reward_config.json`. If no `model.pt` exists, a fresh model is created using the architecture from `model_config.json`.
+
+### Train one model against a frozen opponent
+
+```json
+{
+  "model_a": { "dir": "models/trainee", "train": true },
+  "model_b": { "dir": "models/frozen_opponent", "train": false }
+}
+```
+
+### Full configuration example
+
+```json
+{
+  "model_a": { "dir": "models/player_a", "train": true },
+  "model_b": { "dir": "models/player_b", "train": true },
+  "map": {
+    "min_size": 15,
+    "max_size": 25,
+    "impassable_fraction": 0.25,
+    "strategy": "Blob & Line"
+  },
+  "game": {
+    "games_per_map": 20,
+    "total_maps": 500,
+    "max_turns": 300,
+    "patch_size": 9
+  },
+  "output": {
+    "sample_game_dir": "output/samples",
+    "sample_game_interval": 100,
+    "save_weights_interval": 200
+  },
+  "hyperparameters": {
+    "learning_rate": 0.0005,
+    "gamma": 0.995,
+    "seed": 42
+  }
+}
+```
+
+```bash
+uv run hmls-reinforcetrainer full_config.json
+```
+
+### Running as a Python module
+
+```bash
+uv run python -m hmls.reinforcetrainer train_config.json
+```
+
+## Configuration Reference
+
+The configuration file is a JSON object with the following sections. All sections except `model_a` and `model_b` are optional and use sensible defaults.
+
+**Path convention:** All paths in the JSON file should use unix-style forward slashes (e.g. `"output/samples"`), even on Windows. They are converted to platform-native paths automatically.
+
+### `model_a` / `model_b` (required)
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `dir` | string | *(required)* | Path to model directory (must contain config files) |
+| `train` | bool | `true` | Whether to train this model (false = frozen opponent) |
+
+### `map`
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `min_size` | int | `15` | Minimum width/height of generated maps (≥5) |
+| `max_size` | int | `25` | Maximum width/height of generated maps (≥ min_size) |
+| `impassable_fraction` | float | `0.3` | Fraction of cells that are impassable (0.0–0.8) |
+| `strategy` | string | `"Blob & Line"` | Map generation strategy name |
+
+Each time a new map is generated, the width and height are chosen independently and uniformly at random from the inclusive range [`min_size`, `max_size`].
+
+### `game`
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `games_per_map` | int | `10` | Games played on each map before regeneration |
+| `total_maps` | int | `100` | Total number of maps to generate |
+| `max_turns` | int | `200` | Maximum turns per game before draw |
+| `patch_size` | int | `9` | Side length of visibility patches (must be odd, ≥ 3) |
+
+The `patch_size` must match the `patch_size` in both models' `model_config.json`. A mismatch will cause a startup error.
+
+### `output`
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `sample_game_dir` | string | `"sample_games"` | Directory for sample replay files |
+| `sample_game_interval` | int | `50` | Save a sample game every N games |
+| `save_weights_interval` | int | `100` | Save model weights every N games |
+
+### `hyperparameters`
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `learning_rate` | float | `0.001` | Adam optimizer learning rate (>0) |
+| `gamma` | float | `0.99` | Discount factor for return computation (0–1] |
+| `seed` | int \| null | `null` | Random seed for reproducibility |
+
+## Output
+
+### Model weights
+
+Models are saved as `model.pt` files in the respective model directories. They are saved:
+- Periodically (every `save_weights_interval` games)
+- At the end of training
+
+If training is interrupted, the most recent periodic save will be available to resume from.
+
+### Sample games
+
+Sample games are saved as JSON files in the `sample_game_dir` directory, named `game_000050.json`, `game_000100.json`, etc. These files are in the standard `GameResult` format and can be viewed using the replay viewer:
+
+```bash
+uv run hmls-replayviewer output/samples/game_000050.json
+```
+
+### Progress output
+
+The trainer prints progress to stdout after each map is completed, showing:
+- Completion percentage
+- Games played
+- Win/loss/draw counts
+- Average policy gradient loss (for models that are training)
+
+## Training tips
+
+- **Start small**: Use `"total_maps": 10, "games_per_map": 5` to verify everything works before long runs.
+- **Map variety**: More maps with fewer games each gives broader generalisation. Fewer maps with more games gives deeper exploitation of each map's structure.
+- **Self-play vs frozen**: Self-play trains faster initially but can lead to co-adapted strategies. Training against a frozen opponent is more stable but may converge slower.
+- **Monitoring**: Check sample games regularly in the replay viewer to see if agents are learning meaningful behaviour (exploration, combat, movement).

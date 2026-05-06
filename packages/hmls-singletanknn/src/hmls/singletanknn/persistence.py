@@ -4,6 +4,10 @@ Models are saved as a single file containing both the network weights
 (state_dict) and the :class:`~hmls.singletanknn.model.ModelConfig` that
 defines the architecture.  This ensures that a loaded model can be
 reconstructed without knowing the original hyperparameters.
+
+Standalone JSON configuration files (``model_config.json`` and
+``reward_config.json``) are also supported for use by the training
+framework, where config must exist before any weights are produced.
 """
 
 from __future__ import annotations
@@ -15,6 +19,9 @@ import torch
 
 from hmls.singletanknn.model import ModelConfig, TankPolicyNetwork
 from hmls.singletanknn.reward import DefaultRewardConfig
+
+MODEL_CONFIG_FILENAME = "model_config.json"
+REWARD_CONFIG_FILENAME = "reward_config.json"
 
 
 def save_model(
@@ -42,12 +49,7 @@ def save_model(
     """
     save_data: dict[str, Any] = {
         "state_dict": model.state_dict(),
-        "config": {
-            "patch_size": model.config.patch_size,
-            "cnn_channels": list(model.config.cnn_channels),
-            "gru_hidden_size": model.config.gru_hidden_size,
-            "num_actions": model.config.num_actions,
-        },
+        "config": model.config.model_dump(),
     }
     if reward_config is not None:
         save_data["reward_config"] = reward_config.model_dump()
@@ -86,12 +88,7 @@ def load_model(
     save_data: dict[str, Any] = torch.load(path, weights_only=False)
 
     config_dict = save_data["config"]
-    config = ModelConfig(
-        patch_size=config_dict["patch_size"],
-        cnn_channels=tuple(config_dict["cnn_channels"]),
-        gru_hidden_size=config_dict["gru_hidden_size"],
-        num_actions=config_dict["num_actions"],
-    )
+    config = ModelConfig.model_validate(config_dict)
 
     model = TankPolicyNetwork(config)
     model.load_state_dict(save_data["state_dict"])
@@ -103,3 +100,80 @@ def load_model(
         metadata["reward_config"] = DefaultRewardConfig.model_validate(save_data["reward_config"])
 
     return model, metadata
+
+
+# --- Standalone JSON config file utilities ---
+
+
+def save_model_config(config: ModelConfig, directory: Path) -> None:
+    """Save a :class:`ModelConfig` as JSON to a model directory.
+
+    Writes ``model_config.json`` in the given directory.
+
+    Args:
+        config: The model configuration to save.
+        directory: Target directory (created if it does not exist).
+    """
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / MODEL_CONFIG_FILENAME
+    path.write_text(config.model_dump_json(indent=2))
+
+
+def load_model_config(directory: Path) -> ModelConfig:
+    """Load a :class:`ModelConfig` from a model directory.
+
+    Reads ``model_config.json`` from the given directory.
+
+    Args:
+        directory: Directory containing the config file.
+
+    Returns:
+        The loaded ModelConfig.
+
+    Raises:
+        FileNotFoundError: If ``model_config.json`` is not present.
+    """
+    path = directory / MODEL_CONFIG_FILENAME
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Model configuration file not found: {path}. "
+            f"Each model directory must contain a '{MODEL_CONFIG_FILENAME}'."
+        )
+    return ModelConfig.model_validate_json(path.read_text())
+
+
+def save_reward_config(config: DefaultRewardConfig, directory: Path) -> None:
+    """Save a :class:`DefaultRewardConfig` as JSON to a model directory.
+
+    Writes ``reward_config.json`` in the given directory.
+
+    Args:
+        config: The reward configuration to save.
+        directory: Target directory (created if it does not exist).
+    """
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / REWARD_CONFIG_FILENAME
+    path.write_text(config.model_dump_json(indent=2))
+
+
+def load_reward_config(directory: Path) -> DefaultRewardConfig:
+    """Load a :class:`DefaultRewardConfig` from a model directory.
+
+    Reads ``reward_config.json`` from the given directory.
+
+    Args:
+        directory: Directory containing the config file.
+
+    Returns:
+        The loaded DefaultRewardConfig.
+
+    Raises:
+        FileNotFoundError: If ``reward_config.json`` is not present.
+    """
+    path = directory / REWARD_CONFIG_FILENAME
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Reward configuration file not found: {path}. "
+            f"Each model directory must contain a '{REWARD_CONFIG_FILENAME}'."
+        )
+    return DefaultRewardConfig.model_validate_json(path.read_text())

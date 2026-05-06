@@ -7,29 +7,26 @@ turns), and a linear policy head that outputs logits over the 5 actions.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import torch
 import torch.nn as nn
+from pydantic import BaseModel, Field
 
+from hmls.singletanknn.constants import NUM_ACTIONS
 from hmls.singletanknn.encoding import NUM_CHANNELS
 
 
-@dataclass(frozen=True)
-class ModelConfig:
+class ModelConfig(BaseModel, frozen=True):
     """Hyperparameters for :class:`TankPolicyNetwork`.
 
     Attributes:
         patch_size: Side length of the input patch (must be odd, ≥ 3).
         cnn_channels: Number of output channels for each conv layer.
         gru_hidden_size: Dimensionality of the GRU hidden state.
-        num_actions: Number of discrete actions (default 5).
     """
 
-    patch_size: int = 9
+    patch_size: int = Field(default=9, ge=3)
     cnn_channels: tuple[int, ...] = (32, 64)
     gru_hidden_size: int = 128
-    num_actions: int = 5
 
 
 class TankPolicyNetwork(nn.Module):
@@ -68,7 +65,7 @@ class TankPolicyNetwork(nn.Module):
         self.gru = nn.GRUCell(self._cnn_output_size, self.config.gru_hidden_size)
 
         # Policy head: GRU hidden → action logits
-        self.policy_head = nn.Linear(self.config.gru_hidden_size, self.config.num_actions)
+        self.policy_head = nn.Linear(self.config.gru_hidden_size, NUM_ACTIONS)
 
     def forward(
         self, patch_tensor: torch.Tensor, hidden: torch.Tensor
@@ -84,7 +81,7 @@ class TankPolicyNetwork(nn.Module):
 
         Returns:
             A tuple of ``(logits, new_hidden)`` where logits has shape
-            ``[batch, num_actions]`` and new_hidden has the same shape
+            ``[batch, NUM_ACTIONS]`` and new_hidden has the same shape
             as the input hidden state.
         """
         # Ensure batch dimension
