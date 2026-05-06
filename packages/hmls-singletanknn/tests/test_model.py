@@ -5,7 +5,7 @@ from __future__ import annotations
 import torch
 
 from hmls.singletanknn.encoding import NUM_CHANNELS
-from hmls.singletanknn.model import ModelConfig, TankPolicyNetwork
+from hmls.singletanknn.model import NUM_ACTIONS, ModelConfig, TankPolicyNetwork
 
 
 def test_model_forward_unbatched() -> None:
@@ -19,7 +19,7 @@ def test_model_forward_unbatched() -> None:
 
     logits, new_hidden = model(patch_tensor, hidden)
 
-    assert logits.shape == (config.num_actions,)
+    assert logits.shape == (NUM_ACTIONS,)
     assert new_hidden.shape == (config.gru_hidden_size,)
 
 
@@ -35,7 +35,7 @@ def test_model_forward_batched() -> None:
 
     logits, new_hidden = model(patch_tensor, hidden)
 
-    assert logits.shape == (batch_size, config.num_actions)
+    assert logits.shape == (batch_size, NUM_ACTIONS)
     assert new_hidden.shape == (batch_size, config.gru_hidden_size)
 
 
@@ -49,7 +49,7 @@ def test_model_different_patch_sizes() -> None:
         x = torch.randn(NUM_CHANNELS, ps, ps)
         h = model.initial_hidden().squeeze(0)
         logits, _ = model(x, h)
-        assert logits.shape == (config.num_actions,)
+        assert logits.shape == (NUM_ACTIONS,)
 
 
 def test_initial_hidden_is_zero() -> None:

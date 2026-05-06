@@ -14,6 +14,63 @@ From the workspace root:
 uv sync
 ```
 
+## Model Directory Structure
+
+Each model directory **must** contain two JSON configuration files before training starts:
+
+```
+models/player_a/
+├── model_config.json    # Neural network architecture
+├── reward_config.json   # Reward function parameters
+└── model.pt             # (created during training)
+```
+
+### `model_config.json`
+
+Defines the neural network architecture. Example:
+
+```json
+{
+  "patch_size": 9,
+  "cnn_channels": [32, 64],
+  "gru_hidden_size": 128
+}
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `patch_size` | int | `9` | Side length of input patch (≥ 3) |
+| `cnn_channels` | list[int] | `[32, 64]` | Output channels for each conv layer |
+| `gru_hidden_size` | int | `128` | Dimensionality of the GRU hidden state |
+
+The two models may have different `cnn_channels` and `gru_hidden_size`, but **`patch_size` must match** between them.
+
+### `reward_config.json`
+
+Defines the reward shaping parameters. Example:
+
+```json
+{
+  "hit_reward": 0.5,
+  "death_penalty": -1.0,
+  "win_reward": 1.0,
+  "loss_penalty": -1.0,
+  "step_penalty": -0.01,
+  "exploration_bonus": 0.02
+}
+```
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `hit_reward` | float | `0.5` | Reward for hitting an enemy tank |
+| `death_penalty` | float | `-1.0` | Penalty when the player's tank dies |
+| `win_reward` | float | `1.0` | Reward for winning the game |
+| `loss_penalty` | float | `-1.0` | Penalty for losing the game |
+| `step_penalty` | float | `-0.01` | Per-step penalty (encourages faster play) |
+| `exploration_bonus` | float | `0.02` | Reward per newly discovered cell |
+
+Each model uses its own reward configuration, so you can experiment with different reward shaping strategies.
+
 ## Usage
 
 ### Basic self-play training (both models learn)
@@ -24,7 +81,7 @@ uv run hmls-reinforcetrainer \
     --model-b-dir models/player_b
 ```
 
-Both models will be created fresh if the directories are empty, or loaded from existing `model.pt` files if present.
+Both model directories must contain `model_config.json` and `reward_config.json`. If no `model.pt` exists, a fresh model is created using the architecture from `model_config.json`.
 
 ### Train one model against a frozen opponent
 
@@ -66,8 +123,8 @@ uv run python -m hmls.reinforcetrainer --model-a-dir models/a --model-b-dir mode
 
 | Parameter | CLI Flag | Default | Description |
 |-----------|----------|---------|-------------|
-| Model A directory | `--model-a-dir` | *(required)* | Path to directory for model A weights |
-| Model B directory | `--model-b-dir` | *(required)* | Path to directory for model B weights |
+| Model A directory | `--model-a-dir` | *(required)* | Path to model A directory (must contain config files) |
+| Model B directory | `--model-b-dir` | *(required)* | Path to model B directory (must contain config files) |
 | Freeze A | `--freeze-a` | `false` | Don't train model A (use as fixed opponent) |
 | Freeze B | `--freeze-b` | `false` | Don't train model B (use as fixed opponent) |
 | Map width | `--map-width` | `20` | Width of generated maps (≥5) |

@@ -79,7 +79,8 @@ def run_game(
     train_a: bool = True,
     train_b: bool = True,
     max_turns: int = 200,
-    reward_fn: RewardFunction | None = None,
+    reward_fn_a: RewardFunction | None = None,
+    reward_fn_b: RewardFunction | None = None,
     rng: random.Random | None = None,
 ) -> GameOutcome:
     """Run a single game between two NN models.
@@ -94,14 +95,17 @@ def run_game(
         train_a: Whether player A is in learn mode.
         train_b: Whether player B is in learn mode.
         max_turns: Maximum turns before the game is a draw.
-        reward_fn: Reward function to use (defaults to DefaultReward).
+        reward_fn_a: Reward function for player A (defaults to DefaultReward).
+        reward_fn_b: Reward function for player B (defaults to DefaultReward).
         rng: Random number generator for tank placement.
 
     Returns:
         A GameOutcome with the result and player references.
     """
-    if reward_fn is None:
-        reward_fn = DefaultReward()
+    if reward_fn_a is None:
+        reward_fn_a = DefaultReward()
+    if reward_fn_b is None:
+        reward_fn_b = DefaultReward()
 
     player_a = NNPlayer(
         team="A",
@@ -136,9 +140,9 @@ def run_game(
         # Determine which player just acted
         acting_team = entry.tank_id[0]  # Tank IDs are like "A1", "B1"
         if acting_team == "A" and train_a:
-            _assign_step_reward(player_a, entry, reward_fn)
+            _assign_step_reward(player_a, entry, reward_fn_a)
         elif acting_team == "B" and train_b:
-            _assign_step_reward(player_b, entry, reward_fn)
+            _assign_step_reward(player_b, entry, reward_fn_b)
 
     # Compute end-of-episode rewards
     result = engine.make_result()
@@ -146,7 +150,9 @@ def run_game(
 
     if train_a:
         won_a = True if winner == "A" else (False if winner == "B" else None)
-        end_reward_a = reward_fn.compute_episode_end_reward(won_a, len(player_a.explored_positions))
+        end_reward_a = reward_fn_a.compute_episode_end_reward(
+            won_a, len(player_a.explored_positions)
+        )
         if len(player_a.episode) > 0:
             last_idx = len(player_a.episode) - 1
             current = player_a.episode.steps[last_idx].reward
@@ -154,7 +160,9 @@ def run_game(
 
     if train_b:
         won_b = True if winner == "B" else (False if winner == "A" else None)
-        end_reward_b = reward_fn.compute_episode_end_reward(won_b, len(player_b.explored_positions))
+        end_reward_b = reward_fn_b.compute_episode_end_reward(
+            won_b, len(player_b.explored_positions)
+        )
         if len(player_b.episode) > 0:
             last_idx = len(player_b.episode) - 1
             current = player_b.episode.steps[last_idx].reward

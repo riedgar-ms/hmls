@@ -20,26 +20,61 @@ from hmls.reinforcetrainer.game_runner import (
 )
 from hmls.reinforcetrainer.updater import reinforce_update
 from hmls.singletanknn.model import ModelConfig, TankPolicyNetwork
-from hmls.singletanknn.persistence import load_model, save_model
+from hmls.singletanknn.persistence import (
+    load_model,
+    load_model_config,
+    load_reward_config,
+    save_model,
+)
+from hmls.singletanknn.reward import DefaultReward, RewardFunction
 
 
 def load_or_create_model(model_dir: Path) -> TankPolicyNetwork:
     """Load an existing model from a directory or create a fresh one.
 
-    Looks for a ``model.pt`` file in the directory.  If found, loads it.
-    Otherwise creates a new model with default configuration.
+    Reads ``model_config.json`` from the directory (must exist).  If a
+    ``model.pt`` file is also present, loads the trained weights.
+    Otherwise creates a new model with the configuration from the JSON.
 
     Args:
-        model_dir: Directory that may contain a ``model.pt`` file.
+        model_dir: Directory containing ``model_config.json`` and
+            optionally ``model.pt``.
 
     Returns:
         A TankPolicyNetwork (either loaded or freshly initialised).
+
+    Raises:
+        FileNotFoundError: If ``model_config.json`` is missing.
     """
+    config = load_model_config(model_dir)
+
     model_path = model_dir / "model.pt"
     if model_path.exists():
         model, _metadata = load_model(model_path)
         return model
-    return TankPolicyNetwork(ModelConfig())
+    return TankPolicyNetwork(config)
+
+
+def _validate_model_configs(config_a: ModelConfig, config_b: ModelConfig) -> None:
+    """Validate that the two model configurations are compatible.
+
+    The models may differ in ``cnn_channels`` and ``gru_hidden_size``,
+    but ``patch_size`` must be identical (it determines observation
+    encoding size).
+
+    Args:
+        config_a: Configuration for model A.
+        config_b: Configuration for model B.
+
+    Raises:
+        ValueError: If configurations are incompatible.
+    """
+    if config_a.patch_size != config_b.patch_size:
+        raise ValueError(
+            f"Model configurations are incompatible: patch_size differs "
+            f"(A={config_a.patch_size}, B={config_b.patch_size}). "
+            f"Both models must use the same patch_size."
+        )
 
 
 def _save_weights(
@@ -66,11 +101,26 @@ def train(config: TrainerConfig) -> None:
 
     Args:
         config: Training configuration.
+
+    Raises:
+        FileNotFoundError: If model directories lack required config files.
+        ValueError: If model configurations are incompatible.
     """
     # Seed
     rng = random.Random(config.seed)
     if config.seed is not None:
         torch.manual_seed(config.seed)
+
+    # Load model configs and validate compatibility
+    model_config_a = load_model_config(config.model_a_dir)
+    model_config_b = load_model_config(config.model_b_dir)
+    _validate_model_configs(model_config_a, model_config_b)
+
+    # Load reward configs
+    reward_config_a = load_reward_config(config.model_a_dir)
+    reward_config_b = load_reward_config(config.model_b_dir)
+    reward_fn_a: RewardFunction = DefaultReward(reward_config_a)
+    reward_fn_b: RewardFunction = DefaultReward(reward_config_b)
 
     # Load or create models
     model_a = load_or_create_model(config.model_a_dir)
@@ -127,6 +177,8 @@ def train(config: TrainerConfig) -> None:
                 train_a=config.train_a,
                 train_b=config.train_b,
                 max_turns=config.max_turns,
+                reward_fn_a=reward_fn_a,
+                reward_fn_b=reward_fn_b,
                 rng=rng,
             )
 
