@@ -75,85 +75,131 @@ Each model uses its own reward configuration, so you can experiment with differe
 
 ### Basic self-play training (both models learn)
 
+Create a configuration file (e.g. `train_config.json`):
+
+```json
+{
+  "model_a": { "dir": "models/player_a" },
+  "model_b": { "dir": "models/player_b" }
+}
+```
+
+Then run:
+
 ```bash
-uv run hmls-reinforcetrainer \
-    --model-a-dir models/player_a \
-    --model-b-dir models/player_b
+uv run hmls-reinforcetrainer train_config.json
 ```
 
 Both model directories must contain `model_config.json` and `reward_config.json`. If no `model.pt` exists, a fresh model is created using the architecture from `model_config.json`.
 
 ### Train one model against a frozen opponent
 
-```bash
-uv run hmls-reinforcetrainer \
-    --model-a-dir models/trainee \
-    --model-b-dir models/frozen_opponent \
-    --freeze-b
+```json
+{
+  "model_a": { "dir": "models/trainee", "train": true },
+  "model_b": { "dir": "models/frozen_opponent", "train": false }
+}
 ```
 
 ### Full configuration example
 
+```json
+{
+  "model_a": { "dir": "models/player_a", "train": true },
+  "model_b": { "dir": "models/player_b", "train": true },
+  "map": {
+    "width": 25,
+    "height": 25,
+    "impassable_fraction": 0.25,
+    "strategy": "Blob & Line"
+  },
+  "game": {
+    "games_per_map": 20,
+    "total_maps": 500,
+    "max_turns": 300
+  },
+  "output": {
+    "sample_game_dir": "output/samples",
+    "sample_game_interval": 100,
+    "save_weights_interval": 200
+  },
+  "hyperparameters": {
+    "learning_rate": 0.0005,
+    "gamma": 0.995,
+    "seed": 42
+  }
+}
+```
+
 ```bash
-uv run hmls-reinforcetrainer \
-    --model-a-dir models/player_a \
-    --model-b-dir models/player_b \
-    --map-width 25 \
-    --map-height 25 \
-    --impassable-fraction 0.25 \
-    --map-strategy "Blob & Line" \
-    --games-per-map 20 \
-    --total-maps 500 \
-    --max-turns 300 \
-    --sample-game-dir output/samples \
-    --sample-game-interval 100 \
-    --save-weights-interval 200 \
-    --learning-rate 0.0005 \
-    --gamma 0.995 \
-    --seed 42
+uv run hmls-reinforcetrainer full_config.json
 ```
 
 ### Running as a Python module
 
 ```bash
-uv run python -m hmls.reinforcetrainer --model-a-dir models/a --model-b-dir models/b
+uv run python -m hmls.reinforcetrainer train_config.json
 ```
 
 ## Configuration Reference
 
-| Parameter | CLI Flag | Default | Description |
-|-----------|----------|---------|-------------|
-| Model A directory | `--model-a-dir` | *(required)* | Path to model A directory (must contain config files) |
-| Model B directory | `--model-b-dir` | *(required)* | Path to model B directory (must contain config files) |
-| Freeze A | `--freeze-a` | `false` | Don't train model A (use as fixed opponent) |
-| Freeze B | `--freeze-b` | `false` | Don't train model B (use as fixed opponent) |
-| Map width | `--map-width` | `20` | Width of generated maps (≥5) |
-| Map height | `--map-height` | `20` | Height of generated maps (≥5) |
-| Impassable fraction | `--impassable-fraction` | `0.3` | Fraction of cells that are impassable (0.0–0.8) |
-| Map strategy | `--map-strategy` | `"Blob & Line"` | Map generation strategy name |
-| Games per map | `--games-per-map` | `10` | Games played on each map before regeneration |
-| Total maps | `--total-maps` | `100` | Total number of maps to generate |
-| Max turns | `--max-turns` | `200` | Maximum turns per game before draw |
-| Sample game dir | `--sample-game-dir` | `sample_games/` | Directory for sample replay files |
-| Sample game interval | `--sample-game-interval` | `50` | Save a sample game every N games |
-| Save weights interval | `--save-weights-interval` | `100` | Save model weights every N games |
-| Learning rate | `--learning-rate` | `0.001` | Adam optimizer learning rate |
-| Gamma (γ) | `--gamma` | `0.99` | Discount factor for return computation |
-| Seed | `--seed` | `None` | Random seed for reproducibility |
+The configuration file is a JSON object with the following sections. All sections except `model_a` and `model_b` are optional and use sensible defaults.
+
+**Path convention:** All paths in the JSON file should use unix-style forward slashes (e.g. `"output/samples"`), even on Windows. They are converted to platform-native paths automatically.
+
+### `model_a` / `model_b` (required)
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `dir` | string | *(required)* | Path to model directory (must contain config files) |
+| `train` | bool | `true` | Whether to train this model (false = frozen opponent) |
+
+### `map`
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `width` | int | `20` | Width of generated maps (≥5) |
+| `height` | int | `20` | Height of generated maps (≥5) |
+| `impassable_fraction` | float | `0.3` | Fraction of cells that are impassable (0.0–0.8) |
+| `strategy` | string | `"Blob & Line"` | Map generation strategy name |
+
+### `game`
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `games_per_map` | int | `10` | Games played on each map before regeneration |
+| `total_maps` | int | `100` | Total number of maps to generate |
+| `max_turns` | int | `200` | Maximum turns per game before draw |
+
+### `output`
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `sample_game_dir` | string | `"sample_games"` | Directory for sample replay files |
+| `sample_game_interval` | int | `50` | Save a sample game every N games |
+| `save_weights_interval` | int | `100` | Save model weights every N games |
+
+### `hyperparameters`
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `learning_rate` | float | `0.001` | Adam optimizer learning rate (>0) |
+| `gamma` | float | `0.99` | Discount factor for return computation (0–1] |
+| `seed` | int \| null | `null` | Random seed for reproducibility |
 
 ## Output
 
 ### Model weights
 
 Models are saved as `model.pt` files in the respective model directories. They are saved:
-- Periodically (every `--save-weights-interval` games)
+- Periodically (every `save_weights_interval` games)
 - At the end of training
 
 If training is interrupted, the most recent periodic save will be available to resume from.
 
 ### Sample games
 
-Sample games are saved as JSON files in the `--sample-game-dir` directory, named `game_000050.json`, `game_000100.json`, etc. These files are in the standard `GameResult` format and can be viewed using the replay viewer:
+Sample games are saved as JSON files in the `sample_game_dir` directory, named `game_000050.json`, `game_000100.json`, etc. These files are in the standard `GameResult` format and can be viewed using the replay viewer:
 
 ```bash
 uv run hmls-replayviewer output/samples/game_000050.json
@@ -169,7 +215,7 @@ The trainer prints progress to stdout after each map is completed, showing:
 
 ## Training tips
 
-- **Start small**: Use `--total-maps 10 --games-per-map 5` to verify everything works before long runs.
+- **Start small**: Use `"total_maps": 10, "games_per_map": 5` to verify everything works before long runs.
 - **Map variety**: More maps with fewer games each gives broader generalisation. Fewer maps with more games gives deeper exploitation of each map's structure.
 - **Self-play vs frozen**: Self-play trains faster initially but can lead to co-adapted strategies. Training against a frozen opponent is more stable but may converge slower.
 - **Monitoring**: Check sample games regularly in the replay viewer to see if agents are learning meaningful behaviour (exploration, combat, movement).

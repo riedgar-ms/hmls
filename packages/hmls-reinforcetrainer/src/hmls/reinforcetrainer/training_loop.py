@@ -107,31 +107,35 @@ def train(config: TrainerConfig) -> None:
         ValueError: If model configurations are incompatible.
     """
     # Seed
-    rng = random.Random(config.seed)
-    if config.seed is not None:
-        torch.manual_seed(config.seed)
+    rng = random.Random(config.hyperparameters.seed)
+    if config.hyperparameters.seed is not None:
+        torch.manual_seed(config.hyperparameters.seed)
 
     # Load model configs and validate compatibility
-    model_config_a = load_model_config(config.model_a_dir)
-    model_config_b = load_model_config(config.model_b_dir)
+    model_config_a = load_model_config(config.model_a.dir)
+    model_config_b = load_model_config(config.model_b.dir)
     _validate_model_configs(model_config_a, model_config_b)
 
     # Load reward configs
-    reward_config_a = load_reward_config(config.model_a_dir)
-    reward_config_b = load_reward_config(config.model_b_dir)
+    reward_config_a = load_reward_config(config.model_a.dir)
+    reward_config_b = load_reward_config(config.model_b.dir)
     reward_fn_a: RewardFunction = DefaultReward(reward_config_a)
     reward_fn_b: RewardFunction = DefaultReward(reward_config_b)
 
     # Load or create models
-    model_a = load_or_create_model(config.model_a_dir)
-    model_b = load_or_create_model(config.model_b_dir)
+    model_a = load_or_create_model(config.model_a.dir)
+    model_b = load_or_create_model(config.model_b.dir)
 
     # Set up optimizers for models that are training
     optimizer_a = (
-        torch.optim.Adam(model_a.parameters(), lr=config.learning_rate) if config.train_a else None
+        torch.optim.Adam(model_a.parameters(), lr=config.hyperparameters.learning_rate)
+        if config.model_a.train
+        else None
     )
     optimizer_b = (
-        torch.optim.Adam(model_b.parameters(), lr=config.learning_rate) if config.train_b else None
+        torch.optim.Adam(model_b.parameters(), lr=config.hyperparameters.learning_rate)
+        if config.model_b.train
+        else None
     )
 
     # Training stats
@@ -142,31 +146,34 @@ def train(config: TrainerConfig) -> None:
     total_loss_a = 0.0
     total_loss_b = 0.0
 
-    total_games_planned = config.total_maps * config.games_per_map
+    total_games_planned = config.game.total_maps * config.game.games_per_map
     print(
-        f"Starting training: {config.total_maps} maps × "
-        f"{config.games_per_map} games/map = {total_games_planned} total games"
+        f"Starting training: {config.game.total_maps} maps × "
+        f"{config.game.games_per_map} games/map = {total_games_planned} total games"
     )
-    print(f"  Train A: {config.train_a}, Train B: {config.train_b}")
+    print(f"  Train A: {config.model_a.train}, Train B: {config.model_b.train}")
     print(
-        f"  Map size: {config.map_width}×{config.map_height}, "
-        f"impassable: {config.impassable_fraction:.0%}"
+        f"  Map size: {config.map.width}×{config.map.height}, "
+        f"impassable: {config.map.impassable_fraction:.0%}"
     )
-    print(f"  Max turns/game: {config.max_turns}, γ={config.gamma}, lr={config.learning_rate}")
+    print(
+        f"  Max turns/game: {config.game.max_turns}, "
+        f"γ={config.hyperparameters.gamma}, lr={config.hyperparameters.learning_rate}"
+    )
     print()
 
-    for map_idx in range(config.total_maps):
+    for map_idx in range(config.game.total_maps):
         # Generate a new map
         map_seed = rng.randint(0, 2**31)
         game_map = create_map(
-            config.map_width,
-            config.map_height,
-            config.impassable_fraction,
-            config.map_strategy,
+            config.map.width,
+            config.map.height,
+            config.map.impassable_fraction,
+            config.map.strategy,
             seed=map_seed,
         )
 
-        for game_idx in range(config.games_per_map):
+        for game_idx in range(config.game.games_per_map):
             total_games += 1
 
             # Run game
@@ -174,9 +181,9 @@ def train(config: TrainerConfig) -> None:
                 game_map,
                 model_a,
                 model_b,
-                train_a=config.train_a,
-                train_b=config.train_b,
-                max_turns=config.max_turns,
+                train_a=config.model_a.train,
+                train_b=config.model_b.train,
+                max_turns=config.game.max_turns,
                 reward_fn_a=reward_fn_a,
                 reward_fn_b=reward_fn_b,
                 rng=rng,
@@ -192,41 +199,41 @@ def train(config: TrainerConfig) -> None:
                 draws += 1
 
             # Policy gradient updates
-            if config.train_a and optimizer_a is not None:
+            if config.model_a.train and optimizer_a is not None:
                 loss_a = reinforce_update(
                     outcome.player_a.episode,
                     optimizer_a,
-                    config.gamma,
+                    config.hyperparameters.gamma,
                     log_prob_tensors=outcome.player_a.log_prob_tensors,
                 )
                 total_loss_a += loss_a
 
-            if config.train_b and optimizer_b is not None:
+            if config.model_b.train and optimizer_b is not None:
                 loss_b = reinforce_update(
                     outcome.player_b.episode,
                     optimizer_b,
-                    config.gamma,
+                    config.hyperparameters.gamma,
                     log_prob_tensors=outcome.player_b.log_prob_tensors,
                 )
                 total_loss_b += loss_b
 
             # Save sample game
-            if total_games % config.sample_game_interval == 0:
+            if total_games % config.output.sample_game_interval == 0:
                 save_sample_game(
                     outcome.result,
-                    config.sample_game_dir,
+                    config.output.sample_game_dir,
                     total_games,
                 )
 
             # Save weights periodically
-            if total_games % config.save_weights_interval == 0:
-                if config.train_a:
-                    _save_weights(model_a, config.model_a_dir, total_games)
-                if config.train_b:
-                    _save_weights(model_b, config.model_b_dir, total_games)
+            if total_games % config.output.save_weights_interval == 0:
+                if config.model_a.train:
+                    _save_weights(model_a, config.model_a.dir, total_games)
+                if config.model_b.train:
+                    _save_weights(model_b, config.model_b.dir, total_games)
 
             # Progress logging
-            if total_games % config.games_per_map == 0:
+            if total_games % config.game.games_per_map == 0:
                 _log_progress(
                     total_games,
                     total_games_planned,
@@ -236,15 +243,15 @@ def train(config: TrainerConfig) -> None:
                     draws,
                     total_loss_a,
                     total_loss_b,
-                    config.train_a,
-                    config.train_b,
+                    config.model_a.train,
+                    config.model_b.train,
                 )
 
     # Final save
-    if config.train_a:
-        _save_weights(model_a, config.model_a_dir, total_games)
-    if config.train_b:
-        _save_weights(model_b, config.model_b_dir, total_games)
+    if config.model_a.train:
+        _save_weights(model_a, config.model_a.dir, total_games)
+    if config.model_b.train:
+        _save_weights(model_b, config.model_b.dir, total_games)
 
     print(f"\nTraining complete. {total_games} games played.")
     print(f"  Final record: A wins={wins_a}, B wins={wins_b}, draws={draws}")

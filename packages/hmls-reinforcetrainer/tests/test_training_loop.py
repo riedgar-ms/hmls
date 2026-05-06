@@ -6,7 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from hmls.reinforcetrainer.config import TrainerConfig
+from hmls.reinforcetrainer.config import (
+    GameConfig,
+    HyperparameterConfig,
+    MapConfig,
+    ModelRef,
+    OutputConfig,
+    TrainerConfig,
+)
 from hmls.reinforcetrainer.training_loop import (
     _validate_model_configs,
     load_or_create_model,
@@ -110,22 +117,16 @@ class TestTrainIntegration:
         _setup_model_dir(model_b_dir)
 
         config = TrainerConfig(
-            model_a_dir=model_a_dir,
-            model_b_dir=model_b_dir,
-            train_a=True,
-            train_b=True,
-            map_width=8,
-            map_height=8,
-            impassable_fraction=0.2,
-            games_per_map=2,
-            total_maps=2,
-            max_turns=20,
-            sample_game_dir=tmp_path / "samples",
-            sample_game_interval=2,
-            save_weights_interval=2,
-            learning_rate=1e-3,
-            gamma=0.99,
-            seed=42,
+            model_a=ModelRef(dir=model_a_dir, train=True),
+            model_b=ModelRef(dir=model_b_dir, train=True),
+            map=MapConfig(width=8, height=8, impassable_fraction=0.2),
+            game=GameConfig(games_per_map=2, total_maps=2, max_turns=20),
+            output=OutputConfig(
+                sample_game_dir=tmp_path / "samples",
+                sample_game_interval=2,
+                save_weights_interval=2,
+            ),
+            hyperparameters=HyperparameterConfig(learning_rate=1e-3, gamma=0.99, seed=42),
         )
 
         train(config)
@@ -146,20 +147,16 @@ class TestTrainIntegration:
         _setup_model_dir(frozen_dir)
 
         config = TrainerConfig(
-            model_a_dir=trainee_dir,
-            model_b_dir=frozen_dir,
-            train_a=True,
-            train_b=False,
-            map_width=8,
-            map_height=8,
-            impassable_fraction=0.2,
-            games_per_map=2,
-            total_maps=2,
-            max_turns=20,
-            sample_game_dir=tmp_path / "samples",
-            sample_game_interval=2,
-            save_weights_interval=2,
-            seed=123,
+            model_a=ModelRef(dir=trainee_dir, train=True),
+            model_b=ModelRef(dir=frozen_dir, train=False),
+            map=MapConfig(width=8, height=8, impassable_fraction=0.2),
+            game=GameConfig(games_per_map=2, total_maps=2, max_turns=20),
+            output=OutputConfig(
+                sample_game_dir=tmp_path / "samples",
+                sample_game_interval=2,
+                save_weights_interval=2,
+            ),
+            hyperparameters=HyperparameterConfig(seed=123),
         )
 
         train(config)
@@ -175,15 +172,12 @@ class TestTrainIntegration:
         model_b_dir.mkdir()
 
         config = TrainerConfig(
-            model_a_dir=model_a_dir,
-            model_b_dir=model_b_dir,
-            map_width=8,
-            map_height=8,
-            games_per_map=1,
-            total_maps=1,
-            max_turns=10,
-            sample_game_dir=tmp_path / "samples",
-            seed=42,
+            model_a=ModelRef(dir=model_a_dir),
+            model_b=ModelRef(dir=model_b_dir),
+            map=MapConfig(width=8, height=8),
+            game=GameConfig(games_per_map=1, total_maps=1, max_turns=10),
+            output=OutputConfig(sample_game_dir=tmp_path / "samples"),
+            hyperparameters=HyperparameterConfig(seed=42),
         )
 
         with pytest.raises(FileNotFoundError):
@@ -197,15 +191,12 @@ class TestTrainIntegration:
         _setup_model_dir(model_b_dir, model_config=ModelConfig(patch_size=7))
 
         config = TrainerConfig(
-            model_a_dir=model_a_dir,
-            model_b_dir=model_b_dir,
-            map_width=8,
-            map_height=8,
-            games_per_map=1,
-            total_maps=1,
-            max_turns=10,
-            sample_game_dir=tmp_path / "samples",
-            seed=42,
+            model_a=ModelRef(dir=model_a_dir),
+            model_b=ModelRef(dir=model_b_dir),
+            map=MapConfig(width=8, height=8),
+            game=GameConfig(games_per_map=1, total_maps=1, max_turns=10),
+            output=OutputConfig(sample_game_dir=tmp_path / "samples"),
+            hyperparameters=HyperparameterConfig(seed=42),
         )
 
         with pytest.raises(ValueError, match="patch_size"):
@@ -225,17 +216,16 @@ class TestTrainIntegration:
         )
 
         config = TrainerConfig(
-            model_a_dir=model_a_dir,
-            model_b_dir=model_b_dir,
-            map_width=8,
-            map_height=8,
-            games_per_map=2,
-            total_maps=1,
-            max_turns=20,
-            sample_game_dir=tmp_path / "samples",
-            sample_game_interval=2,
-            save_weights_interval=2,
-            seed=42,
+            model_a=ModelRef(dir=model_a_dir),
+            model_b=ModelRef(dir=model_b_dir),
+            map=MapConfig(width=8, height=8),
+            game=GameConfig(games_per_map=2, total_maps=1, max_turns=20),
+            output=OutputConfig(
+                sample_game_dir=tmp_path / "samples",
+                sample_game_interval=2,
+                save_weights_interval=2,
+            ),
+            hyperparameters=HyperparameterConfig(seed=42),
         )
 
         train(config)
