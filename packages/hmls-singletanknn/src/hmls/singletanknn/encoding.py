@@ -12,12 +12,33 @@ the following channels:
 
 from __future__ import annotations
 
+from enum import IntEnum
+
 import torch
 
 from hmls.core.map import CellType
 from hmls.core.visibility import FogCell, TankPatch, VisibleCell
 
-NUM_CHANNELS: int = 5
+
+class Channel(IntEnum):
+    """Index of each channel in the encoded patch tensor.
+
+    Attributes:
+        TERRAIN: Passable=1.0, impassable=0.0, fog=−1.0.
+        FRIENDLY: 1.0 if an alive friendly tank occupies the cell.
+        ENEMY: 1.0 if an alive enemy tank occupies the cell.
+        WRECKAGE: 1.0 if a dead tank (any team) occupies the cell.
+        VISIBILITY: 1.0 if visible, 0.0 if fog.
+    """
+
+    TERRAIN = 0
+    FRIENDLY = 1
+    ENEMY = 2
+    WRECKAGE = 3
+    VISIBILITY = 4
+
+
+NUM_CHANNELS: int = len(Channel)
 """Number of input channels produced by the encoder."""
 
 
@@ -41,26 +62,20 @@ def encode_patch(patch: TankPatch, team: str) -> torch.Tensor:
     for row_idx, row in enumerate(patch.grid):
         for col_idx, cell in enumerate(row):
             if isinstance(cell, FogCell):
-                # Terrain channel gets -1 for fog
-                tensor[0, row_idx, col_idx] = -1.0
-                # Visibility mask = 0 (fog)
-                tensor[4, row_idx, col_idx] = 0.0
+                tensor[Channel.TERRAIN, row_idx, col_idx] = -1.0
+                tensor[Channel.VISIBILITY, row_idx, col_idx] = 0.0
             elif isinstance(cell, VisibleCell):
-                # Terrain channel
-                tensor[0, row_idx, col_idx] = 1.0 if cell.cell_type == CellType.PASSABLE else 0.0
-                # Visibility mask = 1 (visible)
-                tensor[4, row_idx, col_idx] = 1.0
+                tensor[Channel.TERRAIN, row_idx, col_idx] = (
+                    1.0 if cell.cell_type == CellType.PASSABLE else 0.0
+                )
+                tensor[Channel.VISIBILITY, row_idx, col_idx] = 1.0
 
-                # Tank channels
                 if cell.tank is not None:
                     if not cell.tank.alive:
-                        # Wreckage
-                        tensor[3, row_idx, col_idx] = 1.0
+                        tensor[Channel.WRECKAGE, row_idx, col_idx] = 1.0
                     elif cell.tank.team == team:
-                        # Friendly alive tank
-                        tensor[1, row_idx, col_idx] = 1.0
+                        tensor[Channel.FRIENDLY, row_idx, col_idx] = 1.0
                     else:
-                        # Enemy alive tank
-                        tensor[2, row_idx, col_idx] = 1.0
+                        tensor[Channel.ENEMY, row_idx, col_idx] = 1.0
 
     return tensor
