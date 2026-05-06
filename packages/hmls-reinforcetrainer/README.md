@@ -58,7 +58,10 @@ Defines the reward shaping parameters. Example:
   "step_penalty": -0.01,
   "exploration_bonus": 0.02,
   "invalid_move_penalty": -0.1,
-  "fire_miss_penalty": -0.05
+  "fire_miss_penalty": -0.05,
+  "missed_fire_penalty": -0.1,
+  "pass_penalty": -0.02,
+  "enemy_in_cone_reward": 0.01
 }
 ```
 
@@ -72,6 +75,9 @@ Defines the reward shaping parameters. Example:
 | `exploration_bonus` | float | `0.02` | Reward per newly discovered cell |
 | `invalid_move_penalty` | float | `-0.1` | Penalty for attempting an invalid action |
 | `fire_miss_penalty` | float | `-0.05` | Penalty for firing and missing |
+| `missed_fire_penalty` | float | `-0.1` | Penalty for not firing when an enemy is directly ahead |
+| `pass_penalty` | float | `-0.02` | Penalty for deliberately choosing to pass |
+| `enemy_in_cone_reward` | float | `0.01` | Per-enemy reward for visible enemies in the forward cone |
 
 Each model uses its own reward configuration, so you can experiment with different reward shaping strategies.
 

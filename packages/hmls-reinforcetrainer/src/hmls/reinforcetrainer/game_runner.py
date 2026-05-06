@@ -188,10 +188,14 @@ def _assign_step_reward(
         entry: The history entry from the engine.
         reward_fn: Reward function to compute the reward.
     """
+    patch = player.last_patch
+    assert patch is not None, "Player must have seen a patch before reward is computed"
     reward = reward_fn.compute_step_reward(
         entry,
         player.explored_positions,
         player.last_step_new_positions(),
+        patch,
+        player.team,
     )
     step_idx = len(player.episode) - 1
     if step_idx >= 0:

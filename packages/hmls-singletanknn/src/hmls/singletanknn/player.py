@@ -61,6 +61,7 @@ class NNPlayer(Player):
         self._episode = Episode()
         self._last_new_positions: int = 0
         self._log_prob_tensors: list[torch.Tensor] = []
+        self._last_patch: TankPatch | None = None
 
     @property
     def mode(self) -> Literal["play", "learn"]:
@@ -101,6 +102,14 @@ class NNPlayer(Player):
         """
         return self._log_prob_tensors
 
+    @property
+    def last_patch(self) -> TankPatch | None:
+        """The last egocentric patch seen by this player.
+
+        Set during :meth:`choose_action`; ``None`` before the first step.
+        """
+        return self._last_patch
+
     def reset_episode(self) -> None:
         """Reset state for a new episode.
 
@@ -112,6 +121,7 @@ class NNPlayer(Player):
         self._episode = Episode()
         self._last_new_positions = 0
         self._log_prob_tensors = []
+        self._last_patch = None
 
     def choose_action(self, tank_id: TankId, view: PlayerView) -> Action:
         """Choose an action using the neural network.
@@ -140,6 +150,8 @@ class NNPlayer(Player):
         if patch is None:
             # Tank has no patch (shouldn't happen for alive tank)
             return Action.PASS
+
+        self._last_patch = patch
 
         # Validate patch size
         grid_size = len(patch.grid)
