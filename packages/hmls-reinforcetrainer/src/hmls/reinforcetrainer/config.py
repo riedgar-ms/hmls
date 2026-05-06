@@ -10,23 +10,37 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class MapConfig(BaseModel, frozen=True):
     """Configuration for map generation.
 
+    Map dimensions are randomized on each generation.  The user specifies
+    inclusive bounds (``min_size``, ``max_size``) and each new map picks a
+    random width and height independently from that range.
+
     Attributes:
-        width: Width of randomly generated maps.
-        height: Height of randomly generated maps.
+        min_size: Minimum width/height of randomly generated maps (must be >= 5).
+        max_size: Maximum width/height of randomly generated maps (must be >= min_size).
         impassable_fraction: Fraction of cells that are impassable.
         strategy: Name of the map generation strategy to use.
     """
 
-    width: int = Field(default=20, ge=5)
-    height: int = Field(default=20, ge=5)
+    min_size: int = Field(default=15, ge=5)
+    max_size: int = Field(default=25, ge=5)
     impassable_fraction: float = Field(default=0.3, ge=0.0, le=0.8)
     strategy: str = "Blob & Line"
+
+    @model_validator(mode="after")
+    def _check_size_bounds(self) -> "MapConfig":
+        """Ensure max_size >= min_size."""
+        if self.max_size < self.min_size:
+            raise ValueError(
+                f"max_size ({self.max_size}) must be greater than or equal to "
+                f"min_size ({self.min_size})"
+            )
+        return self
 
 
 class GameConfig(BaseModel, frozen=True):

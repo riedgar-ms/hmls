@@ -153,7 +153,7 @@ def train(config: TrainerConfig) -> None:
     )
     print(f"  Train A: {config.model_a.train}, Train B: {config.model_b.train}")
     print(
-        f"  Map size: {config.map.width}×{config.map.height}, "
+        f"  Map size: {config.map.min_size}–{config.map.max_size} (random), "
         f"impassable: {config.map.impassable_fraction:.0%}"
     )
     print(
@@ -165,9 +165,11 @@ def train(config: TrainerConfig) -> None:
     for map_idx in range(config.game.total_maps):
         # Generate a new map
         map_seed = rng.randint(0, 2**31)
+        map_width = rng.randint(config.map.min_size, config.map.max_size)
+        map_height = rng.randint(config.map.min_size, config.map.max_size)
         game_map = create_map(
-            config.map.width,
-            config.map.height,
+            map_width,
+            map_height,
             config.map.impassable_fraction,
             config.map.strategy,
             seed=map_seed,

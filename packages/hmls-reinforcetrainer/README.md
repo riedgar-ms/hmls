@@ -108,8 +108,8 @@ Both model directories must contain `model_config.json` and `reward_config.json`
   "model_a": { "dir": "models/player_a", "train": true },
   "model_b": { "dir": "models/player_b", "train": true },
   "map": {
-    "width": 25,
-    "height": 25,
+    "min_size": 15,
+    "max_size": 25,
     "impassable_fraction": 0.25,
     "strategy": "Blob & Line"
   },
@@ -158,10 +158,12 @@ The configuration file is a JSON object with the following sections. All section
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `width` | int | `20` | Width of generated maps (≥5) |
-| `height` | int | `20` | Height of generated maps (≥5) |
+| `min_size` | int | `15` | Minimum width/height of generated maps (≥5) |
+| `max_size` | int | `25` | Maximum width/height of generated maps (≥ min_size) |
 | `impassable_fraction` | float | `0.3` | Fraction of cells that are impassable (0.0–0.8) |
 | `strategy` | string | `"Blob & Line"` | Map generation strategy name |
+
+Each time a new map is generated, the width and height are chosen independently and uniformly at random from the inclusive range [`min_size`, `max_size`].
 
 ### `game`
 

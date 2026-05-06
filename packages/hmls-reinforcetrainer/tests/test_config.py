@@ -29,8 +29,8 @@ class TestTrainerConfig:
         )
         assert config.model_a.train is True
         assert config.model_b.train is True
-        assert config.map.width == 20
-        assert config.map.height == 20
+        assert config.map.min_size == 15
+        assert config.map.max_size == 25
         assert config.map.impassable_fraction == 0.3
         assert config.game.games_per_map == 10
         assert config.game.total_maps == 100
@@ -42,7 +42,9 @@ class TestTrainerConfig:
         config = TrainerConfig(
             model_a=ModelRef(dir=tmp_path / "a", train=False),
             model_b=ModelRef(dir=tmp_path / "b", train=True),
-            map=MapConfig(width=30, height=25, impassable_fraction=0.4, strategy="Perlin Noise"),
+            map=MapConfig(
+                min_size=10, max_size=30, impassable_fraction=0.4, strategy="Perlin Noise"
+            ),
             game=GameConfig(games_per_map=5, total_maps=50, max_turns=150),
             output=OutputConfig(
                 sample_game_dir=tmp_path / "samples",
@@ -52,17 +54,36 @@ class TestTrainerConfig:
             hyperparameters=HyperparameterConfig(learning_rate=0.0005, gamma=0.95, seed=42),
         )
         assert config.model_a.train is False
-        assert config.map.width == 30
+        assert config.map.min_size == 10
         assert config.hyperparameters.seed == 42
 
-    def test_invalid_map_width_too_small(self, tmp_path: Path) -> None:
-        """Map width below minimum raises validation error."""
+    def test_invalid_map_min_size_too_small(self, tmp_path: Path) -> None:
+        """Map min_size below 5 raises validation error."""
         with pytest.raises(ValidationError):
             TrainerConfig(
                 model_a=ModelRef(dir=tmp_path / "a"),
                 model_b=ModelRef(dir=tmp_path / "b"),
-                map=MapConfig(width=3),
+                map=MapConfig(min_size=4, max_size=20),
             )
+
+    def test_invalid_map_max_size_less_than_min(self, tmp_path: Path) -> None:
+        """max_size must be >= min_size."""
+        with pytest.raises(ValidationError):
+            TrainerConfig(
+                model_a=ModelRef(dir=tmp_path / "a"),
+                model_b=ModelRef(dir=tmp_path / "b"),
+                map=MapConfig(min_size=10, max_size=9),
+            )
+
+    def test_map_equal_min_max_size(self, tmp_path: Path) -> None:
+        """max_size == min_size is valid (fixed-size maps)."""
+        config = TrainerConfig(
+            model_a=ModelRef(dir=tmp_path / "a"),
+            model_b=ModelRef(dir=tmp_path / "b"),
+            map=MapConfig(min_size=10, max_size=10),
+        )
+        assert config.map.min_size == 10
+        assert config.map.max_size == 10
 
     def test_invalid_impassable_fraction(self, tmp_path: Path) -> None:
         """Impassable fraction above 0.8 raises validation error."""
@@ -96,7 +117,7 @@ class TestTrainerConfig:
         config_data = {
             "model_a": {"dir": "models/a", "train": True},
             "model_b": {"dir": "models/b", "train": False},
-            "map": {"width": 25, "height": 15, "impassable_fraction": 0.2},
+            "map": {"min_size": 10, "max_size": 25, "impassable_fraction": 0.2},
             "game": {"games_per_map": 5, "total_maps": 10, "max_turns": 100},
             "hyperparameters": {"learning_rate": 0.01, "gamma": 0.9, "seed": 7},
         }
@@ -106,7 +127,7 @@ class TestTrainerConfig:
         loaded = TrainerConfig.model_validate_json(json_path.read_bytes())
         assert loaded.model_a.dir == Path("models/a")
         assert loaded.model_b.train is False
-        assert loaded.map.width == 25
+        assert loaded.map.min_size == 10
         assert loaded.game.max_turns == 100
         assert loaded.hyperparameters.seed == 7
 
