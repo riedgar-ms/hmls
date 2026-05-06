@@ -11,10 +11,8 @@ import torch
 import torch.nn as nn
 from pydantic import BaseModel, Field
 
+from hmls.singletanknn.constants import NUM_ACTIONS
 from hmls.singletanknn.encoding import NUM_CHANNELS
-
-#: The number of discrete actions available to a tank (fixed by game rules).
-NUM_ACTIONS: int = 5
 
 
 class ModelConfig(BaseModel, frozen=True):

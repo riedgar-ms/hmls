@@ -18,20 +18,10 @@ from hmls.core.player import Player
 from hmls.core.tank import TankId
 from hmls.core.types import Action, Position
 from hmls.core.visibility import PlayerView, TankPatch, VisibleCell
+from hmls.singletanknn.constants import ACTION_INDEX_TO_ACTION
 from hmls.singletanknn.encoding import encode_patch
 from hmls.singletanknn.model import TankPolicyNetwork
 from hmls.singletanknn.trajectory import Episode
-
-# Mapping from action index to Action enum (stable ordering).
-ACTION_INDEX_TO_ACTION: list[Action] = [
-    Action.MOVE_FORWARD,
-    Action.TURN_LEFT,
-    Action.TURN_RIGHT,
-    Action.FIRE,
-    Action.PASS,
-]
-
-ACTION_TO_INDEX: dict[Action, int] = {a: i for i, a in enumerate(ACTION_INDEX_TO_ACTION)}
 
 
 class NNPlayer(Player):
