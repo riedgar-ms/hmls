@@ -79,6 +79,7 @@ def run_game(
     train_a: bool = True,
     train_b: bool = True,
     max_turns: int = 200,
+    patch_size: int = 9,
     reward_fn_a: RewardFunction | None = None,
     reward_fn_b: RewardFunction | None = None,
     rng: random.Random | None = None,
@@ -95,6 +96,7 @@ def run_game(
         train_a: Whether player A is in learn mode.
         train_b: Whether player B is in learn mode.
         max_turns: Maximum turns before the game is a draw.
+        patch_size: Side length of visibility patches for the game engine.
         reward_fn_a: Reward function for player A (defaults to DefaultReward).
         reward_fn_b: Reward function for player B (defaults to DefaultReward).
         rng: Random number generator for tank placement.
@@ -111,11 +113,13 @@ def run_game(
         team="A",
         model=model_a,
         mode="learn" if train_a else "play",
+        patch_size=model_a.config.patch_size,
     )
     player_b = NNPlayer(
         team="B",
         model=model_b,
         mode="learn" if train_b else "play",
+        patch_size=model_b.config.patch_size,
     )
 
     # Reset episode state
@@ -131,6 +135,7 @@ def run_game(
         tanks=tanks,
         players={"A": player_a, "B": player_b},
         max_turns=max_turns,
+        patch_size=patch_size,
     )
 
     # Step through the game, computing rewards after each step

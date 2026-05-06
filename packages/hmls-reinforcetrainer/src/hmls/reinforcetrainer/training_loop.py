@@ -77,6 +77,35 @@ def _validate_model_configs(config_a: ModelConfig, config_b: ModelConfig) -> Non
         )
 
 
+def _validate_game_patch_size(
+    game_patch_size: int,
+    model_config_a: ModelConfig,
+    model_config_b: ModelConfig,
+) -> None:
+    """Validate that the game patch_size matches both model configs.
+
+    Args:
+        game_patch_size: The patch_size from GameConfig.
+        model_config_a: Configuration for model A.
+        model_config_b: Configuration for model B.
+
+    Raises:
+        ValueError: If the game patch_size doesn't match a model's patch_size.
+    """
+    if game_patch_size != model_config_a.patch_size:
+        raise ValueError(
+            f"GameConfig patch_size ({game_patch_size}) does not match "
+            f"model A patch_size ({model_config_a.patch_size}). "
+            f"The game and model configurations must agree on patch_size."
+        )
+    if game_patch_size != model_config_b.patch_size:
+        raise ValueError(
+            f"GameConfig patch_size ({game_patch_size}) does not match "
+            f"model B patch_size ({model_config_b.patch_size}). "
+            f"The game and model configurations must agree on patch_size."
+        )
+
+
 def _save_weights(
     model: TankPolicyNetwork,
     model_dir: Path,
@@ -115,6 +144,7 @@ def train(config: TrainerConfig) -> None:
     model_config_a = load_model_config(config.model_a.dir)
     model_config_b = load_model_config(config.model_b.dir)
     _validate_model_configs(model_config_a, model_config_b)
+    _validate_game_patch_size(config.game.patch_size, model_config_a, model_config_b)
 
     # Load reward configs
     reward_config_a = load_reward_config(config.model_a.dir)
@@ -186,6 +216,7 @@ def train(config: TrainerConfig) -> None:
                 train_a=config.model_a.train,
                 train_b=config.model_b.train,
                 max_turns=config.game.max_turns,
+                patch_size=config.game.patch_size,
                 reward_fn_a=reward_fn_a,
                 reward_fn_b=reward_fn_b,
                 rng=rng,

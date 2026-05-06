@@ -50,11 +50,20 @@ class GameConfig(BaseModel, frozen=True):
         games_per_map: Number of games played on each map before regenerating.
         total_maps: Total number of maps to generate over the run.
         max_turns: Maximum turns per game before declaring a draw.
+        patch_size: Side length of visibility patches (must be odd, ≥ 3).
     """
 
     games_per_map: int = Field(default=10, ge=1)
     total_maps: int = Field(default=100, ge=1)
     max_turns: int = Field(default=200, ge=1)
+    patch_size: int = Field(default=9, ge=3)
+
+    @model_validator(mode="after")
+    def _check_patch_size_odd(self) -> "GameConfig":
+        """Ensure patch_size is odd."""
+        if self.patch_size % 2 == 0:
+            raise ValueError(f"patch_size must be odd, got {self.patch_size}")
+        return self
 
 
 class ModelRef(BaseModel, frozen=True):

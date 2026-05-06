@@ -15,6 +15,7 @@ from hmls.reinforcetrainer.config import (
     TrainerConfig,
 )
 from hmls.reinforcetrainer.training_loop import (
+    _validate_game_patch_size,
     _validate_model_configs,
     load_or_create_model,
     train,
@@ -104,6 +105,30 @@ class TestValidateModelConfigs:
         config_a = ModelConfig(cnn_channels=(32, 64))
         config_b = ModelConfig(cnn_channels=(16, 32, 64, 128))
         _validate_model_configs(config_a, config_b)  # Should not raise
+
+
+class TestValidateGamePatchSize:
+    """Tests for _validate_game_patch_size."""
+
+    def test_matching_patch_size_passes(self) -> None:
+        """Game patch_size matching both model configs is valid."""
+        config_a = ModelConfig(patch_size=7)
+        config_b = ModelConfig(patch_size=7)
+        _validate_game_patch_size(7, config_a, config_b)  # Should not raise
+
+    def test_game_differs_from_model_a_raises(self) -> None:
+        """Game patch_size != model A patch_size raises ValueError."""
+        config_a = ModelConfig(patch_size=9)
+        config_b = ModelConfig(patch_size=9)
+        with pytest.raises(ValueError, match="model A"):
+            _validate_game_patch_size(7, config_a, config_b)
+
+    def test_game_differs_from_model_b_raises(self) -> None:
+        """Game patch_size != model B patch_size raises ValueError."""
+        config_a = ModelConfig(patch_size=7)
+        config_b = ModelConfig(patch_size=9)
+        with pytest.raises(ValueError, match="model B"):
+            _validate_game_patch_size(7, config_a, config_b)
 
 
 class TestTrainIntegration:
@@ -200,6 +225,25 @@ class TestTrainIntegration:
         )
 
         with pytest.raises(ValueError, match="patch_size"):
+            train(config)
+
+    def test_game_patch_size_mismatch_raises(self, tmp_path: Path) -> None:
+        """Training fails if game patch_size differs from model patch_size."""
+        model_a_dir = tmp_path / "model_a"
+        model_b_dir = tmp_path / "model_b"
+        _setup_model_dir(model_a_dir, model_config=ModelConfig(patch_size=9))
+        _setup_model_dir(model_b_dir, model_config=ModelConfig(patch_size=9))
+
+        config = TrainerConfig(
+            model_a=ModelRef(dir=model_a_dir),
+            model_b=ModelRef(dir=model_b_dir),
+            map=MapConfig(min_size=8, max_size=8),
+            game=GameConfig(games_per_map=1, total_maps=1, max_turns=10, patch_size=7),
+            output=OutputConfig(sample_game_dir=tmp_path / "samples"),
+            hyperparameters=HyperparameterConfig(seed=42),
+        )
+
+        with pytest.raises(ValueError, match="GameConfig patch_size"):
             train(config)
 
     def test_different_reward_configs(self, tmp_path: Path) -> None:

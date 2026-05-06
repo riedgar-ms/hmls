@@ -35,6 +35,7 @@ class TestTrainerConfig:
         assert config.game.games_per_map == 10
         assert config.game.total_maps == 100
         assert config.game.max_turns == 200
+        assert config.game.patch_size == 9
         assert config.hyperparameters.gamma == 0.99
 
     def test_full_config(self, tmp_path: Path) -> None:
@@ -102,6 +103,33 @@ class TestTrainerConfig:
                 model_b=ModelRef(dir=tmp_path / "b"),
                 hyperparameters=HyperparameterConfig(learning_rate=0.0),
             )
+
+    def test_invalid_patch_size_even(self, tmp_path: Path) -> None:
+        """Even patch_size raises validation error."""
+        with pytest.raises(ValidationError, match="patch_size must be odd"):
+            TrainerConfig(
+                model_a=ModelRef(dir=tmp_path / "a"),
+                model_b=ModelRef(dir=tmp_path / "b"),
+                game=GameConfig(patch_size=8),
+            )
+
+    def test_invalid_patch_size_too_small(self, tmp_path: Path) -> None:
+        """patch_size below 3 raises validation error."""
+        with pytest.raises(ValidationError):
+            TrainerConfig(
+                model_a=ModelRef(dir=tmp_path / "a"),
+                model_b=ModelRef(dir=tmp_path / "b"),
+                game=GameConfig(patch_size=1),
+            )
+
+    def test_valid_patch_size(self, tmp_path: Path) -> None:
+        """Valid odd patch_size >= 3 is accepted."""
+        config = TrainerConfig(
+            model_a=ModelRef(dir=tmp_path / "a"),
+            model_b=ModelRef(dir=tmp_path / "b"),
+            game=GameConfig(patch_size=7),
+        )
+        assert config.game.patch_size == 7
 
     def test_config_is_frozen(self, tmp_path: Path) -> None:
         """Config is immutable after creation."""

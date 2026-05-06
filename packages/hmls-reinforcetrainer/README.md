@@ -116,7 +116,8 @@ Both model directories must contain `model_config.json` and `reward_config.json`
   "game": {
     "games_per_map": 20,
     "total_maps": 500,
-    "max_turns": 300
+    "max_turns": 300,
+    "patch_size": 9
   },
   "output": {
     "sample_game_dir": "output/samples",
@@ -172,6 +173,9 @@ Each time a new map is generated, the width and height are chosen independently 
 | `games_per_map` | int | `10` | Games played on each map before regeneration |
 | `total_maps` | int | `100` | Total number of maps to generate |
 | `max_turns` | int | `200` | Maximum turns per game before draw |
+| `patch_size` | int | `9` | Side length of visibility patches (must be odd, ≥ 3) |
+
+The `patch_size` must match the `patch_size` in both models' `model_config.json`. A mismatch will cause a startup error.
 
 ### `output`
 
