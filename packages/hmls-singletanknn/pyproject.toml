@@ -5,6 +5,7 @@ description = "Neural network player for HMLS tank game (single tank)"
 requires-python = ">=3.14"
 dependencies = [
     "hmls-core",
+    "pydantic>=2.0",
     "torch>=2.0",
 ]
 

@@ -9,8 +9,33 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from pydantic import BaseModel
+
 from hmls.core.engine import HistoryEntry
 from hmls.core.types import Position
+
+
+class DefaultRewardConfig(BaseModel, frozen=True):
+    """Serialisable configuration for :class:`DefaultReward`.
+
+    All fields have sensible defaults so ``DefaultRewardConfig()``
+    produces a usable configuration out of the box.
+
+    Attributes:
+        hit_reward: Reward for hitting an enemy tank.
+        death_penalty: Penalty when the player's tank dies.
+        win_reward: Reward for winning the game.
+        loss_penalty: Penalty for losing the game.
+        step_penalty: Small per-step penalty to encourage faster play.
+        exploration_bonus: Reward per newly discovered cell.
+    """
+
+    hit_reward: float = 0.5
+    death_penalty: float = -1.0
+    win_reward: float = 1.0
+    loss_penalty: float = -1.0
+    step_penalty: float = -0.01
+    exploration_bonus: float = 0.02
 
 
 class RewardFunction(ABC):
@@ -67,30 +92,46 @@ class DefaultReward(RewardFunction):
     Provides immediate feedback for hits, deaths, exploration, and
     a terminal bonus/penalty for winning/losing.
 
+    Configuration is held in a :class:`DefaultRewardConfig` Pydantic model
+    for easy serialisation and storage of training parameters.
+
     Args:
-        hit_reward: Reward for hitting an enemy tank.
-        death_penalty: Penalty when the player's tank dies.
-        win_reward: Reward for winning the game.
-        loss_penalty: Penalty for losing the game.
-        step_penalty: Small per-step penalty to encourage faster play.
-        exploration_bonus: Reward per newly discovered cell.
+        config: A :class:`DefaultRewardConfig` instance. Uses defaults
+            if not provided.
     """
 
-    def __init__(
-        self,
-        hit_reward: float = 0.5,
-        death_penalty: float = -1.0,
-        win_reward: float = 1.0,
-        loss_penalty: float = -1.0,
-        step_penalty: float = -0.01,
-        exploration_bonus: float = 0.02,
-    ) -> None:
-        self.hit_reward = hit_reward
-        self.death_penalty = death_penalty
-        self.win_reward = win_reward
-        self.loss_penalty = loss_penalty
-        self.step_penalty = step_penalty
-        self.exploration_bonus = exploration_bonus
+    def __init__(self, config: DefaultRewardConfig | None = None) -> None:
+        self.config: DefaultRewardConfig = config or DefaultRewardConfig()
+
+    @property
+    def hit_reward(self) -> float:
+        """Reward for hitting an enemy tank."""
+        return self.config.hit_reward
+
+    @property
+    def death_penalty(self) -> float:
+        """Penalty when the player's tank dies."""
+        return self.config.death_penalty
+
+    @property
+    def win_reward(self) -> float:
+        """Reward for winning the game."""
+        return self.config.win_reward
+
+    @property
+    def loss_penalty(self) -> float:
+        """Penalty for losing the game."""
+        return self.config.loss_penalty
+
+    @property
+    def step_penalty(self) -> float:
+        """Small per-step penalty to encourage faster play."""
+        return self.config.step_penalty
+
+    @property
+    def exploration_bonus(self) -> float:
+        """Reward per newly discovered cell."""
+        return self.config.exploration_bonus
 
     def compute_step_reward(
         self,

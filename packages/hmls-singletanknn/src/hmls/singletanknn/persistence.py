@@ -14,11 +14,13 @@ from typing import Any
 import torch
 
 from hmls.singletanknn.model import ModelConfig, TankPolicyNetwork
+from hmls.singletanknn.reward import DefaultRewardConfig
 
 
 def save_model(
     model: TankPolicyNetwork,
     path: Path,
+    reward_config: DefaultRewardConfig | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> None:
     """Save a trained model to disk.
@@ -26,11 +28,14 @@ def save_model(
     The saved file contains:
     - ``"state_dict"``: The model's learnable parameters.
     - ``"config"``: The :class:`ModelConfig` as a dict (for reconstruction).
+    - ``"reward_config"``: The :class:`DefaultRewardConfig` as a dict
+      (optional, for reproducing training configuration).
     - ``"metadata"``: Optional user-supplied metadata (e.g. training stats).
 
     Args:
         model: The model to save.
         path: Destination file path (typically ``.pt`` extension).
+        reward_config: Optional reward configuration used during training.
         metadata: Optional dictionary of extra information to store
             alongside the model (e.g. training episode count, reward
             history).
@@ -44,6 +49,8 @@ def save_model(
             "num_actions": model.config.num_actions,
         },
     }
+    if reward_config is not None:
+        save_data["reward_config"] = reward_config.model_dump()
     if metadata is not None:
         save_data["metadata"] = metadata
 
@@ -65,6 +72,9 @@ def load_model(
     Returns:
         A tuple of ``(model, metadata)`` where *metadata* is the dict
         stored at save time (empty dict if none was provided).
+        If a ``reward_config`` was saved, it will appear in metadata
+        under the key ``"reward_config"`` as a :class:`DefaultRewardConfig`
+        instance.
 
     Raises:
         FileNotFoundError: If *path* does not exist.
@@ -87,4 +97,9 @@ def load_model(
     model.load_state_dict(save_data["state_dict"])
 
     metadata: dict[str, Any] = save_data.get("metadata", {})
+
+    # Restore reward config if present
+    if "reward_config" in save_data:
+        metadata["reward_config"] = DefaultRewardConfig.model_validate(save_data["reward_config"])
+
     return model, metadata
