@@ -1,24 +1,26 @@
 """Reward functions for the NN player.
 
-Defines a :class:`RewardFunction` protocol and a :class:`DefaultReward`
-implementation that provides shaped rewards including exploration bonuses.
+Defines a :class:`RewardFunction` abstract base class and a
+:class:`DefaultReward` implementation that provides shaped rewards
+including exploration bonuses.
 """
 
 from __future__ import annotations
 
-from typing import Protocol
+from abc import ABC, abstractmethod
 
 from hmls.core.engine import HistoryEntry
 from hmls.core.types import Position
 
 
-class RewardFunction(Protocol):
-    """Protocol for computing per-step and episode-end rewards.
+class RewardFunction(ABC):
+    """Base class for computing per-step and episode-end rewards.
 
-    Implementations receive game information and return scalar rewards
+    Subclasses receive game information and return scalar rewards
     that the training loop accumulates into the trajectory.
     """
 
+    @abstractmethod
     def compute_step_reward(
         self,
         entry: HistoryEntry,
@@ -39,6 +41,7 @@ class RewardFunction(Protocol):
         """
         ...
 
+    @abstractmethod
     def compute_episode_end_reward(
         self,
         won: bool | None,
@@ -58,7 +61,7 @@ class RewardFunction(Protocol):
         ...
 
 
-class DefaultReward:
+class DefaultReward(RewardFunction):
     """Shaped reward function with exploration bonus.
 
     Provides immediate feedback for hits, deaths, exploration, and
