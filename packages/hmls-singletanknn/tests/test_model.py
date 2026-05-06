@@ -5,7 +5,8 @@ from __future__ import annotations
 import torch
 
 from hmls.singletanknn.encoding import NUM_CHANNELS
-from hmls.singletanknn.model import NUM_ACTIONS, ModelConfig, TankPolicyNetwork
+from hmls.singletanknn.constants import NUM_ACTIONS
+from hmls.singletanknn.model import ModelConfig, TankPolicyNetwork
 
 
 def test_model_forward_unbatched() -> None:
