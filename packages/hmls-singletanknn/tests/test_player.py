@@ -7,8 +7,8 @@ import pytest
 from hmls.core.map import CellType
 from hmls.core.types import Action, Direction, Position
 from hmls.core.visibility import FogCell, PlayerView, TankInfo, TankPatch, VisibleCell
-from hmls.singletanknn.model import ModelConfig, TankPolicyNetwork
 from hmls.singletanknn.constants import ACTION_INDEX_TO_ACTION
+from hmls.singletanknn.model import ModelConfig, TankPolicyNetwork
 from hmls.singletanknn.player import NNPlayer
 
 
