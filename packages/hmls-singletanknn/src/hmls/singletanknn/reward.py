@@ -28,6 +28,10 @@ class DefaultRewardConfig(BaseModel, frozen=True):
         loss_penalty: Penalty for losing the game.
         step_penalty: Small per-step penalty to encourage faster play.
         exploration_bonus: Reward per newly discovered cell.
+        invalid_move_penalty: Penalty for attempting an invalid action
+            (applied in addition to the step penalty).
+        fire_miss_penalty: Penalty for firing and missing (applied in
+            addition to the step penalty).
     """
 
     hit_reward: float = 0.5
@@ -36,6 +40,8 @@ class DefaultRewardConfig(BaseModel, frozen=True):
     loss_penalty: float = -1.0
     step_penalty: float = -0.01
     exploration_bonus: float = 0.02
+    invalid_move_penalty: float = -0.1
+    fire_miss_penalty: float = -0.05
 
 
 class RewardFunction(ABC):
@@ -133,6 +139,16 @@ class DefaultReward(RewardFunction):
         """Reward per newly discovered cell."""
         return self.config.exploration_bonus
 
+    @property
+    def invalid_move_penalty(self) -> float:
+        """Penalty for attempting an invalid action."""
+        return self.config.invalid_move_penalty
+
+    @property
+    def fire_miss_penalty(self) -> float:
+        """Penalty for firing and missing."""
+        return self.config.fire_miss_penalty
+
     def compute_step_reward(
         self,
         entry: HistoryEntry,
@@ -143,9 +159,8 @@ class DefaultReward(RewardFunction):
 
         Rewards:
         - Hit an enemy: +hit_reward
-        - Own tank died (invalid action resulted in penalty or got shot):
-          not directly observable from a single step here, so we check
-          if the action was invalid.
+        - Fire and miss: +fire_miss_penalty (negative value)
+        - Invalid action: +invalid_move_penalty (negative value)
         - Exploration: +exploration_bonus per new cell
         - Time penalty: +step_penalty (negative value)
         """
@@ -154,13 +169,16 @@ class DefaultReward(RewardFunction):
         # Hit reward
         if entry.hit is True:
             reward += self.hit_reward
+        # Fire miss penalty
+        elif entry.hit is False:
+            reward += self.fire_miss_penalty
 
         # Exploration bonus
         reward += self.exploration_bonus * new_positions_this_step
 
-        # Invalid action penalty (half of step penalty extra)
+        # Invalid action penalty
         if not entry.valid:
-            reward += self.step_penalty
+            reward += self.invalid_move_penalty
 
         return reward
 

@@ -56,7 +56,9 @@ Defines the reward shaping parameters. Example:
   "win_reward": 1.0,
   "loss_penalty": -1.0,
   "step_penalty": -0.01,
-  "exploration_bonus": 0.02
+  "exploration_bonus": 0.02,
+  "invalid_move_penalty": -0.1,
+  "fire_miss_penalty": -0.05
 }
 ```
 
@@ -68,6 +70,8 @@ Defines the reward shaping parameters. Example:
 | `loss_penalty` | float | `-1.0` | Penalty for losing the game |
 | `step_penalty` | float | `-0.01` | Per-step penalty (encourages faster play) |
 | `exploration_bonus` | float | `0.02` | Reward per newly discovered cell |
+| `invalid_move_penalty` | float | `-0.1` | Penalty for attempting an invalid action |
+| `fire_miss_penalty` | float | `-0.05` | Penalty for firing and missing |
 
 Each model uses its own reward configuration, so you can experiment with different reward shaping strategies.
 

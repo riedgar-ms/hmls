@@ -60,14 +60,36 @@ def test_default_reward_exploration() -> None:
 
 
 def test_default_reward_invalid_action() -> None:
-    """Invalid action incurs extra penalty."""
+    """Invalid action incurs the dedicated invalid_move_penalty."""
     reward_fn = DefaultReward()
     entry = _make_entry(valid=False)
     reward = reward_fn.compute_step_reward(
         entry, explored_positions=set(), new_positions_this_step=0
     )
-    # Double step penalty
-    assert abs(reward - (-0.01 + -0.01)) < 1e-7
+    # step_penalty + invalid_move_penalty
+    assert abs(reward - (-0.01 + -0.1)) < 1e-7
+
+
+def test_default_reward_fire_miss() -> None:
+    """Firing and missing incurs the fire_miss_penalty."""
+    reward_fn = DefaultReward()
+    entry = _make_entry(action=Action.FIRE, hit=False)
+    reward = reward_fn.compute_step_reward(
+        entry, explored_positions=set(), new_positions_this_step=0
+    )
+    # step_penalty + fire_miss_penalty
+    assert abs(reward - (-0.01 + -0.05)) < 1e-7
+
+
+def test_default_reward_hit_no_miss_penalty() -> None:
+    """A successful hit does NOT incur the fire miss penalty."""
+    reward_fn = DefaultReward()
+    entry = _make_entry(action=Action.FIRE, hit=True)
+    reward = reward_fn.compute_step_reward(
+        entry, explored_positions=set(), new_positions_this_step=0
+    )
+    # step_penalty + hit_reward only (no fire_miss_penalty)
+    assert abs(reward - (-0.01 + 0.5)) < 1e-7
 
 
 def test_default_reward_episode_win() -> None:
@@ -108,6 +130,8 @@ def test_default_reward_config_round_trip() -> None:
         loss_penalty=-2.0,
         step_penalty=-0.02,
         exploration_bonus=0.05,
+        invalid_move_penalty=-0.2,
+        fire_miss_penalty=-0.08,
     )
     dumped = config.model_dump()
     restored = DefaultRewardConfig.model_validate(dumped)
