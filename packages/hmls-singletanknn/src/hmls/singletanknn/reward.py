@@ -204,12 +204,15 @@ class DefaultReward(RewardFunction):
         """
         reward = self.step_penalty
 
-        # Hit reward
+        # Fire outcome
         if entry.hit is True:
             reward += self.hit_reward
-        # Fire miss penalty
         elif entry.hit is False:
             reward += self.fire_miss_penalty
+        elif _enemy_directly_ahead(patch, team):
+            # hit is None means a non-fire action was taken;
+            # penalize missing the opportunity when enemy directly ahead
+            reward += self.missed_fire_penalty
 
         # Exploration bonus
         reward += self.exploration_bonus * new_positions_this_step
@@ -221,12 +224,6 @@ class DefaultReward(RewardFunction):
         # Deliberate pass penalty
         if entry.requested_action == Action.PASS and entry.valid:
             reward += self.pass_penalty
-
-        # Missed fire penalty: non-fire action when enemy directly ahead
-        if entry.hit is None:
-            # hit is None means a non-fire action was taken
-            if _enemy_directly_ahead(patch, team):
-                reward += self.missed_fire_penalty
 
         # Enemy in forward cone reward
         cone_enemies = _count_enemies_in_cone(patch, team)
