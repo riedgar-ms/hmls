@@ -21,8 +21,8 @@ from hmls.reinforcetrainer.training_loop import (
     load_or_create_model,
     train,
 )
-from hmls.singletanknn.model import ModelConfig
-from hmls.singletanknn.persistence import save_model_config, save_reward_config
+from hmls.singlemki.model import ModelConfig
+from hmls.singlemki.persistence import save_model_config, save_reward_config
 
 
 def _setup_model_dir(
@@ -56,8 +56,8 @@ class TestLoadOrCreateModel:
 
     def test_loads_existing_model(self, tmp_path: Path) -> None:
         """A directory with model.pt loads the saved model."""
-        from hmls.singletanknn.model import TankPolicyNetwork
-        from hmls.singletanknn.persistence import save_model
+        from hmls.singlemki.model import TankPolicyNetwork
+        from hmls.singlemki.persistence import save_model
 
         model_dir = tmp_path / "model"
         config = ModelConfig(gru_hidden_size=64)

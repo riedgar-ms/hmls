@@ -3,7 +3,7 @@
 The :class:`NNPlayer` is a concrete
 :class:`~hmls.nncore.player.NNPlayerBase` subclass that selects actions
 by running a forward pass through the
-:class:`~hmls.singletanknn.model.TankPolicyNetwork`.
+:class:`~hmls.singlemki.model.TankPolicyNetwork`.
 """
 
 from __future__ import annotations
@@ -15,15 +15,15 @@ from torch.distributions import Categorical
 
 from hmls.core.visibility import TankPatch
 from hmls.nncore.player import NNPlayerBase
-from hmls.singletanknn.encoding import encode_patch
-from hmls.singletanknn.model import TankPolicyNetwork
+from hmls.singlemki.encoding import encode_patch
+from hmls.singlemki.model import TankPolicyNetwork
 
 
 class NNPlayer(NNPlayerBase):
     """A neural-network-based player using the CNN→GRU→policy-head model.
 
     Encodes egocentric visibility patches via
-    :func:`~hmls.singletanknn.encoding.encode_patch` and runs them
+    :func:`~hmls.singlemki.encoding.encode_patch` and runs them
     through a :class:`TankPolicyNetwork`.  Maintains GRU hidden state
     across turns within an episode.
 

@@ -21,7 +21,7 @@ def build_parser() -> argparse.ArgumentParser:
     """
     parser = argparse.ArgumentParser(
         prog="hmls-reinforcetrainer",
-        description="Train singletanknn models using REINFORCE policy gradient.",
+        description="Train singlemki models using REINFORCE policy gradient.",
     )
     parser.add_argument(
         "config_file",

@@ -17,7 +17,7 @@ members = [
     "hmls-reinforcetrainer",
     "hmls-replayviewer",
     "hmls-server",
-    "hmls-singletanknn",
+    "hmls-singlemki",
     "hmls-testharness",
     "hmls-uxcommon",
     "hmls-workspace",
@@ -299,7 +299,7 @@ dependencies = [
     { name = "hmls-core" },
     { name = "hmls-mapgenerator" },
     { name = "hmls-nncore" },
-    { name = "hmls-singletanknn" },
+    { name = "hmls-singlemki" },
     { name = "pydantic" },
     { name = "torch" },
 ]
@@ -309,7 +309,7 @@ requires-dist = [
     { name = "hmls-core", editable = "packages/hmls-core" },
     { name = "hmls-mapgenerator", editable = "packages/hmls-mapgenerator" },
     { name = "hmls-nncore", editable = "packages/hmls-nncore" },
-    { name = "hmls-singletanknn", editable = "packages/hmls-singletanknn" },
+    { name = "hmls-singlemki", editable = "packages/hmls-singlemki" },
     { name = "pydantic", specifier = ">=2.0" },
     { name = "torch", specifier = ">=2.0" },
 ]
@@ -351,9 +351,9 @@ requires-dist = [
 ]
 
 [[package]]
-name = "hmls-singletanknn"
+name = "hmls-singlemki"
 version = "0.1.0"
-source = { editable = "packages/hmls-singletanknn" }
+source = { editable = "packages/hmls-singlemki" }
 dependencies = [
     { name = "hmls-core" },
     { name = "hmls-nncore" },

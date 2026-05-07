@@ -4,7 +4,7 @@ REINFORCE policy gradient trainer for HMLS single-tank neural network models.
 
 ## Overview
 
-This package trains `singletanknn` neural network models by having two networks play against each other on randomly generated maps. It uses the REINFORCE algorithm (policy gradient with baseline normalisation) to improve each network's policy.
+This package trains `singlemki` neural network models by having two networks play against each other on randomly generated maps. It uses the REINFORCE algorithm (policy gradient with baseline normalisation) to improve each network's policy.
 
 ## Installation
 

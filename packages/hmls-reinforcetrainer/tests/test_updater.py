@@ -7,14 +7,14 @@ from torch.distributions import Categorical
 
 from hmls.nncore.trajectory import Episode
 from hmls.reinforcetrainer.updater import reinforce_update
-from hmls.singletanknn.model import ModelConfig, TankPolicyNetwork
+from hmls.singlemki.model import ModelConfig, TankPolicyNetwork
 
 
 def _make_episode_with_tensors(
     model: TankPolicyNetwork, num_steps: int
 ) -> tuple[Episode, list[torch.Tensor]]:
     """Helper: run a model to get a real episode with tensor log_probs."""
-    from hmls.singletanknn.encoding import NUM_CHANNELS
+    from hmls.singlemki.encoding import NUM_CHANNELS
 
     episode = Episode()
     log_prob_tensors: list[torch.Tensor] = []

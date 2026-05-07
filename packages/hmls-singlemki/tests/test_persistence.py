@@ -8,8 +8,8 @@ import pytest
 import torch
 
 from hmls.nncore.reward import DefaultRewardConfig
-from hmls.singletanknn.model import ModelConfig, TankPolicyNetwork
-from hmls.singletanknn.persistence import (
+from hmls.singlemki.model import ModelConfig, TankPolicyNetwork
+from hmls.singlemki.persistence import (
     load_model,
     load_model_config,
     load_reward_config,

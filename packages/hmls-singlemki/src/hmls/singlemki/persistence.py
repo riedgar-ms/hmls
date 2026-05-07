@@ -1,7 +1,7 @@
 """Model persistence: save and load trained networks.
 
 Models are saved as a single file containing both the network weights
-(state_dict) and the :class:`~hmls.singletanknn.model.ModelConfig` that
+(state_dict) and the :class:`~hmls.singlemki.model.ModelConfig` that
 defines the architecture.  This ensures that a loaded model can be
 reconstructed without knowing the original hyperparameters.
 
@@ -18,7 +18,7 @@ from typing import Any
 import torch
 
 from hmls.nncore.reward import DefaultRewardConfig
-from hmls.singletanknn.model import ModelConfig, TankPolicyNetwork
+from hmls.singlemki.model import ModelConfig, TankPolicyNetwork
 
 MODEL_CONFIG_FILENAME = "model_config.json"
 REWARD_CONFIG_FILENAME = "reward_config.json"

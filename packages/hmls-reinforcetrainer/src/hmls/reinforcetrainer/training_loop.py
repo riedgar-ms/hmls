@@ -20,8 +20,8 @@ from hmls.reinforcetrainer.game_runner import (
     save_sample_game,
 )
 from hmls.reinforcetrainer.updater import reinforce_update
-from hmls.singletanknn.model import ModelConfig, TankPolicyNetwork
-from hmls.singletanknn.persistence import (
+from hmls.singlemki.model import ModelConfig, TankPolicyNetwork
+from hmls.singlemki.persistence import (
     load_model,
     load_model_config,
     load_reward_config,

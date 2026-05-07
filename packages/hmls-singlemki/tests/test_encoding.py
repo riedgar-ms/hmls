@@ -8,7 +8,7 @@ from hmls.core.map import CellType
 from hmls.core.tank import Tank
 from hmls.core.types import Direction, Position
 from hmls.core.visibility import FogCell, TankPatch, VisibleCell
-from hmls.singletanknn.encoding import NUM_CHANNELS, encode_patch
+from hmls.singlemki.encoding import NUM_CHANNELS, encode_patch
 
 
 def _make_patch(grid_size: int = 3) -> TankPatch:
