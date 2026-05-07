@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from hmls.singletanknn.trajectory import Episode, TrajectoryStep, compute_returns
+from hmls.nncore.trajectory import Episode, TrajectoryStep, compute_returns
 
 
 def test_trajectory_step_default_reward() -> None:

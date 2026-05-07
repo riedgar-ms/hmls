@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 from pydantic import BaseModel, Field
 
-from hmls.singletanknn.constants import NUM_ACTIONS
+from hmls.nncore.constants import NUM_ACTIONS
 from hmls.singletanknn.encoding import NUM_CHANNELS
 
 

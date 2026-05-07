@@ -7,7 +7,7 @@ import pytest
 from hmls.core.map import CellType
 from hmls.core.types import Action, Direction, Position
 from hmls.core.visibility import FogCell, PlayerView, TankInfo, TankPatch, VisibleCell
-from hmls.singletanknn.constants import ACTION_INDEX_TO_ACTION
+from hmls.nncore.constants import ACTION_INDEX_TO_ACTION
 from hmls.singletanknn.model import ModelConfig, TankPolicyNetwork
 from hmls.singletanknn.player import NNPlayer
 
@@ -38,7 +38,7 @@ def test_player_choose_action_play_mode() -> None:
     config = ModelConfig(patch_size=9)
     model = TankPolicyNetwork(config)
     model.eval()
-    player = NNPlayer(team="alpha", model=model, mode="play", patch_size=9)
+    player = NNPlayer(team="alpha", model=model, mode="play")
 
     view = _make_view(patch_size=9)
     action = player.choose_action("t1", view)
@@ -49,7 +49,7 @@ def test_player_choose_action_learn_mode_records_trajectory() -> None:
     """In learn mode, trajectory steps are recorded."""
     config = ModelConfig(patch_size=9)
     model = TankPolicyNetwork(config)
-    player = NNPlayer(team="alpha", model=model, mode="learn", patch_size=9)
+    player = NNPlayer(team="alpha", model=model, mode="learn")
 
     view = _make_view(patch_size=9)
     player.choose_action("t1", view)
@@ -63,7 +63,7 @@ def test_player_patch_size_mismatch_raises() -> None:
     """Player raises ValueError if patch size doesn't match."""
     config = ModelConfig(patch_size=9)
     model = TankPolicyNetwork(config)
-    player = NNPlayer(team="alpha", model=model, mode="play", patch_size=9)
+    player = NNPlayer(team="alpha", model=model, mode="play")
 
     # Create a view with wrong patch size (7x7)
     view = _make_view(patch_size=7)
@@ -75,7 +75,7 @@ def test_player_reset_episode() -> None:
     """reset_episode clears trajectory and exploration."""
     config = ModelConfig(patch_size=9)
     model = TankPolicyNetwork(config)
-    player = NNPlayer(team="alpha", model=model, mode="learn", patch_size=9)
+    player = NNPlayer(team="alpha", model=model, mode="learn")
 
     view = _make_view(patch_size=9)
     player.choose_action("t1", view)
@@ -91,7 +91,7 @@ def test_player_exploration_tracking() -> None:
     """Player tracks explored positions across turns."""
     config = ModelConfig(patch_size=9)
     model = TankPolicyNetwork(config)
-    player = NNPlayer(team="alpha", model=model, mode="play", patch_size=9)
+    player = NNPlayer(team="alpha", model=model, mode="play")
 
     view = _make_view(patch_size=9)
     player.choose_action("t1", view)
@@ -104,7 +104,7 @@ def test_player_no_patch_returns_pass() -> None:
     """If no patch found for tank_id, returns PASS."""
     config = ModelConfig(patch_size=9)
     model = TankPolicyNetwork(config)
-    player = NNPlayer(team="alpha", model=model, mode="play", patch_size=9)
+    player = NNPlayer(team="alpha", model=model, mode="play")
 
     # Create view with patch for different tank
     view = _make_view(patch_size=9)

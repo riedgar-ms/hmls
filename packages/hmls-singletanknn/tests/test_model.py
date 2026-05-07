@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import torch
 
-from hmls.singletanknn.constants import NUM_ACTIONS
+from hmls.nncore.constants import NUM_ACTIONS
 from hmls.singletanknn.encoding import NUM_CHANNELS
 from hmls.singletanknn.model import ModelConfig, TankPolicyNetwork
 

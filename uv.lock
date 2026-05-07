@@ -245,12 +245,14 @@ source = { editable = "packages/hmls-nncore" }
 dependencies = [
     { name = "hmls-core" },
     { name = "pydantic" },
+    { name = "torch" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "hmls-core", editable = "packages/hmls-core" },
     { name = "pydantic", specifier = ">=2.0" },
+    { name = "torch", specifier = ">=2.0" },
 ]
 
 [[package]]

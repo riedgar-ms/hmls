@@ -5,9 +5,9 @@ from __future__ import annotations
 import torch
 from torch.distributions import Categorical
 
+from hmls.nncore.trajectory import Episode
 from hmls.reinforcetrainer.updater import reinforce_update
 from hmls.singletanknn.model import ModelConfig, TankPolicyNetwork
-from hmls.singletanknn.trajectory import Episode
 
 
 def _make_episode_with_tensors(

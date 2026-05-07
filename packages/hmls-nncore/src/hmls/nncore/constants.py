@@ -1,4 +1,4 @@
-"""Shared constants for the singletanknn package.
+"""Shared constants for NN-based tank players.
 
 Defines the canonical mapping between integer action indices and
 :class:`~hmls.core.types.Action` enum values.  All modules that need
