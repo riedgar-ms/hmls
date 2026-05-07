@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from hmls.nncore.reward import DefaultRewardConfig
 from hmls.reinforcetrainer.config import (
     GameConfig,
     HyperparameterConfig,
@@ -22,7 +23,6 @@ from hmls.reinforcetrainer.training_loop import (
 )
 from hmls.singletanknn.model import ModelConfig
 from hmls.singletanknn.persistence import save_model_config, save_reward_config
-from hmls.singletanknn.reward import DefaultRewardConfig
 
 
 def _setup_model_dir(
@@ -252,11 +252,11 @@ class TestTrainIntegration:
         model_b_dir = tmp_path / "model_b"
         _setup_model_dir(
             model_a_dir,
-            reward_config=DefaultRewardConfig(hit_reward=1.0),
+            reward_config=DefaultRewardConfig(fire_hit_reward=1.0),
         )
         _setup_model_dir(
             model_b_dir,
-            reward_config=DefaultRewardConfig(hit_reward=0.1, exploration_bonus=0.1),
+            reward_config=DefaultRewardConfig(fire_hit_reward=0.1, exploration_reward=0.1),
         )
 
         config = TrainerConfig(

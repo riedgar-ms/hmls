@@ -1,18 +1,15 @@
 [project]
-name = "hmls-singletanknn"
+name = "hmls-nncore"
 version = "0.1.0"
-description = "Neural network player for HMLS tank game (single tank)"
+description = "Common neural network utilities for HMLS tank game players"
 requires-python = ">=3.14"
 dependencies = [
     "hmls-core",
-    "hmls-nncore",
     "pydantic>=2.0",
-    "torch>=2.0",
 ]
 
 [tool.uv.sources]
 hmls-core = { workspace = true }
-hmls-nncore = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

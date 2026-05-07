@@ -11,6 +11,7 @@ members = [
     "hmls-client",
     "hmls-core",
     "hmls-mapgenerator",
+    "hmls-nncore",
     "hmls-observer",
     "hmls-protocol",
     "hmls-reinforcetrainer",
@@ -238,6 +239,21 @@ requires-dist = [
 ]
 
 [[package]]
+name = "hmls-nncore"
+version = "0.1.0"
+source = { editable = "packages/hmls-nncore" }
+dependencies = [
+    { name = "hmls-core" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "hmls-core", editable = "packages/hmls-core" },
+    { name = "pydantic", specifier = ">=2.0" },
+]
+
+[[package]]
 name = "hmls-observer"
 version = "0.1.0"
 source = { editable = "packages/hmls-observer" }
@@ -280,6 +296,7 @@ source = { editable = "packages/hmls-reinforcetrainer" }
 dependencies = [
     { name = "hmls-core" },
     { name = "hmls-mapgenerator" },
+    { name = "hmls-nncore" },
     { name = "hmls-singletanknn" },
     { name = "pydantic" },
     { name = "torch" },
@@ -289,6 +306,7 @@ dependencies = [
 requires-dist = [
     { name = "hmls-core", editable = "packages/hmls-core" },
     { name = "hmls-mapgenerator", editable = "packages/hmls-mapgenerator" },
+    { name = "hmls-nncore", editable = "packages/hmls-nncore" },
     { name = "hmls-singletanknn", editable = "packages/hmls-singletanknn" },
     { name = "pydantic", specifier = ">=2.0" },
     { name = "torch", specifier = ">=2.0" },
@@ -336,6 +354,7 @@ version = "0.1.0"
 source = { editable = "packages/hmls-singletanknn" }
 dependencies = [
     { name = "hmls-core" },
+    { name = "hmls-nncore" },
     { name = "pydantic" },
     { name = "torch" },
 ]
@@ -343,6 +362,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "hmls-core", editable = "packages/hmls-core" },
+    { name = "hmls-nncore", editable = "packages/hmls-nncore" },
     { name = "pydantic", specifier = ">=2.0" },
     { name = "torch", specifier = ">=2.0" },
 ]

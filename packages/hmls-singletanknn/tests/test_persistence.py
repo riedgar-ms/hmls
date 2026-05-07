@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 import torch
 
+from hmls.nncore.reward import DefaultRewardConfig
 from hmls.singletanknn.model import ModelConfig, TankPolicyNetwork
 from hmls.singletanknn.persistence import (
     load_model,
@@ -16,7 +17,6 @@ from hmls.singletanknn.persistence import (
     save_model_config,
     save_reward_config,
 )
-from hmls.singletanknn.reward import DefaultRewardConfig
 
 
 def test_save_and_load_roundtrip(tmp_path: Path) -> None:
@@ -113,16 +113,16 @@ class TestRewardConfigJson:
     def test_save_and_load_roundtrip(self, tmp_path: Path) -> None:
         """DefaultRewardConfig can be saved and loaded from JSON."""
         config = DefaultRewardConfig(
-            hit_reward=1.0,
-            death_penalty=-2.0,
-            exploration_bonus=0.05,
+            fire_hit_reward=1.0,
+            death_reward=-2.0,
+            exploration_reward=0.05,
         )
         save_reward_config(config, tmp_path)
 
         loaded = load_reward_config(tmp_path)
-        assert loaded.hit_reward == 1.0
-        assert loaded.death_penalty == -2.0
-        assert loaded.exploration_bonus == 0.05
+        assert loaded.fire_hit_reward == 1.0
+        assert loaded.death_reward == -2.0
+        assert loaded.exploration_reward == 0.05
 
     def test_default_config_roundtrip(self, tmp_path: Path) -> None:
         """Default DefaultRewardConfig round-trips correctly."""

@@ -11,6 +11,7 @@ from pathlib import Path
 
 import torch
 
+from hmls.nncore.reward import DefaultReward, RewardFunction
 from hmls.reinforcetrainer.config import TrainerConfig
 from hmls.reinforcetrainer.game_runner import (
     GameOutcome,
@@ -26,7 +27,6 @@ from hmls.singletanknn.persistence import (
     load_reward_config,
     save_model,
 )
-from hmls.singletanknn.reward import DefaultReward, RewardFunction
 
 
 def load_or_create_model(model_dir: Path) -> TankPolicyNetwork:

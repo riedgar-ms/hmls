@@ -15,9 +15,9 @@ from hmls.core.engine import GameEngine, GameResult, HistoryEntry
 from hmls.core.map import GameMap
 from hmls.core.placement import place_tanks
 from hmls.mapgenerator import STRATEGY_REGISTRY, MapStrategy, generate_map
+from hmls.nncore.reward import DefaultReward, RewardFunction
 from hmls.singletanknn.model import TankPolicyNetwork
 from hmls.singletanknn.player import NNPlayer
-from hmls.singletanknn.reward import DefaultReward, RewardFunction
 
 
 @dataclass

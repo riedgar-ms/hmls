@@ -51,32 +51,32 @@ Defines the reward shaping parameters. Example:
 
 ```json
 {
-  "hit_reward": 0.5,
-  "death_penalty": -1.0,
+  "fire_hit_reward": 0.5,
+  "death_reward": -1.0,
   "win_reward": 1.0,
-  "loss_penalty": -1.0,
-  "step_penalty": -0.01,
-  "exploration_bonus": 0.02,
-  "invalid_move_penalty": -0.1,
-  "fire_miss_penalty": -0.05,
-  "missed_fire_penalty": -0.1,
-  "pass_penalty": -0.02,
+  "loss_reward": -1.0,
+  "step_reward": -0.01,
+  "exploration_reward": 0.02,
+  "invalid_move_reward": -0.1,
+  "fire_miss_reward": -0.05,
+  "fire_neglect_reward": -0.1,
+  "pass_reward": -0.02,
   "enemy_in_cone_reward": 0.01
 }
 ```
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `hit_reward` | float | `0.5` | Reward for hitting an enemy tank |
-| `death_penalty` | float | `-1.0` | Penalty when the player's tank dies |
+| `fire_hit_reward` | float | `0.5` | Reward for hitting an enemy tank |
+| `death_reward` | float | `-1.0` | Reward (negative) when the player's tank dies |
 | `win_reward` | float | `1.0` | Reward for winning the game |
-| `loss_penalty` | float | `-1.0` | Penalty for losing the game |
-| `step_penalty` | float | `-0.01` | Per-step penalty (encourages faster play) |
-| `exploration_bonus` | float | `0.02` | Reward per newly discovered cell |
-| `invalid_move_penalty` | float | `-0.1` | Penalty for attempting an invalid action |
-| `fire_miss_penalty` | float | `-0.05` | Penalty for firing and missing |
-| `missed_fire_penalty` | float | `-0.1` | Penalty for not firing when an enemy is directly ahead |
-| `pass_penalty` | float | `-0.02` | Penalty for deliberately choosing to pass |
+| `loss_reward` | float | `-1.0` | Reward (negative) for losing the game |
+| `step_reward` | float | `-0.01` | Per-step reward (negative to encourage faster play) |
+| `exploration_reward` | float | `0.02` | Reward per newly discovered cell |
+| `invalid_move_reward` | float | `-0.1` | Reward (negative) for attempting an invalid action |
+| `fire_miss_reward` | float | `-0.05` | Reward (negative) for firing and missing |
+| `fire_neglect_reward` | float | `-0.1` | Reward (negative) for not firing when an enemy is directly ahead |
+| `pass_reward` | float | `-0.02` | Reward (negative) for deliberately choosing to pass |
 | `enemy_in_cone_reward` | float | `0.01` | Per-enemy reward for visible enemies in the forward cone |
 
 Each model uses its own reward configuration, so you can experiment with different reward shaping strategies.

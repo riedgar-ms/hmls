@@ -17,8 +17,8 @@ from typing import Any
 
 import torch
 
+from hmls.nncore.reward import DefaultRewardConfig
 from hmls.singletanknn.model import ModelConfig, TankPolicyNetwork
-from hmls.singletanknn.reward import DefaultRewardConfig
 
 MODEL_CONFIG_FILENAME = "model_config.json"
 REWARD_CONFIG_FILENAME = "reward_config.json"
