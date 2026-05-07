@@ -13,7 +13,33 @@ dev = [
     "ruff>=0.4",
     "mypy>=1.10",
     "httpx>=0.27",
+    "hmls-client",
+    "hmls-core",
+    "hmls-mapgenerator",
+    "hmls-nncore",
+    "hmls-observer",
+    "hmls-protocol",
+    "hmls-reinforcetrainer",
+    "hmls-replayviewer",
+    "hmls-server",
+    "hmls-singlemki",
+    "hmls-testharness",
+    "hmls-uxcommon",
 ]
+
+[tool.uv.sources]
+hmls-client = { workspace = true }
+hmls-core = { workspace = true }
+hmls-mapgenerator = { workspace = true }
+hmls-nncore = { workspace = true }
+hmls-observer = { workspace = true }
+hmls-protocol = { workspace = true }
+hmls-reinforcetrainer = { workspace = true }
+hmls-replayviewer = { workspace = true }
+hmls-server = { workspace = true }
+hmls-singlemki = { workspace = true }
+hmls-testharness = { workspace = true }
+hmls-uxcommon = { workspace = true }
 
 [tool.ruff]
 src = ["packages/*/src"]

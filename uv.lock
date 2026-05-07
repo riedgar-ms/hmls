@@ -408,6 +408,18 @@ source = { virtual = "." }
 
 [package.dev-dependencies]
 dev = [
+    { name = "hmls-client" },
+    { name = "hmls-core" },
+    { name = "hmls-mapgenerator" },
+    { name = "hmls-nncore" },
+    { name = "hmls-observer" },
+    { name = "hmls-protocol" },
+    { name = "hmls-reinforcetrainer" },
+    { name = "hmls-replayviewer" },
+    { name = "hmls-server" },
+    { name = "hmls-singlemki" },
+    { name = "hmls-testharness" },
+    { name = "hmls-uxcommon" },
     { name = "httpx" },
     { name = "mypy" },
     { name = "pytest" },
@@ -418,6 +430,18 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "hmls-client", editable = "packages/hmls-client" },
+    { name = "hmls-core", editable = "packages/hmls-core" },
+    { name = "hmls-mapgenerator", editable = "packages/hmls-mapgenerator" },
+    { name = "hmls-nncore", editable = "packages/hmls-nncore" },
+    { name = "hmls-observer", editable = "packages/hmls-observer" },
+    { name = "hmls-protocol", editable = "packages/hmls-protocol" },
+    { name = "hmls-reinforcetrainer", editable = "packages/hmls-reinforcetrainer" },
+    { name = "hmls-replayviewer", editable = "packages/hmls-replayviewer" },
+    { name = "hmls-server", editable = "packages/hmls-server" },
+    { name = "hmls-singlemki", editable = "packages/hmls-singlemki" },
+    { name = "hmls-testharness", editable = "packages/hmls-testharness" },
+    { name = "hmls-uxcommon", editable = "packages/hmls-uxcommon" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "mypy", specifier = ">=1.10" },
     { name = "pytest", specifier = ">=8" },
