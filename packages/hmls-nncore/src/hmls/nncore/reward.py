@@ -22,35 +22,39 @@ class DefaultRewardConfig(BaseModel, frozen=True):
     All fields have sensible defaults so ``DefaultRewardConfig()``
     produces a usable configuration out of the box.
 
+    All values are rewards: positive values reinforce behaviour,
+    negative values discourage it.
+
     Attributes:
         hit_reward: Reward for hitting an enemy tank.
-        death_penalty: Penalty when the player's tank dies.
+        death_reward: Reward (negative) when the player's tank dies.
         win_reward: Reward for winning the game.
-        loss_penalty: Penalty for losing the game.
-        step_penalty: Small per-step penalty to encourage faster play.
-        exploration_bonus: Reward per newly discovered cell.
-        invalid_move_penalty: Penalty for attempting an invalid action
-            (applied in addition to the step penalty).
-        fire_miss_penalty: Penalty for firing and missing (applied in
-            addition to the step penalty).
-        missed_fire_penalty: Penalty for not firing when an alive enemy
-            tank is directly ahead and could have been hit.
-        pass_penalty: Penalty for deliberately choosing to pass a turn
-            (not applied when an invalid action is converted to pass).
+        loss_reward: Reward (negative) for losing the game.
+        step_reward: Per-step reward (negative to encourage faster play).
+        exploration_reward: Reward per newly discovered cell.
+        invalid_move_reward: Reward (negative) for attempting an invalid
+            action (applied in addition to the step reward).
+        fire_miss_reward: Reward (negative) for firing and missing
+            (applied in addition to the step reward).
+        missed_fire_reward: Reward (negative) for not firing when an
+            alive enemy tank is directly ahead and could have been hit.
+        pass_reward: Reward (negative) for deliberately choosing to pass
+            a turn (not applied when an invalid action is converted to
+            pass).
         enemy_in_cone_reward: Per-enemy reward for each alive enemy tank
             visible in the forward cone of the egocentric patch.
     """
 
     hit_reward: float = 0.5
-    death_penalty: float = -1.0
+    death_reward: float = -1.0
     win_reward: float = 1.0
-    loss_penalty: float = -1.0
-    step_penalty: float = -0.01
-    exploration_bonus: float = 0.02
-    invalid_move_penalty: float = -0.1
-    fire_miss_penalty: float = -0.05
-    missed_fire_penalty: float = -0.1
-    pass_penalty: float = -0.02
+    loss_reward: float = -1.0
+    step_reward: float = -0.01
+    exploration_reward: float = 0.02
+    invalid_move_reward: float = -0.1
+    fire_miss_reward: float = -0.05
+    missed_fire_reward: float = -0.1
+    pass_reward: float = -0.02
     enemy_in_cone_reward: float = 0.01
 
 
@@ -112,7 +116,7 @@ class DefaultReward(RewardFunction):
     """Shaped reward function with exploration bonus.
 
     Provides immediate feedback for hits, deaths, exploration, and
-    a terminal bonus/penalty for winning/losing.
+    a terminal reward for winning/losing.
 
     Configuration is held in a :class:`DefaultRewardConfig` Pydantic model
     for easy serialisation and storage of training parameters.
@@ -131,9 +135,9 @@ class DefaultReward(RewardFunction):
         return self.config.hit_reward
 
     @property
-    def death_penalty(self) -> float:
-        """Penalty when the player's tank dies."""
-        return self.config.death_penalty
+    def death_reward(self) -> float:
+        """Reward (negative) when the player's tank dies."""
+        return self.config.death_reward
 
     @property
     def win_reward(self) -> float:
@@ -141,39 +145,39 @@ class DefaultReward(RewardFunction):
         return self.config.win_reward
 
     @property
-    def loss_penalty(self) -> float:
-        """Penalty for losing the game."""
-        return self.config.loss_penalty
+    def loss_reward(self) -> float:
+        """Reward (negative) for losing the game."""
+        return self.config.loss_reward
 
     @property
-    def step_penalty(self) -> float:
-        """Small per-step penalty to encourage faster play."""
-        return self.config.step_penalty
+    def step_reward(self) -> float:
+        """Per-step reward (negative to encourage faster play)."""
+        return self.config.step_reward
 
     @property
-    def exploration_bonus(self) -> float:
+    def exploration_reward(self) -> float:
         """Reward per newly discovered cell."""
-        return self.config.exploration_bonus
+        return self.config.exploration_reward
 
     @property
-    def invalid_move_penalty(self) -> float:
-        """Penalty for attempting an invalid action."""
-        return self.config.invalid_move_penalty
+    def invalid_move_reward(self) -> float:
+        """Reward (negative) for attempting an invalid action."""
+        return self.config.invalid_move_reward
 
     @property
-    def fire_miss_penalty(self) -> float:
-        """Penalty for firing and missing."""
-        return self.config.fire_miss_penalty
+    def fire_miss_reward(self) -> float:
+        """Reward (negative) for firing and missing."""
+        return self.config.fire_miss_reward
 
     @property
-    def missed_fire_penalty(self) -> float:
-        """Penalty for not firing when an enemy is directly ahead."""
-        return self.config.missed_fire_penalty
+    def missed_fire_reward(self) -> float:
+        """Reward (negative) for not firing when an enemy is directly ahead."""
+        return self.config.missed_fire_reward
 
     @property
-    def pass_penalty(self) -> float:
-        """Penalty for deliberately choosing to pass."""
-        return self.config.pass_penalty
+    def pass_reward(self) -> float:
+        """Reward (negative) for deliberately choosing to pass."""
+        return self.config.pass_reward
 
     @property
     def enemy_in_cone_reward(self) -> float:
@@ -190,40 +194,39 @@ class DefaultReward(RewardFunction):
     ) -> float:
         """Compute shaped step reward.
 
-        Rewards:
-        - Hit an enemy: +hit_reward
-        - Fire and miss: +fire_miss_penalty (negative value)
-        - Invalid action: +invalid_move_penalty (negative value)
-        - Exploration: +exploration_bonus per new cell
-        - Time penalty: +step_penalty (negative value)
-        - Missed fire: +missed_fire_penalty when enemy directly ahead
-          but action was not fire
-        - Pass: +pass_penalty for deliberate pass actions
-        - Enemies in cone: +enemy_in_cone_reward per visible enemy in
-          the forward cone
+        Components (all added to the total):
+        - hit_reward: for hitting an enemy
+        - fire_miss_reward: for firing and missing (negative)
+        - invalid_move_reward: for an invalid action (negative)
+        - exploration_reward: per newly discovered cell
+        - step_reward: per-step time cost (negative)
+        - missed_fire_reward: when enemy directly ahead but action was
+          not fire (negative)
+        - pass_reward: for deliberate pass actions (negative)
+        - enemy_in_cone_reward: per visible enemy in the forward cone
         """
-        reward = self.step_penalty
+        reward = self.step_reward
 
         # Fire outcome
         if entry.hit is True:
             reward += self.hit_reward
         elif entry.hit is False:
-            reward += self.fire_miss_penalty
+            reward += self.fire_miss_reward
         elif _enemy_directly_ahead(patch, team):
             # hit is None means a non-fire action was taken;
             # penalize missing the opportunity when enemy directly ahead
-            reward += self.missed_fire_penalty
+            reward += self.missed_fire_reward
 
         # Exploration bonus
-        reward += self.exploration_bonus * new_positions_this_step
+        reward += self.exploration_reward * new_positions_this_step
 
-        # Invalid action penalty
+        # Invalid action reward
         if not entry.valid:
-            reward += self.invalid_move_penalty
+            reward += self.invalid_move_reward
 
-        # Deliberate pass penalty
+        # Deliberate pass reward
         if entry.requested_action == Action.PASS and entry.valid:
-            reward += self.pass_penalty
+            reward += self.pass_reward
 
         # Enemy in forward cone reward
         cone_enemies = _count_enemies_in_cone(patch, team)
@@ -240,7 +243,7 @@ class DefaultReward(RewardFunction):
         if won is True:
             return self.win_reward
         elif won is False:
-            return self.loss_penalty
+            return self.loss_reward
         else:
             return 0.0
 

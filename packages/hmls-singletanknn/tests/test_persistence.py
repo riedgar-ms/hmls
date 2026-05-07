@@ -114,15 +114,15 @@ class TestRewardConfigJson:
         """DefaultRewardConfig can be saved and loaded from JSON."""
         config = DefaultRewardConfig(
             hit_reward=1.0,
-            death_penalty=-2.0,
-            exploration_bonus=0.05,
+            death_reward=-2.0,
+            exploration_reward=0.05,
         )
         save_reward_config(config, tmp_path)
 
         loaded = load_reward_config(tmp_path)
         assert loaded.hit_reward == 1.0
-        assert loaded.death_penalty == -2.0
-        assert loaded.exploration_bonus == 0.05
+        assert loaded.death_reward == -2.0
+        assert loaded.exploration_reward == 0.05
 
     def test_default_config_roundtrip(self, tmp_path: Path) -> None:
         """Default DefaultRewardConfig round-trips correctly."""

@@ -256,7 +256,7 @@ class TestTrainIntegration:
         )
         _setup_model_dir(
             model_b_dir,
-            reward_config=DefaultRewardConfig(hit_reward=0.1, exploration_bonus=0.1),
+            reward_config=DefaultRewardConfig(hit_reward=0.1, exploration_reward=0.1),
         )
 
         config = TrainerConfig(
