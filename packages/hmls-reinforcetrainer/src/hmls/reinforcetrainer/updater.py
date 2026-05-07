@@ -10,7 +10,7 @@ from __future__ import annotations
 import torch
 from torch.optim import Optimizer
 
-from hmls.singletanknn.trajectory import Episode, compute_returns
+from hmls.nncore.trajectory import Episode, compute_returns
 
 
 def reinforce_update(

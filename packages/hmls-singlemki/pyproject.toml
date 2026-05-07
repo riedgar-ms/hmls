@@ -1,5 +1,5 @@
 [project]
-name = "hmls-singletanknn"
+name = "hmls-singlemki"
 version = "0.1.0"
 description = "Neural network player for HMLS tank game (single tank)"
 requires-python = ">=3.14"

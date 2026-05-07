@@ -1,67 +1,55 @@
-"""Neural-network player implementation.
+"""Abstract base class for neural-network-based players.
 
-The :class:`NNPlayer` is a :class:`~hmls.core.player.Player` subclass
-that selects actions by running a forward pass through the
-:class:`~hmls.singletanknn.model.TankPolicyNetwork`.  It supports
-"play" mode (deterministic argmax) and "learn" mode (stochastic
-sampling with trajectory recording).
+:class:`NNPlayerBase` provides the model-agnostic infrastructure that
+all NN tank players share: mode management, episode trajectory tracking,
+exploration bookkeeping, and the ``choose_action`` skeleton.  Concrete
+subclasses implement the model-specific forward pass by overriding a
+small set of abstract methods.
 """
 
 from __future__ import annotations
 
+from abc import abstractmethod
 from typing import Literal
 
 import torch
-from torch.distributions import Categorical
 
 from hmls.core.player import Player
 from hmls.core.tank import TankId
 from hmls.core.types import Action, Position
 from hmls.core.visibility import PlayerView, TankPatch, VisibleCell
-from hmls.singletanknn.constants import ACTION_INDEX_TO_ACTION
-from hmls.singletanknn.encoding import encode_patch
-from hmls.singletanknn.model import TankPolicyNetwork
-from hmls.singletanknn.trajectory import Episode
+from hmls.nncore.constants import ACTION_INDEX_TO_ACTION
+from hmls.nncore.trajectory import Episode
 
 
-class NNPlayer(Player):
-    """A neural-network-based player controlling a single tank.
+class NNPlayerBase(Player):
+    """Base class for neural-network-based players.
 
-    Uses a CNN→GRU→policy-head architecture to choose actions from the
-    egocentric visibility patch.  In "play" mode, selects the highest-
-    probability action deterministically.  In "learn" mode, samples from
-    the policy distribution and records trajectory data for REINFORCE.
-
-    The player tracks which map positions have been observed (for
-    exploration rewards) and validates that incoming patches match the
-    expected size.
+    Handles mode switching (play / learn), episode lifecycle, exploration
+    tracking, log-probability tensor management, and the ``choose_action``
+    dispatch loop.  Subclasses only need to implement the model-specific
+    forward pass and state-reset logic.
 
     Args:
         team: The team this player controls.
-        model: The :class:`TankPolicyNetwork` to use for inference.
         mode: ``"play"`` for deterministic inference, ``"learn"`` for
             stochastic sampling with trajectory recording.
-        patch_size: Expected patch side length (must match the model's
-            trained patch size).  Defaults to 9.
     """
 
     def __init__(
         self,
         team: str,
-        model: TankPolicyNetwork,
         mode: Literal["play", "learn"] = "play",
-        patch_size: int = 9,
     ) -> None:
         super().__init__(team)
-        self._model = model
         self._mode = mode
-        self._patch_size = patch_size
-        self._hidden: torch.Tensor = model.initial_hidden(batch_size=1).squeeze(0)
         self._explored_positions: set[Position] = set()
         self._episode = Episode()
         self._last_new_positions: int = 0
         self._log_prob_tensors: list[torch.Tensor] = []
         self._last_patch: TankPatch | None = None
+
+    # ── Properties ────────────────────────────────────────────────────
 
     @property
     def mode(self) -> Literal["play", "learn"]:
@@ -74,11 +62,6 @@ class NNPlayer(Player):
         self._mode = value
 
     @property
-    def model(self) -> TankPolicyNetwork:
-        """The underlying neural network model."""
-        return self._model
-
-    @property
     def explored_positions(self) -> set[Position]:
         """Set of all positions observed during the current episode."""
         return self._explored_positions
@@ -89,9 +72,13 @@ class NNPlayer(Player):
         return self._episode
 
     @property
+    @abstractmethod
     def patch_size(self) -> int:
-        """Expected patch side length."""
-        return self._patch_size
+        """Expected patch side length.
+
+        Must match the model's trained patch size.
+        """
+        ...
 
     @property
     def log_prob_tensors(self) -> list[torch.Tensor]:
@@ -110,24 +97,31 @@ class NNPlayer(Player):
         """
         return self._last_patch
 
+    # ── Episode lifecycle ─────────────────────────────────────────────
+
     def reset_episode(self) -> None:
         """Reset state for a new episode.
 
-        Clears the GRU hidden state, exploration tracking, and trajectory.
-        Call this at the start of each new game.
+        Clears exploration tracking, trajectory data, and delegates to
+        :meth:`_reset_model_state` for model-specific cleanup (e.g.
+        recurrent hidden states).  Call this at the start of each new
+        game.
         """
-        self._hidden = self._model.initial_hidden(batch_size=1).squeeze(0)
         self._explored_positions = set()
         self._episode = Episode()
         self._last_new_positions = 0
         self._log_prob_tensors = []
         self._last_patch = None
+        self._reset_model_state()
+
+    # ── Action selection ──────────────────────────────────────────────
 
     def choose_action(self, tank_id: TankId, view: PlayerView) -> Action:
-        """Choose an action using the neural network.
+        """Choose an action for the specified tank.
 
-        Finds the patch for the specified tank, encodes it, runs the
-        forward pass, and selects an action.
+        Finds the tank's egocentric patch, validates it, updates
+        exploration tracking, and delegates to the model-specific
+        forward pass (:meth:`_forward_play` or :meth:`_forward_learn`).
 
         Args:
             tank_id: The tank that must act this turn.
@@ -137,10 +131,9 @@ class NNPlayer(Player):
             The chosen :class:`Action`.
 
         Raises:
-            ValueError: If no patch is found for *tank_id* or if the
-                patch size doesn't match the expected size.
+            ValueError: If the patch size doesn't match
+                :attr:`patch_size`.
         """
-        # Find the patch for our tank
         patch = None
         for p in view.patches:
             if p.tank_id == tank_id:
@@ -148,45 +141,38 @@ class NNPlayer(Player):
                 break
 
         if patch is None:
-            # Tank has no patch (shouldn't happen for alive tank)
             return Action.PASS
 
         self._last_patch = patch
 
-        # Validate patch size
         grid_size = len(patch.grid)
-        if grid_size != self._patch_size:
+        if grid_size != self.patch_size:
             raise ValueError(
-                f"Patch size mismatch: expected {self._patch_size}, got {grid_size}. "
-                f"The model was trained for patch_size={self._patch_size}."
+                f"Patch size mismatch: expected {self.patch_size}, got {grid_size}. "
+                f"The model was trained for patch_size={self.patch_size}."
             )
 
-        # Update exploration tracking
         new_positions = self._update_exploration(patch)
         self._last_new_positions = new_positions
 
-        # Encode patch to tensor
-        patch_tensor = encode_patch(patch, self._team)
-
-        # Forward pass
         if self._mode == "play":
-            with torch.no_grad():
-                logits, new_hidden = self._model(patch_tensor, self._hidden)
-            self._hidden = new_hidden
-            action_idx = int(logits.argmax().item())
+            action_idx = self._forward_play(patch)
         else:
-            logits, new_hidden = self._model(patch_tensor, self._hidden)
-            self._hidden = new_hidden.detach()
-            probs = torch.softmax(logits, dim=-1)
-            dist = Categorical(probs)
-            action_tensor = dist.sample()  # type: ignore[no-untyped-call]
-            action_idx = int(action_tensor.item())
-            log_prob_tensor: torch.Tensor = dist.log_prob(action_tensor)  # type: ignore[no-untyped-call]
+            action_idx, log_prob, log_prob_tensor = self._forward_learn(patch)
             self._log_prob_tensors.append(log_prob_tensor)
-            log_prob = float(log_prob_tensor.item())
             self._episode.add_step(action_index=action_idx, log_prob=log_prob)
 
         return ACTION_INDEX_TO_ACTION[action_idx]
+
+    # ── Exploration tracking ──────────────────────────────────────────
+
+    def last_step_new_positions(self) -> int:
+        """Return the number of new positions discovered on the last step.
+
+        This is a convenience for the reward function.  Returns 0 if no
+        step has been taken yet.
+        """
+        return self._last_new_positions
 
     def _update_exploration(self, patch: TankPatch) -> int:
         """Update the set of explored positions from a patch.
@@ -201,9 +187,6 @@ class NNPlayer(Player):
             Number of positions that were not previously in
             :attr:`explored_positions`.
         """
-        # We compute world positions from the patch's egocentric grid.
-        # The patch centre is at the tank's position; we need the
-        # direction to map egocentric → world.
         half = len(patch.grid) // 2
         forward = patch.direction.forward_delta()
         right = patch.direction.turn_right().forward_delta()
@@ -225,10 +208,42 @@ class NNPlayer(Player):
 
         return new_count
 
-    def last_step_new_positions(self) -> int:
-        """Return the number of new positions discovered on the last step.
+    # ── Abstract methods for subclasses ───────────────────────────────
 
-        This is a convenience for the reward function. Returns 0 if no
-        step has been taken yet.
+    @abstractmethod
+    def _forward_play(self, patch: TankPatch) -> int:
+        """Select an action deterministically (no gradient tracking).
+
+        Args:
+            patch: The tank's egocentric visibility patch.
+
+        Returns:
+            The index of the chosen action.
         """
-        return self._last_new_positions
+        ...
+
+    @abstractmethod
+    def _forward_learn(self, patch: TankPatch) -> tuple[int, float, torch.Tensor]:
+        """Select an action stochastically for training.
+
+        Must sample from the policy distribution and return the
+        log-probability tensor with gradient information intact.
+
+        Args:
+            patch: The tank's egocentric visibility patch.
+
+        Returns:
+            A tuple of ``(action_index, log_prob_float, log_prob_tensor)``
+            where *log_prob_tensor* retains ``grad_fn`` for
+            backpropagation.
+        """
+        ...
+
+    @abstractmethod
+    def _reset_model_state(self) -> None:
+        """Reset model-specific state for a new episode.
+
+        Called by :meth:`reset_episode`.  Override to clear recurrent
+        hidden states or other per-episode model state.
+        """
+        ...

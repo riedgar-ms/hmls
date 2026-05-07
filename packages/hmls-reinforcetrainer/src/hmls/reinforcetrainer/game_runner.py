@@ -15,9 +15,10 @@ from hmls.core.engine import GameEngine, GameResult, HistoryEntry
 from hmls.core.map import GameMap
 from hmls.core.placement import place_tanks
 from hmls.mapgenerator import STRATEGY_REGISTRY, MapStrategy, generate_map
+from hmls.nncore.player import NNPlayerBase
 from hmls.nncore.reward import DefaultReward, RewardFunction
-from hmls.singletanknn.model import TankPolicyNetwork
-from hmls.singletanknn.player import NNPlayer
+from hmls.singlemki.model import TankPolicyNetwork
+from hmls.singlemki.player import NNPlayer
 
 
 @dataclass
@@ -113,13 +114,11 @@ def run_game(
         team="A",
         model=model_a,
         mode="learn" if train_a else "play",
-        patch_size=model_a.config.patch_size,
     )
     player_b = NNPlayer(
         team="B",
         model=model_b,
         mode="learn" if train_b else "play",
-        patch_size=model_b.config.patch_size,
     )
 
     # Reset episode state
@@ -177,14 +176,14 @@ def run_game(
 
 
 def _assign_step_reward(
-    player: NNPlayer,
+    player: NNPlayerBase,
     entry: HistoryEntry,
     reward_fn: RewardFunction,
 ) -> None:
     """Compute and assign the reward for the most recent step.
 
     Args:
-        player: The NNPlayer that just acted.
+        player: The NN player that just acted.
         entry: The history entry from the engine.
         reward_fn: Reward function to compute the reward.
     """

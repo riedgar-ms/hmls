@@ -12,7 +12,7 @@ from hmls.reinforcetrainer.game_runner import (
     run_game,
     save_sample_game,
 )
-from hmls.singletanknn.model import ModelConfig, TankPolicyNetwork
+from hmls.singlemki.model import ModelConfig, TankPolicyNetwork
 
 
 class TestCreateMap:
