@@ -8,7 +8,7 @@ from hmls.core.map import CellType
 from hmls.core.tank import Tank
 from hmls.core.types import Action, Direction, Position
 from hmls.core.visibility import FogCell, TankPatch, VisibleCell
-from hmls.singletanknn.reward import DefaultReward, DefaultRewardConfig
+from hmls.nncore.reward import DefaultReward, DefaultRewardConfig
 
 
 def _make_entry(

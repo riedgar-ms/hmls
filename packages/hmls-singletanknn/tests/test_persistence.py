@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 import torch
 
+from hmls.nncore.reward import DefaultRewardConfig
 from hmls.singletanknn.model import ModelConfig, TankPolicyNetwork
 from hmls.singletanknn.persistence import (
     load_model,
@@ -16,7 +17,6 @@ from hmls.singletanknn.persistence import (
     save_model_config,
     save_reward_config,
 )
-from hmls.singletanknn.reward import DefaultRewardConfig
 
 
 def test_save_and_load_roundtrip(tmp_path: Path) -> None:

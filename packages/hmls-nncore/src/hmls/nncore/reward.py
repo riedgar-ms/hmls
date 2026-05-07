@@ -1,4 +1,4 @@
-"""Reward functions for the NN player.
+"""Reward functions for NN-controlled tank players.
 
 Defines a :class:`RewardFunction` abstract base class and a
 :class:`DefaultReward` implementation that provides shaped rewards

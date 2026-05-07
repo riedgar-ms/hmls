@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from hmls.nncore.reward import DefaultRewardConfig
 from hmls.reinforcetrainer.config import (
     GameConfig,
     HyperparameterConfig,
@@ -22,7 +23,6 @@ from hmls.reinforcetrainer.training_loop import (
 )
 from hmls.singletanknn.model import ModelConfig
 from hmls.singletanknn.persistence import save_model_config, save_reward_config
-from hmls.singletanknn.reward import DefaultRewardConfig
 
 
 def _setup_model_dir(
