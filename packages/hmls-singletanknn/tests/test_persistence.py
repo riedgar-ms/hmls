@@ -113,14 +113,14 @@ class TestRewardConfigJson:
     def test_save_and_load_roundtrip(self, tmp_path: Path) -> None:
         """DefaultRewardConfig can be saved and loaded from JSON."""
         config = DefaultRewardConfig(
-            hit_reward=1.0,
+            fire_hit_reward=1.0,
             death_reward=-2.0,
             exploration_reward=0.05,
         )
         save_reward_config(config, tmp_path)
 
         loaded = load_reward_config(tmp_path)
-        assert loaded.hit_reward == 1.0
+        assert loaded.fire_hit_reward == 1.0
         assert loaded.death_reward == -2.0
         assert loaded.exploration_reward == 0.05
 

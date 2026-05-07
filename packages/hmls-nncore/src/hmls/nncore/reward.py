@@ -26,7 +26,7 @@ class DefaultRewardConfig(BaseModel, frozen=True):
     negative values discourage it.
 
     Attributes:
-        hit_reward: Reward for hitting an enemy tank.
+        fire_hit_reward: Reward for hitting an enemy tank.
         death_reward: Reward (negative) when the player's tank dies.
         win_reward: Reward for winning the game.
         loss_reward: Reward (negative) for losing the game.
@@ -36,7 +36,7 @@ class DefaultRewardConfig(BaseModel, frozen=True):
             action (applied in addition to the step reward).
         fire_miss_reward: Reward (negative) for firing and missing
             (applied in addition to the step reward).
-        missed_fire_reward: Reward (negative) for not firing when an
+        fire_neglect_reward: Reward (negative) for not firing when an
             alive enemy tank is directly ahead and could have been hit.
         pass_reward: Reward (negative) for deliberately choosing to pass
             a turn (not applied when an invalid action is converted to
@@ -45,7 +45,7 @@ class DefaultRewardConfig(BaseModel, frozen=True):
             visible in the forward cone of the egocentric patch.
     """
 
-    hit_reward: float = 0.5
+    fire_hit_reward: float = 0.5
     death_reward: float = -1.0
     win_reward: float = 1.0
     loss_reward: float = -1.0
@@ -53,7 +53,7 @@ class DefaultRewardConfig(BaseModel, frozen=True):
     exploration_reward: float = 0.02
     invalid_move_reward: float = -0.1
     fire_miss_reward: float = -0.05
-    missed_fire_reward: float = -0.1
+    fire_neglect_reward: float = -0.1
     pass_reward: float = -0.02
     enemy_in_cone_reward: float = 0.01
 
@@ -130,9 +130,9 @@ class DefaultReward(RewardFunction):
         self.config: DefaultRewardConfig = config or DefaultRewardConfig()
 
     @property
-    def hit_reward(self) -> float:
+    def fire_hit_reward(self) -> float:
         """Reward for hitting an enemy tank."""
-        return self.config.hit_reward
+        return self.config.fire_hit_reward
 
     @property
     def death_reward(self) -> float:
@@ -170,9 +170,9 @@ class DefaultReward(RewardFunction):
         return self.config.fire_miss_reward
 
     @property
-    def missed_fire_reward(self) -> float:
+    def fire_neglect_reward(self) -> float:
         """Reward (negative) for not firing when an enemy is directly ahead."""
-        return self.config.missed_fire_reward
+        return self.config.fire_neglect_reward
 
     @property
     def pass_reward(self) -> float:
@@ -195,12 +195,12 @@ class DefaultReward(RewardFunction):
         """Compute shaped step reward.
 
         Components (all added to the total):
-        - hit_reward: for hitting an enemy
+        - fire_hit_reward: for hitting an enemy
         - fire_miss_reward: for firing and missing (negative)
         - invalid_move_reward: for an invalid action (negative)
         - exploration_reward: per newly discovered cell
         - step_reward: per-step time cost (negative)
-        - missed_fire_reward: when enemy directly ahead but action was
+        - fire_neglect_reward: when enemy directly ahead but action was
           not fire (negative)
         - pass_reward: for deliberate pass actions (negative)
         - enemy_in_cone_reward: per visible enemy in the forward cone
@@ -209,13 +209,13 @@ class DefaultReward(RewardFunction):
 
         # Fire outcome
         if entry.hit is True:
-            reward += self.hit_reward
+            reward += self.fire_hit_reward
         elif entry.hit is False:
             reward += self.fire_miss_reward
         elif _enemy_directly_ahead(patch, team):
             # hit is None means a non-fire action was taken;
             # penalize missing the opportunity when enemy directly ahead
-            reward += self.missed_fire_reward
+            reward += self.fire_neglect_reward
 
         # Exploration bonus
         reward += self.exploration_reward * new_positions_this_step

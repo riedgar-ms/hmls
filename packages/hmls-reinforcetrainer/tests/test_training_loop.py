@@ -252,11 +252,11 @@ class TestTrainIntegration:
         model_b_dir = tmp_path / "model_b"
         _setup_model_dir(
             model_a_dir,
-            reward_config=DefaultRewardConfig(hit_reward=1.0),
+            reward_config=DefaultRewardConfig(fire_hit_reward=1.0),
         )
         _setup_model_dir(
             model_b_dir,
-            reward_config=DefaultRewardConfig(hit_reward=0.1, exploration_reward=0.1),
+            reward_config=DefaultRewardConfig(fire_hit_reward=0.1, exploration_reward=0.1),
         )
 
         config = TrainerConfig(

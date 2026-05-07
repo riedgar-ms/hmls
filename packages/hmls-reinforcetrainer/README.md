@@ -51,7 +51,7 @@ Defines the reward shaping parameters. Example:
 
 ```json
 {
-  "hit_reward": 0.5,
+  "fire_hit_reward": 0.5,
   "death_reward": -1.0,
   "win_reward": 1.0,
   "loss_reward": -1.0,
@@ -59,7 +59,7 @@ Defines the reward shaping parameters. Example:
   "exploration_reward": 0.02,
   "invalid_move_reward": -0.1,
   "fire_miss_reward": -0.05,
-  "missed_fire_reward": -0.1,
+  "fire_neglect_reward": -0.1,
   "pass_reward": -0.02,
   "enemy_in_cone_reward": 0.01
 }
@@ -67,7 +67,7 @@ Defines the reward shaping parameters. Example:
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `hit_reward` | float | `0.5` | Reward for hitting an enemy tank |
+| `fire_hit_reward` | float | `0.5` | Reward for hitting an enemy tank |
 | `death_reward` | float | `-1.0` | Reward (negative) when the player's tank dies |
 | `win_reward` | float | `1.0` | Reward for winning the game |
 | `loss_reward` | float | `-1.0` | Reward (negative) for losing the game |
@@ -75,7 +75,7 @@ Defines the reward shaping parameters. Example:
 | `exploration_reward` | float | `0.02` | Reward per newly discovered cell |
 | `invalid_move_reward` | float | `-0.1` | Reward (negative) for attempting an invalid action |
 | `fire_miss_reward` | float | `-0.05` | Reward (negative) for firing and missing |
-| `missed_fire_reward` | float | `-0.1` | Reward (negative) for not firing when an enemy is directly ahead |
+| `fire_neglect_reward` | float | `-0.1` | Reward (negative) for not firing when an enemy is directly ahead |
 | `pass_reward` | float | `-0.02` | Reward (negative) for deliberately choosing to pass |
 | `enemy_in_cone_reward` | float | `0.01` | Per-enemy reward for visible enemies in the forward cone |
 

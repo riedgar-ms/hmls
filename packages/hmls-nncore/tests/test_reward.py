@@ -140,7 +140,7 @@ def test_default_reward_invalid_action() -> None:
 
 
 def test_default_reward_fire_miss() -> None:
-    """Firing and missing incurs the fire_miss_reward."""
+    """Firing and missing incurs the fire_miss_reward (penalty)."""
     reward_fn = DefaultReward()
     entry = _make_entry(action=Action.FIRE, hit=False)
     patch = _make_empty_patch()
@@ -167,7 +167,7 @@ def test_default_reward_hit_no_miss_penalty() -> None:
         patch=patch,
         team="alpha",
     )
-    # step_reward + hit_reward only (no fire_miss_reward)
+    # step_reward + fire_hit_reward only (no fire_miss_reward)
     assert abs(reward - (-0.01 + 0.5)) < 1e-7
 
 
@@ -191,9 +191,9 @@ def test_default_reward_episode_draw() -> None:
 
 def test_default_reward_from_config() -> None:
     """Construction from an explicit config works correctly."""
-    config = DefaultRewardConfig(hit_reward=1.0, step_reward=-0.05)
+    config = DefaultRewardConfig(fire_hit_reward=1.0, step_reward=-0.05)
     reward_fn = DefaultReward(config=config)
-    assert reward_fn.hit_reward == 1.0
+    assert reward_fn.fire_hit_reward == 1.0
     assert reward_fn.step_reward == -0.05
     # Other defaults are preserved
     assert reward_fn.win_reward == 1.0
@@ -203,7 +203,7 @@ def test_default_reward_from_config() -> None:
 def test_default_reward_config_round_trip() -> None:
     """Config survives serialisation round-trip via model_dump/model_validate."""
     config = DefaultRewardConfig(
-        hit_reward=0.8,
+        fire_hit_reward=0.8,
         death_reward=-0.5,
         win_reward=2.0,
         loss_reward=-2.0,
@@ -211,7 +211,7 @@ def test_default_reward_config_round_trip() -> None:
         exploration_reward=0.05,
         invalid_move_reward=-0.2,
         fire_miss_reward=-0.08,
-        missed_fire_reward=-0.15,
+        fire_neglect_reward=-0.15,
         pass_reward=-0.03,
         enemy_in_cone_reward=0.05,
     )
@@ -222,7 +222,7 @@ def test_default_reward_config_round_trip() -> None:
 
 def test_default_reward_config_json_round_trip() -> None:
     """Config survives JSON serialisation round-trip."""
-    config = DefaultRewardConfig(hit_reward=0.75)
+    config = DefaultRewardConfig(fire_hit_reward=0.75)
     json_str = config.model_dump_json()
     restored = DefaultRewardConfig.model_validate_json(json_str)
     assert restored == config
@@ -232,7 +232,7 @@ def test_default_reward_config_is_frozen() -> None:
     """Config should be immutable."""
     config = DefaultRewardConfig()
     try:
-        config.hit_reward = 999.0  # type: ignore[misc]
+        config.fire_hit_reward = 999.0  # type: ignore[misc]
         assert False, "Should have raised"
     except TypeError, ValueError, AttributeError:
         pass
@@ -241,8 +241,8 @@ def test_default_reward_config_is_frozen() -> None:
 # ── New reward signal tests ───────────────────────────────────────────
 
 
-def test_missed_fire_reward_enemy_ahead() -> None:
-    """Non-fire action when enemy is directly ahead incurs missed_fire_reward."""
+def test_fire_neglect_reward_enemy_ahead() -> None:
+    """Non-fire action when enemy is directly ahead incurs fire_neglect_reward."""
     reward_fn = DefaultReward()
     entry = _make_entry(action=Action.MOVE_FORWARD)
     patch = _make_patch_with_enemy_ahead()
@@ -253,13 +253,13 @@ def test_missed_fire_reward_enemy_ahead() -> None:
         patch=patch,
         team="alpha",
     )
-    # step_reward + missed_fire_reward + enemy_in_cone_reward (enemy is also in cone)
+    # step_reward + fire_neglect_reward + enemy_in_cone_reward (enemy is also in cone)
     expected = -0.01 + -0.1 + 0.01
     assert abs(reward - expected) < 1e-7
 
 
-def test_missed_fire_reward_not_applied_on_fire() -> None:
-    """Missed fire reward is NOT applied when the action was FIRE (hit)."""
+def test_fire_neglect_reward_not_applied_on_fire() -> None:
+    """Fire neglect reward is NOT applied when the action was FIRE (hit)."""
     reward_fn = DefaultReward()
     entry = _make_entry(action=Action.FIRE, hit=True)
     patch = _make_patch_with_enemy_ahead()
@@ -270,13 +270,13 @@ def test_missed_fire_reward_not_applied_on_fire() -> None:
         patch=patch,
         team="alpha",
     )
-    # step_reward + hit_reward + enemy_in_cone_reward (enemy visible)
+    # step_reward + fire_hit_reward + enemy_in_cone_reward (enemy visible)
     expected = -0.01 + 0.5 + 0.01
     assert abs(reward - expected) < 1e-7
 
 
-def test_missed_fire_reward_not_applied_no_enemy() -> None:
-    """No missed fire reward when there is no enemy directly ahead."""
+def test_fire_neglect_reward_not_applied_no_enemy() -> None:
+    """No fire neglect reward when there is no enemy directly ahead."""
     reward_fn = DefaultReward()
     entry = _make_entry(action=Action.TURN_LEFT)
     patch = _make_empty_patch()
@@ -415,5 +415,5 @@ def test_missed_fire_friendly_ahead_no_penalty() -> None:
         patch=patch,
         team="alpha",
     )
-    # Just step_reward (no missed_fire_reward for friendly)
+    # Just step_reward (no fire_neglect_reward for friendly)
     assert abs(reward - (-0.01)) < 1e-7
