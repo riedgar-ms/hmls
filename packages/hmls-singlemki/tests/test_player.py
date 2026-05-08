@@ -8,8 +8,8 @@ from hmls.core.map import CellType
 from hmls.core.types import Action, Direction, Position
 from hmls.core.visibility import FogCell, PlayerView, TankInfo, TankPatch, VisibleCell
 from hmls.nncore.constants import ACTION_INDEX_TO_ACTION
+from hmls.nncore.player import NNPlayer
 from hmls.singlemki.model import ModelConfig, TankPolicyNetwork
-from hmls.singlemki.player import NNPlayer
 
 
 def _make_view(patch_size: int = 9, team: str = "alpha") -> PlayerView:
