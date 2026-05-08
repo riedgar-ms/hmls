@@ -17,11 +17,11 @@ Each turn, the tank's egocentric visibility patch is encoded as a `[5, patch_siz
 
 | Channel | Name | Encoding |
 |---------|------|----------|
-| 0 | Terrain | passable = 1.0, impassable = 0.0, fog = −1.0 |
+| 0 | Terrain | passable = 1.0, impassable / boundary = 0.0, fog = −1.0 |
 | 1 | Friendly tank | 1.0 if an alive friendly tank occupies the cell |
 | 2 | Enemy tank | 1.0 if an alive enemy tank occupies the cell |
 | 3 | Wreckage | 1.0 if a dead tank (any team) occupies the cell |
-| 4 | Visibility mask | 1.0 if visible, 0.0 if fog |
+| 4 | Visibility mask | 1.0 if visible or boundary, 0.0 if fog |
 
 ### CNN Stage
 
@@ -76,37 +76,3 @@ Example:
 | `pool_stride` | int | `2` | Stride for each `MaxPool2d` layer (must be ≥ 1) |
 
 **Note:** Increasing `cnn_channels` depth or `gru_hidden_size` increases model capacity but also parameter count and inference cost. The `patch_size` must match the visibility patch size used by the game engine.
-
-## Reward Configuration
-
-The `DefaultRewardConfig` (Pydantic model, frozen) parameterises the shaped reward function used during training. It is serialised as `reward_config.json` in the model directory. All values are additive rewards: positive values reinforce behaviour, negative values discourage it.
-
-Example:
-
-```json
-{
-  "fire_hit_reward": 0.5,
-  "death_reward": -1.0,
-  "win_reward": 1.0,
-  "loss_reward": -1.0,
-  "step_reward": -0.01,
-  "exploration_reward": 0.02
-}
-```
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `fire_hit_reward` | float | `0.5` | Reward for hitting an enemy tank |
-| `death_reward` | float | `-1.0` | Reward when the player's tank dies |
-| `win_reward` | float | `1.0` | Reward for winning the game |
-| `loss_reward` | float | `-1.0` | Reward for losing the game |
-| `step_reward` | float | `-0.01` | Per-step cost (encourages faster play) |
-| `exploration_reward` | float | `0.02` | Reward per newly discovered cell |
-| `invalid_move_reward` | float | `-0.1` | Penalty for attempting an invalid action |
-| `fire_miss_reward` | float | `-0.05` | Penalty for firing and missing |
-| `fire_neglect_reward` | float | `-0.1` | Penalty for not firing when an enemy is directly ahead |
-| `pass_reward` | float | `-0.02` | Penalty for deliberately choosing to pass |
-| `enemy_in_cone_reward` | float | `0.01` | Per-enemy reward for each alive enemy visible in the forward cone |
-| `turn_left_reward` | float | `0.0` | Reward for choosing to turn left |
-| `turn_right_reward` | float | `0.0` | Reward for choosing to turn right |
-| `move_forward_reward` | float | `0.0` | Reward for choosing to move forward |
