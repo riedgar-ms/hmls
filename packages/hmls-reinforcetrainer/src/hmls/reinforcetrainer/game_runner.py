@@ -124,6 +124,8 @@ def run_game(
     # Reset episode state
     player_a.reset_episode()
     player_b.reset_episode()
+    reward_fn_a.reset()
+    reward_fn_b.reset()
 
     # Place tanks (1 per team for single-tank training)
     placement_seed = rng.randint(0, 2**31) if rng else None
@@ -154,9 +156,7 @@ def run_game(
 
     if train_a:
         won_a = True if winner == "A" else (False if winner == "B" else None)
-        end_reward_a = reward_fn_a.compute_episode_end_reward(
-            won_a, len(player_a.explored_positions)
-        )
+        end_reward_a = reward_fn_a.compute_episode_end_reward(won_a)
         if len(player_a.episode) > 0:
             last_idx = len(player_a.episode) - 1
             current = player_a.episode.steps[last_idx].reward
@@ -164,9 +164,7 @@ def run_game(
 
     if train_b:
         won_b = True if winner == "B" else (False if winner == "A" else None)
-        end_reward_b = reward_fn_b.compute_episode_end_reward(
-            won_b, len(player_b.explored_positions)
-        )
+        end_reward_b = reward_fn_b.compute_episode_end_reward(won_b)
         if len(player_b.episode) > 0:
             last_idx = len(player_b.episode) - 1
             current = player_b.episode.steps[last_idx].reward
@@ -189,10 +187,9 @@ def _assign_step_reward(
     """
     patch = player.last_patch
     assert patch is not None, "Player must have seen a patch before reward is computed"
+    reward_fn.observe_patch(patch)
     reward = reward_fn.compute_step_reward(
         entry,
-        player.explored_positions,
-        player.last_step_new_positions(),
         patch,
         player.team,
     )
