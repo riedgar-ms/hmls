@@ -9,14 +9,7 @@ import torch
 
 from hmls.nncore.reward import DefaultRewardConfig
 from hmls.singlemki.model import MkIModelConfig, MkITankPolicyNetwork
-from hmls.singlemki.persistence import (
-    load_model,
-    load_model_config,
-    load_reward_config,
-    save_model,
-    save_model_config,
-    save_reward_config,
-)
+from hmls.singlemki.persistence import PERSISTENCE
 
 
 def test_save_and_load_roundtrip(tmp_path: Path) -> None:
@@ -27,10 +20,10 @@ def test_save_and_load_roundtrip(tmp_path: Path) -> None:
 
     # Save
     model_path = tmp_path / "test_model.pt"
-    save_model(model, model_path, metadata={"episodes": 100})
+    PERSISTENCE.save_model(model, model_path, metadata={"episodes": 100})
 
     # Load
-    loaded_model, metadata = load_model(model_path)
+    loaded_model, metadata = PERSISTENCE.load_model(model_path)
     loaded_model.eval()
 
     assert metadata == {"episodes": 100}
@@ -53,14 +46,14 @@ def test_save_creates_parent_dirs(tmp_path: Path) -> None:
     config = MkIModelConfig(patch_size=5)
     model = MkITankPolicyNetwork(config)
     deep_path = tmp_path / "a" / "b" / "c" / "model.pt"
-    save_model(model, deep_path)
+    PERSISTENCE.save_model(model, deep_path)
     assert deep_path.exists()
 
 
 def test_load_nonexistent_raises(tmp_path: Path) -> None:
     """Loading from a nonexistent path raises FileNotFoundError."""
     with pytest.raises(FileNotFoundError):
-        load_model(tmp_path / "no_such_file.pt")
+        PERSISTENCE.load_model(tmp_path / "no_such_file.pt")
 
 
 def test_save_without_metadata(tmp_path: Path) -> None:
@@ -68,9 +61,9 @@ def test_save_without_metadata(tmp_path: Path) -> None:
     config = MkIModelConfig(patch_size=7)
     model = MkITankPolicyNetwork(config)
     model_path = tmp_path / "model.pt"
-    save_model(model, model_path)
+    PERSISTENCE.save_model(model, model_path)
 
-    _, metadata = load_model(model_path)
+    _, metadata = PERSISTENCE.load_model(model_path)
     assert metadata == {}
 
 
@@ -80,9 +73,9 @@ class TestModelConfigJson:
     def test_save_and_load_roundtrip(self, tmp_path: Path) -> None:
         """MkIModelConfig can be saved and loaded from JSON."""
         config = MkIModelConfig(patch_size=7, cnn_channels=(16, 32, 64), gru_hidden_size=256)
-        save_model_config(config, tmp_path)
+        PERSISTENCE.save_model_config(config, tmp_path)
 
-        loaded = load_model_config(tmp_path)
+        loaded = PERSISTENCE.load_model_config(tmp_path)
         assert loaded.patch_size == 7
         assert loaded.cnn_channels == (16, 32, 64)
         assert loaded.gru_hidden_size == 256
@@ -90,20 +83,20 @@ class TestModelConfigJson:
     def test_default_config_roundtrip(self, tmp_path: Path) -> None:
         """Default MkIModelConfig round-trips correctly."""
         config = MkIModelConfig()
-        save_model_config(config, tmp_path)
+        PERSISTENCE.save_model_config(config, tmp_path)
 
-        loaded = load_model_config(tmp_path)
+        loaded = PERSISTENCE.load_model_config(tmp_path)
         assert loaded == config
 
     def test_load_missing_raises(self, tmp_path: Path) -> None:
         """Loading from a directory without model_config.json raises."""
         with pytest.raises(FileNotFoundError, match="model_config.json"):
-            load_model_config(tmp_path)
+            PERSISTENCE.load_model_config(tmp_path)
 
     def test_save_creates_directory(self, tmp_path: Path) -> None:
         """save_model_config creates the directory if needed."""
         deep_dir = tmp_path / "a" / "b" / "c"
-        save_model_config(MkIModelConfig(), deep_dir)
+        PERSISTENCE.save_model_config(MkIModelConfig(), deep_dir)
         assert (deep_dir / "model_config.json").exists()
 
 
@@ -117,9 +110,9 @@ class TestRewardConfigJson:
             death_reward=-2.0,
             exploration_reward=0.05,
         )
-        save_reward_config(config, tmp_path)
+        PERSISTENCE.save_reward_config(config, tmp_path)
 
-        loaded = load_reward_config(tmp_path)
+        loaded = PERSISTENCE.load_reward_config(tmp_path)
         assert loaded.fire_hit_reward == 1.0
         assert loaded.death_reward == -2.0
         assert loaded.exploration_reward == 0.05
@@ -127,18 +120,18 @@ class TestRewardConfigJson:
     def test_default_config_roundtrip(self, tmp_path: Path) -> None:
         """Default DefaultRewardConfig round-trips correctly."""
         config = DefaultRewardConfig()
-        save_reward_config(config, tmp_path)
+        PERSISTENCE.save_reward_config(config, tmp_path)
 
-        loaded = load_reward_config(tmp_path)
+        loaded = PERSISTENCE.load_reward_config(tmp_path)
         assert loaded == config
 
     def test_load_missing_raises(self, tmp_path: Path) -> None:
         """Loading from a directory without reward_config.json raises."""
         with pytest.raises(FileNotFoundError, match="reward_config.json"):
-            load_reward_config(tmp_path)
+            PERSISTENCE.load_reward_config(tmp_path)
 
     def test_save_creates_directory(self, tmp_path: Path) -> None:
         """save_reward_config creates the directory if needed."""
         deep_dir = tmp_path / "a" / "b" / "c"
-        save_reward_config(DefaultRewardConfig(), deep_dir)
+        PERSISTENCE.save_reward_config(DefaultRewardConfig(), deep_dir)
         assert (deep_dir / "reward_config.json").exists()

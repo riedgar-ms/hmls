@@ -15,7 +15,6 @@ from hmls.nncore.model import TankModelBase, TankModelConfig
 from hmls.nncore.persistence import (
     load_model_config,
     load_or_create_model,
-    read_model_package,
     save_model,
 )
 from hmls.nncore.reward import DefaultReward, RewardFunction
@@ -43,11 +42,9 @@ def _load_reward_config(model_dir: Path) -> DefaultReward:
     Returns:
         A DefaultReward instance.
     """
-    from hmls.nncore.persistence import _import_persistence_module
+    from hmls.nncore.persistence import load_reward_config_for_package
 
-    model_package = read_model_package(model_dir)
-    persistence = _import_persistence_module(model_package)
-    reward_config = persistence.load_reward_config(model_dir)
+    reward_config = load_reward_config_for_package(model_dir)
     return DefaultReward(reward_config)
 
 

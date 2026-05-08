@@ -1,0 +1,29 @@
+{
+  "model_a": { "dir": "tmp/player_a", "train": true },
+  "model_b": { "dir": "tmp/player_b", "train": true },
+  "map": {
+    "min_size": 5,
+    "max_size": 10,
+    "impassable_fraction": 0.1,
+    "strategy": "Blob & Line"
+  },
+  "game": {
+    "games_per_map": 10,
+    "total_maps": 100,
+    "max_turns": 400
+  },
+  "output": {
+    "sample_game_dir": "tmp/output/samples",
+    "sample_game_interval": 100,
+    "save_weights_interval": 200
+  },
+  "hyperparameters": {
+    "learning_rate": 0.0005,
+    "gamma": 0.995,
+    "seed": 42
+  },
+  "lethargy": {
+    "policy": "consecutive_turn_limit",
+    "max_consecutive_turns": 5
+  }
+}
