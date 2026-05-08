@@ -4,8 +4,16 @@ from __future__ import annotations
 
 from pydantic import TypeAdapter
 
+from hmls.core.map import CellType
 from hmls.core.types import Action, Direction, Position
-from hmls.core.visibility import TankInfo
+from hmls.core.visibility import (
+    BoundaryCell,
+    FogCell,
+    PlayerView,
+    TankInfo,
+    TankPatch,
+    VisibleCell,
+)
 from hmls.protocol import (
     ActionMessage,
     AssignMessage,
@@ -16,6 +24,7 @@ from hmls.protocol import (
     ServerMessage,
     TurnResultMessage,
     WaitingMessage,
+    YourTurnMessage,
 )
 
 _server_adapter: TypeAdapter[ServerMessage] = TypeAdapter(ServerMessage)
@@ -94,6 +103,52 @@ class TestServerMessages:
         parsed = _server_adapter.validate_json(raw)
         assert isinstance(parsed, ErrorMessage)
         assert parsed.message == "Bad request"
+
+    def test_your_turn_round_trip_with_boundary_cells(self) -> None:
+        """YourTurnMessage with BoundaryCell should serialise correctly.
+
+        The PatchCell discriminated union must handle all three variants
+        (visible, fog, boundary) through a protocol round-trip.
+        """
+        grid: list[list[VisibleCell | FogCell | BoundaryCell]] = [
+            [BoundaryCell(), BoundaryCell(), BoundaryCell()],
+            [
+                FogCell(),
+                VisibleCell(cell_type=CellType.PASSABLE),
+                FogCell(),
+            ],
+            [FogCell(), FogCell(), FogCell()],
+        ]
+        patch = TankPatch(
+            tank_id="A1",
+            position=Position(0, 0),
+            direction=Direction.NORTH,
+            grid=grid,
+        )
+        view = PlayerView(
+            patches=[patch],
+            tanks=[
+                TankInfo(
+                    tank_id="A1",
+                    position=Position(0, 0),
+                    direction=Direction.NORTH,
+                    alive=True,
+                )
+            ],
+        )
+        msg = YourTurnMessage(tank_id="A1", view=view)
+        raw = msg.model_dump_json()
+        parsed = _server_adapter.validate_json(raw)
+
+        assert isinstance(parsed, YourTurnMessage)
+        assert parsed.tank_id == "A1"
+        assert len(parsed.view.patches) == 1
+
+        roundtrip_grid = parsed.view.patches[0].grid
+        assert isinstance(roundtrip_grid[0][0], BoundaryCell)
+        assert isinstance(roundtrip_grid[1][0], FogCell)
+        assert isinstance(roundtrip_grid[1][1], VisibleCell)
+        assert roundtrip_grid[1][1].cell_type == CellType.PASSABLE
 
 
 class TestClientMessages:
