@@ -384,6 +384,65 @@ def test_enemy_in_cone_friendly_not_counted() -> None:
     assert abs(reward - (-0.01)) < 1e-7
 
 
+def test_turn_left_reward_applied() -> None:
+    """Turn left reward is applied when the action is TURN_LEFT and valid."""
+    config = DefaultRewardConfig(turn_left_reward=0.05)
+    reward_fn = DefaultReward(config=config)
+    entry = _make_entry(action=Action.TURN_LEFT)
+    patch = _make_empty_patch()
+    reward = reward_fn.compute_step_reward(entry, patch=patch, team="alpha")
+    expected = -0.01 + 0.05
+    assert abs(reward - expected) < 1e-7
+
+
+def test_turn_right_reward_applied() -> None:
+    """Turn right reward is applied when the action is TURN_RIGHT and valid."""
+    config = DefaultRewardConfig(turn_right_reward=0.03)
+    reward_fn = DefaultReward(config=config)
+    entry = _make_entry(action=Action.TURN_RIGHT)
+    patch = _make_empty_patch()
+    reward = reward_fn.compute_step_reward(entry, patch=patch, team="alpha")
+    expected = -0.01 + 0.03
+    assert abs(reward - expected) < 1e-7
+
+
+def test_move_forward_reward_applied() -> None:
+    """Move forward reward is applied when the action is MOVE_FORWARD and valid."""
+    config = DefaultRewardConfig(move_forward_reward=0.04)
+    reward_fn = DefaultReward(config=config)
+    entry = _make_entry(action=Action.MOVE_FORWARD)
+    patch = _make_empty_patch()
+    reward = reward_fn.compute_step_reward(entry, patch=patch, team="alpha")
+    expected = -0.01 + 0.04
+    assert abs(reward - expected) < 1e-7
+
+
+def test_turn_left_reward_not_applied_when_invalid() -> None:
+    """Turn left reward is NOT applied when the action is invalid."""
+    config = DefaultRewardConfig(turn_left_reward=0.05)
+    reward_fn = DefaultReward(config=config)
+    entry = _make_entry(action=Action.TURN_LEFT, valid=False)
+    patch = _make_empty_patch()
+    reward = reward_fn.compute_step_reward(entry, patch=patch, team="alpha")
+    # step_reward + invalid_move_reward (no turn_left_reward)
+    expected = -0.01 + -0.1
+    assert abs(reward - expected) < 1e-7
+
+
+def test_movement_rewards_default_to_zero() -> None:
+    """Movement rewards default to zero and don't affect existing behaviour."""
+    reward_fn = DefaultReward()
+    assert reward_fn.turn_left_reward == 0.0
+    assert reward_fn.turn_right_reward == 0.0
+    assert reward_fn.move_forward_reward == 0.0
+
+    entry = _make_entry(action=Action.TURN_LEFT)
+    patch = _make_empty_patch()
+    reward = reward_fn.compute_step_reward(entry, patch=patch, team="alpha")
+    # Only step_reward, no movement bonus
+    assert abs(reward - (-0.01)) < 1e-7
+
+
 def test_missed_fire_friendly_ahead_no_penalty() -> None:
     """No missed fire reward when a friendly tank is directly ahead."""
     reward_fn = DefaultReward()

@@ -48,6 +48,9 @@ class DefaultRewardConfig(BaseModel, frozen=True):
             pass).
         enemy_in_cone_reward: Per-enemy reward for each alive enemy tank
             visible in the forward cone of the egocentric patch.
+        turn_left_reward: Reward for choosing to turn left.
+        turn_right_reward: Reward for choosing to turn right.
+        move_forward_reward: Reward for choosing to move forward.
     """
 
     fire_hit_reward: float = 0.5
@@ -61,6 +64,9 @@ class DefaultRewardConfig(BaseModel, frozen=True):
     fire_neglect_reward: float = -0.1
     pass_reward: float = -0.02
     enemy_in_cone_reward: float = 0.01
+    turn_left_reward: float = 0.0
+    turn_right_reward: float = 0.0
+    move_forward_reward: float = 0.0
 
 
 class RewardFunction(ABC):
@@ -210,6 +216,21 @@ class DefaultReward(RewardFunction):
         return self.config.enemy_in_cone_reward
 
     @property
+    def turn_left_reward(self) -> float:
+        """Reward for choosing to turn left."""
+        return self.config.turn_left_reward
+
+    @property
+    def turn_right_reward(self) -> float:
+        """Reward for choosing to turn right."""
+        return self.config.turn_right_reward
+
+    @property
+    def move_forward_reward(self) -> float:
+        """Reward for choosing to move forward."""
+        return self.config.move_forward_reward
+
+    @property
     def explored_positions(self) -> set[Position]:
         """Set of all positions observed during the current episode."""
         return self._explored_positions
@@ -271,6 +292,9 @@ class DefaultReward(RewardFunction):
         - fire_neglect_reward: when enemy directly ahead but action was
           not fire (negative)
         - pass_reward: for deliberate pass actions (negative)
+        - turn_left_reward: for turning left
+        - turn_right_reward: for turning right
+        - move_forward_reward: for moving forward
         - enemy_in_cone_reward: per visible enemy in the forward cone
         """
         reward = self.step_reward
@@ -295,6 +319,14 @@ class DefaultReward(RewardFunction):
         # Deliberate pass reward
         if entry.requested_action == Action.PASS and entry.valid:
             reward += self.pass_reward
+
+        # Movement action rewards
+        if entry.requested_action == Action.TURN_LEFT and entry.valid:
+            reward += self.turn_left_reward
+        elif entry.requested_action == Action.TURN_RIGHT and entry.valid:
+            reward += self.turn_right_reward
+        elif entry.requested_action == Action.MOVE_FORWARD and entry.valid:
+            reward += self.move_forward_reward
 
         # Enemy in forward cone reward
         cone_enemies = _count_enemies_in_cone(patch, team)
