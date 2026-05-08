@@ -14,7 +14,7 @@ from hmls.core.tank import Tank, TankId
 from hmls.core.types import Action, Position
 
 
-class ActionResult(BaseModel):
+class ActionResult(BaseModel, extra="forbid"):
     """Outcome of validating a proposed action.
 
     Attributes:
@@ -26,7 +26,7 @@ class ActionResult(BaseModel):
     reason: str = ""
 
 
-class ApplyResult(BaseModel):
+class ApplyResult(BaseModel, extra="forbid"):
     """Outcome of applying an action.
 
     Attributes:

@@ -22,7 +22,7 @@ from hmls.core.types import Direction, Position
 # ── Patch cell types ──────────────────────────────────────────────────
 
 
-class VisibleCell(BaseModel):
+class VisibleCell(BaseModel, extra="forbid"):
     """A cell whose contents are visible to the observing tank.
 
     Attributes:
@@ -36,7 +36,7 @@ class VisibleCell(BaseModel):
     tank: Tank | None = None
 
 
-class FogCell(BaseModel):
+class FogCell(BaseModel, extra="forbid"):
     """A cell hidden by fog of war – reveals nothing.
 
     Attributes:
@@ -46,7 +46,7 @@ class FogCell(BaseModel):
     kind: Literal["fog"] = "fog"
 
 
-class BoundaryCell(BaseModel):
+class BoundaryCell(BaseModel, extra="forbid"):
     """A cell outside the map boundary – always impassable.
 
     Unlike :class:`FogCell`, a boundary cell is definitively known to be
@@ -66,7 +66,7 @@ PatchCell = Annotated[VisibleCell | FogCell | BoundaryCell, Field(discriminator=
 # ── Aggregate models ──────────────────────────────────────────────────
 
 
-class TankPatch(BaseModel):
+class TankPatch(BaseModel, extra="forbid"):
     """Egocentric NxN visibility patch for one tank.
 
     The grid is oriented so that the tank's forward direction is "up"
@@ -86,7 +86,7 @@ class TankPatch(BaseModel):
     grid: list[list[PatchCell]]
 
 
-class TankInfo(BaseModel):
+class TankInfo(BaseModel, extra="forbid"):
     """Lightweight metadata for a friendly tank.
 
     This is always provided to the owning player regardless of
@@ -105,7 +105,7 @@ class TankInfo(BaseModel):
     alive: bool
 
 
-class PlayerView(BaseModel):
+class PlayerView(BaseModel, extra="forbid"):
     """The information provided to a player on their turn.
 
     Fog of war is enforced: enemy tanks are only visible when they

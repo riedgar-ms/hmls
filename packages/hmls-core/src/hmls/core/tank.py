@@ -10,7 +10,7 @@ TankId = str
 """Unique identifier for a tank (type alias)."""
 
 
-class Tank(BaseModel):
+class Tank(BaseModel, extra="forbid"):
     """A single tank in the game.
 
     Attributes:

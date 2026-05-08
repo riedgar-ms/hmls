@@ -16,7 +16,7 @@ from hmls.nncore.encoding import FiveChannelPatchEncoder
 from hmls.nncore.model import TankModelBase, TankModelConfig
 
 
-class StubModelConfig(TankModelConfig, frozen=True):
+class StubModelConfig(TankModelConfig, frozen=True, extra="forbid"):
     """Configuration for the stub test model.
 
     Attributes:

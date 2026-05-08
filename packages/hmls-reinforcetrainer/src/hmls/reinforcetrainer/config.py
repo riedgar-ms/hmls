@@ -13,7 +13,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, model_validator
 
 
-class MapConfig(BaseModel, frozen=True):
+class MapConfig(BaseModel, frozen=True, extra="forbid"):
     """Configuration for map generation.
 
     Map dimensions are randomized on each generation.  The user specifies
@@ -43,7 +43,7 @@ class MapConfig(BaseModel, frozen=True):
         return self
 
 
-class GameConfig(BaseModel, frozen=True):
+class GameConfig(BaseModel, frozen=True, extra="forbid"):
     """Configuration for game execution.
 
     Attributes:
@@ -66,7 +66,7 @@ class GameConfig(BaseModel, frozen=True):
         return self
 
 
-class ModelRef(BaseModel, frozen=True):
+class ModelRef(BaseModel, frozen=True, extra="forbid"):
     """Reference to a model directory and its training state.
 
     Attributes:
@@ -79,7 +79,7 @@ class ModelRef(BaseModel, frozen=True):
     train: bool = True
 
 
-class OutputConfig(BaseModel, frozen=True):
+class OutputConfig(BaseModel, frozen=True, extra="forbid"):
     """Configuration for training output and checkpoints.
 
     Attributes:
@@ -94,7 +94,7 @@ class OutputConfig(BaseModel, frozen=True):
     save_weights_interval: int = Field(default=100, ge=1)
 
 
-class HyperparameterConfig(BaseModel, frozen=True):
+class HyperparameterConfig(BaseModel, frozen=True, extra="forbid"):
     """Training hyperparameters.
 
     Attributes:
@@ -108,7 +108,7 @@ class HyperparameterConfig(BaseModel, frozen=True):
     seed: int | None = None
 
 
-class TrainerConfig(BaseModel, frozen=True):
+class TrainerConfig(BaseModel, frozen=True, extra="forbid"):
     """Top-level configuration for a REINFORCE training run.
 
     Loaded from a JSON file via :meth:`model_validate_json`.  All
