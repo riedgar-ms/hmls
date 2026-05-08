@@ -21,7 +21,7 @@ from hmls.core.types import Action, Position
 from hmls.core.visibility import TankPatch, VisibleCell
 
 
-class DefaultRewardConfig(BaseModel, frozen=True):
+class DefaultRewardConfig(BaseModel, frozen=True, extra="forbid"):
     """Serialisable configuration for :class:`DefaultReward`.
 
     All fields have sensible defaults so ``DefaultRewardConfig()``

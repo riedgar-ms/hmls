@@ -18,7 +18,7 @@ from hmls.core.tank import Tank, TankId
 from hmls.core.types import Position
 
 
-class GameState(BaseModel):
+class GameState(BaseModel, extra="forbid"):
     """Snapshot of the mutable game state at a point in time.
 
     The game state is treated as immutable by convention: mutation

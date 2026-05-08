@@ -20,7 +20,7 @@ from hmls.core.visibility import PlayerView, TankInfo
 # ── Server → Client messages ─────────────────────────────────────────
 
 
-class WaitingMessage(BaseModel):
+class WaitingMessage(BaseModel, extra="forbid"):
     """Sent to the first client while waiting for the second to connect.
 
     Attributes:
@@ -32,7 +32,7 @@ class WaitingMessage(BaseModel):
     message: str
 
 
-class AssignMessage(BaseModel):
+class AssignMessage(BaseModel, extra="forbid"):
     """Sent to each client once both have connected, before the game starts.
 
     Provides the client with their team assignment and initial tank info,
@@ -55,7 +55,7 @@ class AssignMessage(BaseModel):
     patch_size: int
 
 
-class YourTurnMessage(BaseModel):
+class YourTurnMessage(BaseModel, extra="forbid"):
     """Sent to a client when one of their tanks must act.
 
     Attributes:
@@ -69,7 +69,7 @@ class YourTurnMessage(BaseModel):
     view: PlayerView
 
 
-class TurnResultMessage(BaseModel):
+class TurnResultMessage(BaseModel, extra="forbid"):
     """Sent to the acting player's client after each turn resolves.
 
     Only the team whose tank acted receives this message; the opponent
@@ -94,7 +94,7 @@ class TurnResultMessage(BaseModel):
     hit: bool | None = None
 
 
-class GameOverMessage(BaseModel):
+class GameOverMessage(BaseModel, extra="forbid"):
     """Sent to both clients when the game ends.
 
     Attributes:
@@ -108,7 +108,7 @@ class GameOverMessage(BaseModel):
     reason: str
 
 
-class ErrorMessage(BaseModel):
+class ErrorMessage(BaseModel, extra="forbid"):
     """Sent to a client on protocol errors.
 
     Attributes:
@@ -123,7 +123,7 @@ class ErrorMessage(BaseModel):
 # ── Server → Observer messages ────────────────────────────────────────
 
 
-class GameStartMessage(BaseModel):
+class GameStartMessage(BaseModel, extra="forbid"):
     """Sent to an observer once it connects (or once the game starts).
 
     Provides the full map, initial tank positions, player names, and
@@ -146,7 +146,7 @@ class GameStartMessage(BaseModel):
     max_turns: int
 
 
-class StateUpdateMessage(BaseModel):
+class StateUpdateMessage(BaseModel, extra="forbid"):
     """Sent to observers after each state change (turn resolution).
 
     Carries the full game state so observers can render the complete
@@ -182,7 +182,7 @@ ServerMessage = Annotated[
 # ── Client → Server messages ─────────────────────────────────────────
 
 
-class JoinMessage(BaseModel):
+class JoinMessage(BaseModel, extra="forbid"):
     """Sent by a client immediately after connecting.
 
     Attributes:
@@ -194,7 +194,7 @@ class JoinMessage(BaseModel):
     player_name: str
 
 
-class ObserveMessage(BaseModel):
+class ObserveMessage(BaseModel, extra="forbid"):
     """Sent by an observer client immediately after connecting.
 
     Identifies the connection as an observer rather than a player.
@@ -208,7 +208,7 @@ class ObserveMessage(BaseModel):
     observer_name: str = "Observer"
 
 
-class ActionMessage(BaseModel):
+class ActionMessage(BaseModel, extra="forbid"):
     """Sent by a client in response to a ``your_turn`` message.
 
     Attributes:

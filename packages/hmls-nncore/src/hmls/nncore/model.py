@@ -15,7 +15,7 @@ import torch.nn as nn
 from pydantic import BaseModel, Field
 
 
-class TankModelConfig(BaseModel, frozen=True):
+class TankModelConfig(BaseModel, frozen=True, extra="forbid"):
     """Base configuration shared by all tank policy networks.
 
     Every concrete model config (e.g. Mk-I's ``ModelConfig``, Mk-II's

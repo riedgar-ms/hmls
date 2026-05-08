@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pytest
 
+from hmls.reinforcetrainer._testing.stub_model import StubModelConfig, StubTankModel
 from hmls.reinforcetrainer.game_runner import (
     GameOutcome,
     create_map,
     run_game,
     save_sample_game,
 )
-from hmls.singlemki.model import ModelConfig, TankPolicyNetwork
 
 
 class TestCreateMap:
@@ -43,8 +43,8 @@ class TestRunGame:
         """A game runs and produces a valid outcome."""
         import random
 
-        model_a = TankPolicyNetwork(ModelConfig())
-        model_b = TankPolicyNetwork(ModelConfig())
+        model_a = StubTankModel(StubModelConfig())
+        model_b = StubTankModel(StubModelConfig())
         game_map = create_map(10, 10, 0.2, "Blob & Line", seed=1)
 
         outcome = run_game(
@@ -65,8 +65,8 @@ class TestRunGame:
         """A frozen player does not record trajectory steps."""
         import random
 
-        model_a = TankPolicyNetwork(ModelConfig())
-        model_b = TankPolicyNetwork(ModelConfig())
+        model_a = StubTankModel(StubModelConfig())
+        model_b = StubTankModel(StubModelConfig())
         game_map = create_map(10, 10, 0.2, "Blob & Line", seed=2)
 
         outcome = run_game(
@@ -86,8 +86,8 @@ class TestRunGame:
         """A learning player accumulates trajectory steps."""
         import random
 
-        model_a = TankPolicyNetwork(ModelConfig())
-        model_b = TankPolicyNetwork(ModelConfig())
+        model_a = StubTankModel(StubModelConfig())
+        model_b = StubTankModel(StubModelConfig())
         game_map = create_map(10, 10, 0.2, "Blob & Line", seed=3)
 
         outcome = run_game(
@@ -114,8 +114,8 @@ class TestSaveSampleGame:
 
         from hmls.core.engine import GameResult
 
-        model_a = TankPolicyNetwork(ModelConfig())
-        model_b = TankPolicyNetwork(ModelConfig())
+        model_a = StubTankModel(StubModelConfig())
+        model_b = StubTankModel(StubModelConfig())
         game_map = create_map(10, 10, 0.2, "Blob & Line", seed=5)
 
         outcome = run_game(
@@ -135,3 +135,143 @@ class TestSaveSampleGame:
         # Verify it can be loaded back
         loaded = GameResult.model_validate_json(filepath.read_text())
         assert loaded.winner == outcome.result.winner
+
+
+class TestRunGameWithStubRecording:
+    """Tests that use the stub player's recording capabilities."""
+
+    def test_learning_player_receives_correct_patch_size(self) -> None:
+        """All patches received by a learning player have the configured patch_size."""
+        import random
+
+        from hmls.reinforcetrainer._testing.stub_player import StubNNPlayer
+
+        model_a = StubTankModel(StubModelConfig())
+        model_b = StubTankModel(StubModelConfig())
+        game_map = create_map(10, 10, 0.2, "Blob & Line", seed=10)
+
+        outcome = run_game(
+            game_map,
+            model_a,
+            model_b,
+            train_a=True,
+            train_b=True,
+            max_turns=30,
+            rng=random.Random(42),
+        )
+
+        # Both players are StubNNPlayers due to dynamic dispatch
+        assert isinstance(outcome.player_a, StubNNPlayer)
+        assert isinstance(outcome.player_b, StubNNPlayer)
+
+        expected_size = StubModelConfig().patch_size
+        for record in outcome.player_a.action_records:
+            assert len(record.patch.grid) == expected_size
+        for record in outcome.player_b.action_records:
+            assert len(record.patch.grid) == expected_size
+
+    def test_learning_player_records_in_learn_mode(self) -> None:
+        """Action records from a learning player are all in 'learn' mode."""
+        import random
+
+        from hmls.reinforcetrainer._testing.stub_player import StubNNPlayer
+
+        model_a = StubTankModel(StubModelConfig())
+        model_b = StubTankModel(StubModelConfig())
+        game_map = create_map(10, 10, 0.2, "Blob & Line", seed=11)
+
+        outcome = run_game(
+            game_map,
+            model_a,
+            model_b,
+            train_a=True,
+            train_b=False,
+            max_turns=30,
+            rng=random.Random(42),
+        )
+
+        player_a = outcome.player_a
+        player_b = outcome.player_b
+        assert isinstance(player_a, StubNNPlayer)
+        assert isinstance(player_b, StubNNPlayer)
+
+        for record in player_a.action_records:
+            assert record.mode == "learn"
+        for record in player_b.action_records:
+            assert record.mode == "play"
+
+    def test_episode_length_matches_action_records(self) -> None:
+        """Episode length matches the number of action records for learning player."""
+        import random
+
+        from hmls.reinforcetrainer._testing.stub_player import StubNNPlayer
+
+        model_a = StubTankModel(StubModelConfig())
+        model_b = StubTankModel(StubModelConfig())
+        game_map = create_map(10, 10, 0.2, "Blob & Line", seed=12)
+
+        outcome = run_game(
+            game_map,
+            model_a,
+            model_b,
+            train_a=True,
+            train_b=True,
+            max_turns=30,
+            rng=random.Random(42),
+        )
+
+        player_a = outcome.player_a
+        player_b = outcome.player_b
+        assert isinstance(player_a, StubNNPlayer)
+        assert isinstance(player_b, StubNNPlayer)
+
+        # Episode steps == number of learn-mode action records
+        learn_records_a = [r for r in player_a.action_records if r.mode == "learn"]
+        learn_records_b = [r for r in player_b.action_records if r.mode == "learn"]
+        assert len(player_a.episode) == len(learn_records_a)
+        assert len(player_b.episode) == len(learn_records_b)
+
+    def test_rewards_assigned_to_correct_steps(self) -> None:
+        """Each episode step has a reward assigned (non-None after game)."""
+        import random
+
+        model_a = StubTankModel(StubModelConfig())
+        model_b = StubTankModel(StubModelConfig())
+        game_map = create_map(10, 10, 0.2, "Blob & Line", seed=13)
+
+        outcome = run_game(
+            game_map,
+            model_a,
+            model_b,
+            train_a=True,
+            train_b=True,
+            max_turns=30,
+            rng=random.Random(42),
+        )
+
+        # All steps in learning episodes should have rewards assigned
+        for step in outcome.player_a.episode.steps:
+            assert step.reward is not None
+        for step in outcome.player_b.episode.steps:
+            assert step.reward is not None
+
+    def test_log_prob_tensors_match_episode_length(self) -> None:
+        """Number of log_prob_tensors matches the episode length."""
+        import random
+
+        model_a = StubTankModel(StubModelConfig())
+        model_b = StubTankModel(StubModelConfig())
+        game_map = create_map(10, 10, 0.2, "Blob & Line", seed=14)
+
+        outcome = run_game(
+            game_map,
+            model_a,
+            model_b,
+            train_a=True,
+            train_b=True,
+            max_turns=30,
+            rng=random.Random(42),
+        )
+
+        assert len(outcome.player_a.log_prob_tensors) == len(outcome.player_a.episode)
+        assert len(outcome.player_b.log_prob_tensors) == len(outcome.player_b.episode)

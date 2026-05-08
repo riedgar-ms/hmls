@@ -8,6 +8,8 @@ import pytest
 
 from hmls.nncore.persistence import load_or_create_model
 from hmls.nncore.reward import DefaultRewardConfig
+from hmls.reinforcetrainer._testing.persistence import save_model_config, save_reward_config
+from hmls.reinforcetrainer._testing.stub_model import StubModelConfig
 from hmls.reinforcetrainer.config import (
     GameConfig,
     HyperparameterConfig,
@@ -21,18 +23,16 @@ from hmls.reinforcetrainer.training_loop import (
     _validate_model_configs,
     train,
 )
-from hmls.singlemki.model import ModelConfig
-from hmls.singlemki.persistence import save_model_config, save_reward_config
 
 
 def _setup_model_dir(
     directory: Path,
-    model_config: ModelConfig | None = None,
+    model_config: StubModelConfig | None = None,
     reward_config: DefaultRewardConfig | None = None,
 ) -> None:
     """Helper to create a model directory with required config files."""
     directory.mkdir(parents=True, exist_ok=True)
-    save_model_config(model_config or ModelConfig(), directory)
+    save_model_config(model_config or StubModelConfig(), directory)
     save_reward_config(reward_config or DefaultRewardConfig(), directory)
 
 
@@ -50,25 +50,25 @@ class TestLoadOrCreateModel:
     def test_creates_model_with_custom_config(self, tmp_path: Path) -> None:
         """A directory with custom config creates the correct architecture."""
         model_dir = tmp_path / "model"
-        _setup_model_dir(model_dir, model_config=ModelConfig(gru_hidden_size=256))
+        _setup_model_dir(model_dir, model_config=StubModelConfig(hidden_size=32))
         model = load_or_create_model(model_dir)
-        assert model.config.gru_hidden_size == 256
+        assert model.config.hidden_size == 32  # type: ignore[attr-defined]
 
     def test_loads_existing_model(self, tmp_path: Path) -> None:
         """A directory with model.pt loads the saved model."""
-        from hmls.singlemki.model import TankPolicyNetwork
-        from hmls.singlemki.persistence import save_model
+        from hmls.reinforcetrainer._testing.persistence import save_model
+        from hmls.reinforcetrainer._testing.stub_model import StubTankModel
 
         model_dir = tmp_path / "model"
-        config = ModelConfig(gru_hidden_size=64)
+        config = StubModelConfig(hidden_size=8)
         _setup_model_dir(model_dir, model_config=config)
 
         # Save a model with the same config
-        original = TankPolicyNetwork(config)
+        original = StubTankModel(config)
         save_model(original, model_dir / "model.pt")
 
         loaded = load_or_create_model(model_dir)
-        assert loaded.config.gru_hidden_size == 64
+        assert loaded.config.hidden_size == 8  # type: ignore[attr-defined]
 
     def test_missing_model_config_raises(self, tmp_path: Path) -> None:
         """A directory without model_config.json raises FileNotFoundError."""
@@ -83,27 +83,21 @@ class TestValidateModelConfigs:
 
     def test_matching_patch_size_passes(self) -> None:
         """Configs with same patch_size are valid."""
-        config_a = ModelConfig(patch_size=9, cnn_channels=(32, 64))
-        config_b = ModelConfig(patch_size=9, cnn_channels=(16, 32, 64))
+        config_a = StubModelConfig(patch_size=9, hidden_size=16)
+        config_b = StubModelConfig(patch_size=9, hidden_size=32)
         _validate_model_configs(config_a, config_b)  # Should not raise
 
     def test_different_patch_size_raises(self) -> None:
         """Configs with different patch_size raise ValueError."""
-        config_a = ModelConfig(patch_size=9)
-        config_b = ModelConfig(patch_size=7)
+        config_a = StubModelConfig(patch_size=9)
+        config_b = StubModelConfig(patch_size=7)
         with pytest.raises(ValueError, match="patch_size"):
             _validate_model_configs(config_a, config_b)
 
-    def test_different_gru_hidden_size_allowed(self) -> None:
-        """Configs with different gru_hidden_size are valid."""
-        config_a = ModelConfig(gru_hidden_size=128)
-        config_b = ModelConfig(gru_hidden_size=256)
-        _validate_model_configs(config_a, config_b)  # Should not raise
-
-    def test_different_cnn_channels_allowed(self) -> None:
-        """Configs with different cnn_channels are valid."""
-        config_a = ModelConfig(cnn_channels=(32, 64))
-        config_b = ModelConfig(cnn_channels=(16, 32, 64, 128))
+    def test_different_hidden_size_allowed(self) -> None:
+        """Configs with different hidden_size are valid (only patch_size must match)."""
+        config_a = StubModelConfig(hidden_size=16)
+        config_b = StubModelConfig(hidden_size=64)
         _validate_model_configs(config_a, config_b)  # Should not raise
 
 
@@ -112,21 +106,21 @@ class TestValidateGamePatchSize:
 
     def test_matching_patch_size_passes(self) -> None:
         """Game patch_size matching both model configs is valid."""
-        config_a = ModelConfig(patch_size=7)
-        config_b = ModelConfig(patch_size=7)
+        config_a = StubModelConfig(patch_size=7)
+        config_b = StubModelConfig(patch_size=7)
         _validate_game_patch_size(7, config_a, config_b)  # Should not raise
 
     def test_game_differs_from_model_a_raises(self) -> None:
         """Game patch_size != model A patch_size raises ValueError."""
-        config_a = ModelConfig(patch_size=9)
-        config_b = ModelConfig(patch_size=9)
+        config_a = StubModelConfig(patch_size=9)
+        config_b = StubModelConfig(patch_size=9)
         with pytest.raises(ValueError, match="model A"):
             _validate_game_patch_size(7, config_a, config_b)
 
     def test_game_differs_from_model_b_raises(self) -> None:
         """Game patch_size != model B patch_size raises ValueError."""
-        config_a = ModelConfig(patch_size=7)
-        config_b = ModelConfig(patch_size=9)
+        config_a = StubModelConfig(patch_size=7)
+        config_b = StubModelConfig(patch_size=9)
         with pytest.raises(ValueError, match="model B"):
             _validate_game_patch_size(7, config_a, config_b)
 
@@ -144,7 +138,7 @@ class TestTrainIntegration:
         config = TrainerConfig(
             model_a=ModelRef(dir=model_a_dir, train=True),
             model_b=ModelRef(dir=model_b_dir, train=True),
-            map=MapConfig(width=8, height=8, impassable_fraction=0.2),
+            map=MapConfig(min_size=8, max_size=8, impassable_fraction=0.2),
             game=GameConfig(games_per_map=2, total_maps=2, max_turns=20),
             output=OutputConfig(
                 sample_game_dir=tmp_path / "samples",
@@ -174,7 +168,7 @@ class TestTrainIntegration:
         config = TrainerConfig(
             model_a=ModelRef(dir=trainee_dir, train=True),
             model_b=ModelRef(dir=frozen_dir, train=False),
-            map=MapConfig(width=8, height=8, impassable_fraction=0.2),
+            map=MapConfig(min_size=8, max_size=8, impassable_fraction=0.2),
             game=GameConfig(games_per_map=2, total_maps=2, max_turns=20),
             output=OutputConfig(
                 sample_game_dir=tmp_path / "samples",
@@ -199,7 +193,7 @@ class TestTrainIntegration:
         config = TrainerConfig(
             model_a=ModelRef(dir=model_a_dir),
             model_b=ModelRef(dir=model_b_dir),
-            map=MapConfig(width=8, height=8),
+            map=MapConfig(min_size=8, max_size=8),
             game=GameConfig(games_per_map=1, total_maps=1, max_turns=10),
             output=OutputConfig(sample_game_dir=tmp_path / "samples"),
             hyperparameters=HyperparameterConfig(seed=42),
@@ -212,13 +206,13 @@ class TestTrainIntegration:
         """Training fails if models have different patch_size."""
         model_a_dir = tmp_path / "model_a"
         model_b_dir = tmp_path / "model_b"
-        _setup_model_dir(model_a_dir, model_config=ModelConfig(patch_size=9))
-        _setup_model_dir(model_b_dir, model_config=ModelConfig(patch_size=7))
+        _setup_model_dir(model_a_dir, model_config=StubModelConfig(patch_size=9))
+        _setup_model_dir(model_b_dir, model_config=StubModelConfig(patch_size=7))
 
         config = TrainerConfig(
             model_a=ModelRef(dir=model_a_dir),
             model_b=ModelRef(dir=model_b_dir),
-            map=MapConfig(width=8, height=8),
+            map=MapConfig(min_size=8, max_size=8),
             game=GameConfig(games_per_map=1, total_maps=1, max_turns=10),
             output=OutputConfig(sample_game_dir=tmp_path / "samples"),
             hyperparameters=HyperparameterConfig(seed=42),
@@ -231,8 +225,8 @@ class TestTrainIntegration:
         """Training fails if game patch_size differs from model patch_size."""
         model_a_dir = tmp_path / "model_a"
         model_b_dir = tmp_path / "model_b"
-        _setup_model_dir(model_a_dir, model_config=ModelConfig(patch_size=9))
-        _setup_model_dir(model_b_dir, model_config=ModelConfig(patch_size=9))
+        _setup_model_dir(model_a_dir, model_config=StubModelConfig(patch_size=9))
+        _setup_model_dir(model_b_dir, model_config=StubModelConfig(patch_size=9))
 
         config = TrainerConfig(
             model_a=ModelRef(dir=model_a_dir),
@@ -262,7 +256,7 @@ class TestTrainIntegration:
         config = TrainerConfig(
             model_a=ModelRef(dir=model_a_dir),
             model_b=ModelRef(dir=model_b_dir),
-            map=MapConfig(width=8, height=8),
+            map=MapConfig(min_size=8, max_size=8),
             game=GameConfig(games_per_map=2, total_maps=1, max_turns=20),
             output=OutputConfig(
                 sample_game_dir=tmp_path / "samples",
@@ -275,3 +269,73 @@ class TestTrainIntegration:
         train(config)
         assert (model_a_dir / "model.pt").exists()
         assert (model_b_dir / "model.pt").exists()
+
+    def test_frozen_model_weights_unchanged(self, tmp_path: Path) -> None:
+        """A frozen model's parameters should not change during training."""
+        import torch
+
+        from hmls.reinforcetrainer._testing.persistence import save_model
+        from hmls.reinforcetrainer._testing.stub_model import StubTankModel
+
+        trainee_dir = tmp_path / "trainee"
+        frozen_dir = tmp_path / "frozen"
+        _setup_model_dir(trainee_dir)
+        _setup_model_dir(frozen_dir)
+
+        # Create and save a frozen model so we can compare weights
+        frozen_model = StubTankModel(StubModelConfig())
+        initial_state = {k: v.clone() for k, v in frozen_model.state_dict().items()}
+        save_model(frozen_model, frozen_dir / "model.pt")
+
+        config = TrainerConfig(
+            model_a=ModelRef(dir=trainee_dir, train=True),
+            model_b=ModelRef(dir=frozen_dir, train=False),
+            map=MapConfig(min_size=8, max_size=8, impassable_fraction=0.2),
+            game=GameConfig(games_per_map=3, total_maps=2, max_turns=20),
+            output=OutputConfig(
+                sample_game_dir=tmp_path / "samples",
+                sample_game_interval=10,
+                save_weights_interval=10,
+            ),
+            hyperparameters=HyperparameterConfig(seed=42),
+        )
+
+        train(config)
+
+        # Load the frozen model and verify weights are unchanged
+        from hmls.reinforcetrainer._testing.persistence import load_model
+
+        loaded_frozen, _ = load_model(frozen_dir / "model.pt")
+        for name, param in loaded_frozen.state_dict().items():
+            assert torch.allclose(initial_state[name], param), (
+                f"Frozen model param '{name}' changed during training"
+            )
+
+    def test_sample_game_saved_at_correct_intervals(self, tmp_path: Path) -> None:
+        """Sample games are saved at the configured interval."""
+        model_a_dir = tmp_path / "model_a"
+        model_b_dir = tmp_path / "model_b"
+        _setup_model_dir(model_a_dir)
+        _setup_model_dir(model_b_dir)
+
+        # 3 maps × 2 games = 6 total, interval = 3 → expect 2 sample files
+        config = TrainerConfig(
+            model_a=ModelRef(dir=model_a_dir, train=True),
+            model_b=ModelRef(dir=model_b_dir, train=True),
+            map=MapConfig(min_size=8, max_size=8, impassable_fraction=0.2),
+            game=GameConfig(games_per_map=2, total_maps=3, max_turns=20),
+            output=OutputConfig(
+                sample_game_dir=tmp_path / "samples",
+                sample_game_interval=3,
+                save_weights_interval=100,
+            ),
+            hyperparameters=HyperparameterConfig(seed=42),
+        )
+
+        train(config)
+
+        sample_files = sorted((tmp_path / "samples").glob("*.json"))
+        assert len(sample_files) == 2
+        # Files should be game_000003.json and game_000006.json
+        assert sample_files[0].name == "game_000003.json"
+        assert sample_files[1].name == "game_000006.json"

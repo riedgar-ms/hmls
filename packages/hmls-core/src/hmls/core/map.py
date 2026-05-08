@@ -22,7 +22,7 @@ class CellType(IntEnum):
     PASSABLE = 1
 
 
-class GameMap(BaseModel):
+class GameMap(BaseModel, extra="forbid"):
     """A rectangular grid map for the tank game.
 
     Each cell is either passable or impassable.  Cells are stored in

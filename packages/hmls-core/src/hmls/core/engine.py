@@ -29,7 +29,7 @@ from hmls.core.visibility import build_player_view
 # ── Result models ─────────────────────────────────────────────────────
 
 
-class HistoryEntry(BaseModel):
+class HistoryEntry(BaseModel, extra="forbid"):
     """One step in the game history.
 
     Attributes:
@@ -56,7 +56,7 @@ class HistoryEntry(BaseModel):
     state_after: GameState
 
 
-class GameResult(BaseModel):
+class GameResult(BaseModel, extra="forbid"):
     """Outcome of a complete game.
 
     Attributes:

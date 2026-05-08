@@ -21,7 +21,7 @@ from hmls.nncore.encoding import FiveChannelPatchEncoder
 from hmls.nncore.model import TankModelBase, TankModelConfig
 
 
-class MkIIModelConfig(TankModelConfig, frozen=True):
+class MkIIModelConfig(TankModelConfig, frozen=True, extra="forbid"):
     """Hyperparameters for :class:`MkIITankPolicyNetwork`.
 
     Attributes:
