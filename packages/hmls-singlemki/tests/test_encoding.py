@@ -7,7 +7,7 @@ import torch
 from hmls.core.map import CellType
 from hmls.core.tank import Tank
 from hmls.core.types import Direction, Position
-from hmls.core.visibility import FogCell, TankPatch, VisibleCell
+from hmls.core.visibility import BoundaryCell, FogCell, TankPatch, VisibleCell
 from hmls.singlemki.encoding import NUM_CHANNELS, encode_patch
 
 
@@ -103,3 +103,35 @@ def test_encode_patch_visibility_channel() -> None:
     assert tensor[4, 0, 1].item() == 1.0
     # Fog cells should be 0.0
     assert tensor[4, 0, 0].item() == 0.0
+
+
+def test_encode_patch_boundary_cell() -> None:
+    """Boundary cells encode as impassable terrain with visibility=1.0."""
+    boundary = BoundaryCell()
+    fog = FogCell()
+    friendly_tank = Tank(id="t1", team="alpha", position=Position(5, 5), direction=Direction.NORTH)
+
+    grid: list[list[VisibleCell | FogCell | BoundaryCell]] = [
+        [boundary, boundary, boundary],
+        [
+            fog,
+            VisibleCell(cell_type=CellType.PASSABLE, tank=friendly_tank),
+            fog,
+        ],
+        [fog, fog, fog],
+    ]
+    patch = TankPatch(
+        tank_id="t1",
+        position=Position(5, 5),
+        direction=Direction.NORTH,
+        grid=grid,
+    )
+    tensor = encode_patch(patch, team="alpha")
+
+    # Boundary cells: terrain=0.0 (impassable), visibility=1.0 (known)
+    for col in range(3):
+        assert tensor[0, 0, col].item() == 0.0, f"boundary terrain at col {col}"
+        assert tensor[4, 0, col].item() == 1.0, f"boundary visibility at col {col}"
+    # Fog cells: terrain=-1.0, visibility=0.0
+    assert tensor[0, 1, 0].item() == -1.0
+    assert tensor[4, 1, 0].item() == 0.0

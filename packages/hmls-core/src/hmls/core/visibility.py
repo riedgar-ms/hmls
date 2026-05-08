@@ -4,7 +4,8 @@ Each tank sees an NxN patch of the world centred on itself, rotated so
 that the tank's forward direction points "up" (toward row 0).  Cells
 within the 8-neighbour ring around the tank are always visible.  Beyond
 that ring, only cells within a 45° forward cone are revealed.  All
-other cells – and cells outside the map boundary – are fog.
+other cells are fog; cells outside the map boundary are marked as
+boundary (definitively impassable).
 """
 
 from __future__ import annotations
@@ -45,8 +46,21 @@ class FogCell(BaseModel):
     kind: Literal["fog"] = "fog"
 
 
-PatchCell = Annotated[VisibleCell | FogCell, Field(discriminator="kind")]
-"""A single cell in a visibility patch: either visible or fogged."""
+class BoundaryCell(BaseModel):
+    """A cell outside the map boundary – always impassable.
+
+    Unlike :class:`FogCell`, a boundary cell is definitively known to be
+    impassable (it is the edge of the world, not merely hidden).
+
+    Attributes:
+        kind: Discriminator tag, always ``"boundary"``.
+    """
+
+    kind: Literal["boundary"] = "boundary"
+
+
+PatchCell = Annotated[VisibleCell | FogCell | BoundaryCell, Field(discriminator="kind")]
+"""A single cell in a visibility patch: visible, fogged, or boundary."""
 
 
 # ── Aggregate models ──────────────────────────────────────────────────
@@ -174,7 +188,8 @@ def extract_patch(
     The patch is an ``patch_size × patch_size`` grid centred on the
     tank, rotated so the tank's forward direction is "up" (row 0).
     Cells outside the visibility mask or outside the map are
-    :class:`FogCell`.
+    :class:`FogCell`.  Cells within the mask but outside the map
+    boundary are :class:`BoundaryCell`.
 
     Args:
         game_state: Current game state (tanks and turn info).
@@ -202,6 +217,7 @@ def extract_patch(
         pos_to_tank[t.position] = t
 
     fog = FogCell()
+    boundary = BoundaryCell()
     grid: list[list[PatchCell]] = []
 
     for ego_row in range(patch_size):
@@ -225,9 +241,9 @@ def extract_patch(
             world_x = tank.position.x + world_dx
             world_y = tank.position.y + world_dy
 
-            # Out-of-bounds cells are fog.
+            # Out-of-bounds cells are boundary (definitively impassable).
             if not game_map.in_bounds(world_x, world_y):
-                row_cells.append(fog)
+                row_cells.append(boundary)
                 continue
 
             cell_type = game_map[world_x, world_y]

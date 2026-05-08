@@ -24,6 +24,7 @@ class TestStylesImport:
         """Every documented style constant is importable."""
         from hmls.uxcommon.styles import (  # noqa: F401
             ACTIVE_HIGHLIGHT_STYLE,
+            BOUNDARY_STYLE,
             CELL_CHARS,
             CELL_WIDTH,
             DEAD_MARKER,

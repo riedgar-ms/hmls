@@ -9,6 +9,7 @@ from hmls.core.map import CellType, GameMap
 from hmls.core.tank import Tank
 from hmls.core.types import Direction, Position
 from hmls.core.visibility import (
+    BoundaryCell,
     FogCell,
     PlayerView,
     VisibleCell,
@@ -197,8 +198,8 @@ class TestExtractPatchRotation:
 class TestExtractPatchEdgeCases:
     """Test edge cases for patch extraction."""
 
-    def test_map_edge_produces_fog(self) -> None:
-        """Cells outside the map should be FogCell."""
+    def test_map_edge_produces_boundary(self) -> None:
+        """Cells outside the map should be BoundaryCell."""
         tank = Tank(id="t0", team="a", position=Position(0, 0), direction=Direction.NORTH)
         state, game_map = _make_state(width=5, height=5, tanks=[tank])
         patch = extract_patch(state, game_map, "t0", 5)
@@ -206,7 +207,22 @@ class TestExtractPatchEdgeCases:
         # centred at (0, 0) means 2 cells forward and 2 cells left,
         # which is out of bounds.
         cell = patch.grid[0][0]
-        assert isinstance(cell, FogCell)
+        assert isinstance(cell, BoundaryCell)
+
+    def test_boundary_distinct_from_fog(self) -> None:
+        """Out-of-bounds visible cells are BoundaryCell, not FogCell."""
+        tank = Tank(id="t0", team="a", position=Position(0, 0), direction=Direction.NORTH)
+        state, game_map = _make_state(width=5, height=5, tanks=[tank])
+        patch = extract_patch(state, game_map, "t0", 5)
+        half = 5 // 2
+        # The cell directly ahead (in the visibility cone) but out of bounds
+        # should be boundary, not fog.
+        cell = patch.grid[0][half]
+        assert isinstance(cell, BoundaryCell)
+        # A cell behind and to the side (outside visibility mask) should
+        # still be fog.
+        cell_fog = patch.grid[half + 2][half + 2]
+        assert isinstance(cell_fog, FogCell)
 
     def test_impassable_cell_shown_as_impassable(self) -> None:
         """A visible impassable cell should report its type."""

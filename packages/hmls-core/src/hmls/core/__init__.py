@@ -9,6 +9,7 @@ from hmls.core.player import PendingActionPlayer, Player
 from hmls.core.tank import Tank, TankId
 from hmls.core.types import Action, Direction, Position
 from hmls.core.visibility import (
+    BoundaryCell,
     FogCell,
     PatchCell,
     PlayerView,
@@ -24,6 +25,7 @@ __all__ = [
     "Action",
     "ActionResult",
     "ApplyResult",
+    "BoundaryCell",
     "CellType",
     "Direction",
     "FogCell",
