@@ -22,11 +22,18 @@ class ModelConfig(BaseModel, frozen=True):
         patch_size: Side length of the input patch (must be odd, ≥ 3).
         cnn_channels: Number of output channels for each conv layer.
         gru_hidden_size: Dimensionality of the GRU hidden state.
+        conv_kernel_size: Kernel size for each Conv2d layer (must be odd so
+            that same-padding ``kernel_size // 2`` preserves spatial dims).
+        pool_kernel_size: Kernel size for each MaxPool2d layer.
+        pool_stride: Stride for each MaxPool2d layer.
     """
 
     patch_size: int = Field(default=9, ge=3)
     cnn_channels: tuple[int, ...] = (32, 64)
     gru_hidden_size: int = 128
+    conv_kernel_size: int = Field(default=3, ge=1)
+    pool_kernel_size: int = Field(default=2, ge=1)
+    pool_stride: int = Field(default=2, ge=1)
 
 
 class TankPolicyNetwork(nn.Module):
@@ -49,9 +56,21 @@ class TankPolicyNetwork(nn.Module):
         layers: list[nn.Module] = []
         in_channels = NUM_CHANNELS
         for out_channels in self.config.cnn_channels:
-            layers.append(nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1))
+            layers.append(
+                nn.Conv2d(
+                    in_channels,
+                    out_channels,
+                    kernel_size=self.config.conv_kernel_size,
+                    padding=self.config.conv_kernel_size // 2,
+                )
+            )
             layers.append(nn.ReLU())
-            layers.append(nn.MaxPool2d(kernel_size=2, stride=2))
+            layers.append(
+                nn.MaxPool2d(
+                    kernel_size=self.config.pool_kernel_size,
+                    stride=self.config.pool_stride,
+                )
+            )
             in_channels = out_channels
         self.cnn = nn.Sequential(*layers)
 

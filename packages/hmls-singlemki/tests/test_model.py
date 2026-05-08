@@ -74,3 +74,56 @@ def test_model_hidden_state_changes() -> None:
     _, h_new = model(x, h)
     # Hidden state should not remain all zeros after processing input
     assert not torch.allclose(h_new, h)
+
+
+def test_config_defaults() -> None:
+    """New conv/pool config fields have defaults matching original hardcoded values."""
+    config = ModelConfig()
+    assert config.conv_kernel_size == 3
+    assert config.pool_kernel_size == 2
+    assert config.pool_stride == 2
+
+
+def test_custom_conv_kernel_size() -> None:
+    """Model works with a non-default conv kernel size."""
+    config = ModelConfig(patch_size=9, conv_kernel_size=5)
+    model = TankPolicyNetwork(config)
+    model.eval()
+
+    x = torch.randn(NUM_CHANNELS, 9, 9)
+    h = model.initial_hidden().squeeze(0)
+    logits, new_h = model(x, h)
+
+    assert logits.shape == (NUM_ACTIONS,)
+    assert new_h.shape == (config.gru_hidden_size,)
+
+
+def test_custom_pool_params() -> None:
+    """Model works with non-default pool kernel size and stride."""
+    config = ModelConfig(patch_size=9, pool_kernel_size=3, pool_stride=3)
+    model = TankPolicyNetwork(config)
+    model.eval()
+
+    x = torch.randn(NUM_CHANNELS, 9, 9)
+    h = model.initial_hidden().squeeze(0)
+    logits, new_h = model(x, h)
+
+    assert logits.shape == (NUM_ACTIONS,)
+    assert new_h.shape == (config.gru_hidden_size,)
+
+
+def test_config_roundtrip_with_new_fields() -> None:
+    """ModelConfig with non-default conv/pool fields round-trips through JSON."""
+    config = ModelConfig(
+        patch_size=11,
+        conv_kernel_size=5,
+        pool_kernel_size=3,
+        pool_stride=3,
+    )
+    json_str = config.model_dump_json()
+    loaded = ModelConfig.model_validate_json(json_str)
+
+    assert loaded == config
+    assert loaded.conv_kernel_size == 5
+    assert loaded.pool_kernel_size == 3
+    assert loaded.pool_stride == 3
