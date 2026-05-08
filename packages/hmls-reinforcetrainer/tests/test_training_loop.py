@@ -138,7 +138,7 @@ class TestTrainIntegration:
         config = TrainerConfig(
             model_a=ModelRef(dir=model_a_dir, train=True),
             model_b=ModelRef(dir=model_b_dir, train=True),
-            map=MapConfig(width=8, height=8, impassable_fraction=0.2),
+            map=MapConfig(min_size=8, max_size=8, impassable_fraction=0.2),
             game=GameConfig(games_per_map=2, total_maps=2, max_turns=20),
             output=OutputConfig(
                 sample_game_dir=tmp_path / "samples",
@@ -168,7 +168,7 @@ class TestTrainIntegration:
         config = TrainerConfig(
             model_a=ModelRef(dir=trainee_dir, train=True),
             model_b=ModelRef(dir=frozen_dir, train=False),
-            map=MapConfig(width=8, height=8, impassable_fraction=0.2),
+            map=MapConfig(min_size=8, max_size=8, impassable_fraction=0.2),
             game=GameConfig(games_per_map=2, total_maps=2, max_turns=20),
             output=OutputConfig(
                 sample_game_dir=tmp_path / "samples",
@@ -193,7 +193,7 @@ class TestTrainIntegration:
         config = TrainerConfig(
             model_a=ModelRef(dir=model_a_dir),
             model_b=ModelRef(dir=model_b_dir),
-            map=MapConfig(width=8, height=8),
+            map=MapConfig(min_size=8, max_size=8),
             game=GameConfig(games_per_map=1, total_maps=1, max_turns=10),
             output=OutputConfig(sample_game_dir=tmp_path / "samples"),
             hyperparameters=HyperparameterConfig(seed=42),
@@ -212,7 +212,7 @@ class TestTrainIntegration:
         config = TrainerConfig(
             model_a=ModelRef(dir=model_a_dir),
             model_b=ModelRef(dir=model_b_dir),
-            map=MapConfig(width=8, height=8),
+            map=MapConfig(min_size=8, max_size=8),
             game=GameConfig(games_per_map=1, total_maps=1, max_turns=10),
             output=OutputConfig(sample_game_dir=tmp_path / "samples"),
             hyperparameters=HyperparameterConfig(seed=42),
@@ -256,7 +256,7 @@ class TestTrainIntegration:
         config = TrainerConfig(
             model_a=ModelRef(dir=model_a_dir),
             model_b=ModelRef(dir=model_b_dir),
-            map=MapConfig(width=8, height=8),
+            map=MapConfig(min_size=8, max_size=8),
             game=GameConfig(games_per_map=2, total_maps=1, max_turns=20),
             output=OutputConfig(
                 sample_game_dir=tmp_path / "samples",
