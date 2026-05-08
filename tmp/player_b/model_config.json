@@ -1,9 +1,0 @@
-{
-  "model_package": "hmls.singlemkii",
-  "patch_size": 9,
-  "cnn_channels": [16, 32],
-  "gru1_hidden_size": 64,
-  "gru2_hidden_size": 64,
-  "pool_kernel_size": 2,
-  "pool_stride": 2
-}
