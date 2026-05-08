@@ -1,18 +1,10 @@
-"""Model persistence: save and load trained networks.
+"""Model persistence: save and load Mk-II trained networks.
 
-Models are saved as a single file containing both the network weights
-(state_dict) and the :class:`~hmls.singlemki.model.ModelConfig` that
-defines the architecture.  This ensures that a loaded model can be
-reconstructed without knowing the original hyperparameters.
-
-Standalone JSON configuration files (``model_config.json`` and
-``reward_config.json``) are also supported for use by the training
-framework, where config must exist before any weights are produced.
-
-This module also serves as the persistence entry point for dynamic
-dispatch: the generic loader in :mod:`hmls.nncore.persistence` imports
-this module by name (``hmls.singlemki.persistence``) and calls the
-standard functions defined here.
+Mirrors the persistence interface of ``hmls.singlemki.persistence``
+for the Mk-II model architecture.  This module serves as the dynamic
+dispatch entry point: the generic loader in :mod:`hmls.nncore.persistence`
+imports ``hmls.singlemkii.persistence`` and calls the standard functions
+defined here.
 """
 
 from __future__ import annotations
@@ -25,31 +17,28 @@ import torch
 from hmls.nncore.persistence import MODEL_CONFIG_FILENAME, REWARD_CONFIG_FILENAME
 from hmls.nncore.player import NNPlayerBase
 from hmls.nncore.reward import DefaultRewardConfig
-from hmls.singlemki.model import ModelConfig, TankPolicyNetwork
+from hmls.singlemkii.model import MkIIModelConfig, MkIITankPolicyNetwork
 
 
 def save_model(
-    model: TankPolicyNetwork,
+    model: MkIITankPolicyNetwork,
     path: Path,
     reward_config: DefaultRewardConfig | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> None:
-    """Save a trained model to disk.
+    """Save a trained Mk-II model to disk.
 
     The saved file contains:
     - ``"state_dict"``: The model's learnable parameters.
-    - ``"config"``: The :class:`ModelConfig` as a dict (for reconstruction).
-    - ``"reward_config"``: The :class:`DefaultRewardConfig` as a dict
-      (optional, for reproducing training configuration).
-    - ``"metadata"``: Optional user-supplied metadata (e.g. training stats).
+    - ``"config"``: The :class:`MkIIModelConfig` as a dict.
+    - ``"reward_config"``: Optional reward configuration dict.
+    - ``"metadata"``: Optional user-supplied metadata.
 
     Args:
         model: The model to save.
         path: Destination file path (typically ``.pt`` extension).
         reward_config: Optional reward configuration used during training.
-        metadata: Optional dictionary of extra information to store
-            alongside the model (e.g. training episode count, reward
-            history).
+        metadata: Optional dictionary of extra information.
     """
     save_data: dict[str, Any] = {
         "state_dict": model.state_dict(),
@@ -66,21 +55,17 @@ def save_model(
 
 def load_model(
     path: Path,
-) -> tuple[TankPolicyNetwork, dict[str, Any]]:
-    """Load a model from disk.
+) -> tuple[MkIITankPolicyNetwork, dict[str, Any]]:
+    """Load a Mk-II model from disk.
 
-    Reconstructs the :class:`TankPolicyNetwork` from the saved config
-    and loads the trained weights.
+    Reconstructs the :class:`MkIITankPolicyNetwork` from the saved
+    config and loads the trained weights.
 
     Args:
         path: Path to the saved model file.
 
     Returns:
-        A tuple of ``(model, metadata)`` where *metadata* is the dict
-        stored at save time (empty dict if none was provided).
-        If a ``reward_config`` was saved, it will appear in metadata
-        under the key ``"reward_config"`` as a :class:`DefaultRewardConfig`
-        instance.
+        A tuple of ``(model, metadata)``.
 
     Raises:
         FileNotFoundError: If *path* does not exist.
@@ -92,14 +77,13 @@ def load_model(
     save_data: dict[str, Any] = torch.load(path, weights_only=False)
 
     config_dict = save_data["config"]
-    config = ModelConfig.model_validate(config_dict)
+    config = MkIIModelConfig.model_validate(config_dict)
 
-    model = TankPolicyNetwork(config)
+    model = MkIITankPolicyNetwork(config)
     model.load_state_dict(save_data["state_dict"])
 
     metadata: dict[str, Any] = save_data.get("metadata", {})
 
-    # Restore reward config if present
     if "reward_config" in save_data:
         metadata["reward_config"] = DefaultRewardConfig.model_validate(save_data["reward_config"])
 
@@ -109,8 +93,8 @@ def load_model(
 # --- Standalone JSON config file utilities ---
 
 
-def save_model_config(config: ModelConfig, directory: Path) -> None:
-    """Save a :class:`ModelConfig` as JSON to a model directory.
+def save_model_config(config: MkIIModelConfig, directory: Path) -> None:
+    """Save a :class:`MkIIModelConfig` as JSON to a model directory.
 
     Writes ``model_config.json`` in the given directory.
 
@@ -123,8 +107,8 @@ def save_model_config(config: ModelConfig, directory: Path) -> None:
     path.write_text(config.model_dump_json(indent=2))
 
 
-def load_model_config(directory: Path) -> ModelConfig:
-    """Load a :class:`ModelConfig` from a model directory.
+def load_model_config(directory: Path) -> MkIIModelConfig:
+    """Load a :class:`MkIIModelConfig` from a model directory.
 
     Reads ``model_config.json`` from the given directory.
 
@@ -132,7 +116,7 @@ def load_model_config(directory: Path) -> ModelConfig:
         directory: Directory containing the config file.
 
     Returns:
-        The loaded ModelConfig.
+        The loaded MkIIModelConfig.
 
     Raises:
         FileNotFoundError: If ``model_config.json`` is not present.
@@ -143,7 +127,7 @@ def load_model_config(directory: Path) -> ModelConfig:
             f"Model configuration file not found: {path}. "
             f"Each model directory must contain a '{MODEL_CONFIG_FILENAME}'."
         )
-    return ModelConfig.model_validate_json(path.read_text())
+    return MkIIModelConfig.model_validate_json(path.read_text())
 
 
 def save_reward_config(config: DefaultRewardConfig, directory: Path) -> None:
@@ -186,40 +170,33 @@ def load_reward_config(directory: Path) -> DefaultRewardConfig:
 # --- Factory functions for dynamic dispatch ---
 
 
-def create_model(config: ModelConfig) -> TankPolicyNetwork:
-    """Create a new :class:`TankPolicyNetwork` from a configuration.
-
-    This is the factory function used by the generic persistence layer
-    when creating a fresh model from ``model_config.json``.
+def create_model(config: MkIIModelConfig) -> MkIITankPolicyNetwork:
+    """Create a new :class:`MkIITankPolicyNetwork` from a configuration.
 
     Args:
         config: The model configuration.
 
     Returns:
-        A freshly initialised TankPolicyNetwork.
+        A freshly initialised MkIITankPolicyNetwork.
     """
-    return TankPolicyNetwork(config)
+    return MkIITankPolicyNetwork(config)
 
 
 def create_player(
     team: str,
-    model: TankPolicyNetwork,
+    model: MkIITankPolicyNetwork,
     mode: Literal["play", "learn"] = "play",
 ) -> NNPlayerBase:
-    """Create an :class:`NNPlayer` for this model type.
-
-    This is the factory function used by the generic persistence layer
-    to create player instances without knowing the concrete type.
+    """Create an :class:`NNPlayer` for the Mk-II model.
 
     Args:
         team: The team this player controls.
-        model: The :class:`TankPolicyNetwork` to use.
-        mode: ``"play"`` for deterministic inference, ``"learn"`` for
-            stochastic sampling with trajectory recording.
+        model: The :class:`MkIITankPolicyNetwork` to use.
+        mode: ``"play"`` or ``"learn"``.
 
     Returns:
         An NNPlayer instance wrapping the model.
     """
-    from hmls.singlemki.player import NNPlayer
+    from hmls.singlemkii.player import NNPlayer
 
     return NNPlayer(team=team, model=model, mode=mode)
