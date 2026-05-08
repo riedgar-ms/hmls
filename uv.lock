@@ -377,7 +377,6 @@ source = { editable = "packages/hmls-singlemkii" }
 dependencies = [
     { name = "hmls-core" },
     { name = "hmls-nncore" },
-    { name = "hmls-singlemki" },
     { name = "pydantic" },
     { name = "torch" },
 ]
@@ -386,7 +385,6 @@ dependencies = [
 requires-dist = [
     { name = "hmls-core", editable = "packages/hmls-core" },
     { name = "hmls-nncore", editable = "packages/hmls-nncore" },
-    { name = "hmls-singlemki", editable = "packages/hmls-singlemki" },
     { name = "pydantic", specifier = ">=2.0" },
     { name = "torch", specifier = ">=2.0" },
 ]

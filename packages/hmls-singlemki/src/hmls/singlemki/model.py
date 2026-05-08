@@ -12,8 +12,8 @@ import torch.nn as nn
 from pydantic import Field
 
 from hmls.nncore.constants import NUM_ACTIONS
+from hmls.nncore.encoding import FiveChannelPatchEncoder
 from hmls.nncore.model import TankModelBase, TankModelConfig
-from hmls.singlemki.encoding import NUM_CHANNELS
 
 
 class ModelConfig(TankModelConfig, frozen=True):
@@ -56,7 +56,7 @@ class TankPolicyNetwork(TankModelBase):
 
         # Build CNN layers
         layers: list[nn.Module] = []
-        in_channels = NUM_CHANNELS
+        in_channels = FiveChannelPatchEncoder.NUM_CHANNELS
         for out_channels in self.config.cnn_channels:
             layers.append(
                 nn.Conv2d(
@@ -77,7 +77,9 @@ class TankPolicyNetwork(TankModelBase):
         self.cnn = nn.Sequential(*layers)
 
         # Compute flattened CNN output size by doing a dummy forward pass
-        dummy = torch.zeros(1, NUM_CHANNELS, self.config.patch_size, self.config.patch_size)
+        dummy = torch.zeros(
+            1, FiveChannelPatchEncoder.NUM_CHANNELS, self.config.patch_size, self.config.patch_size
+        )
         with torch.no_grad():
             cnn_out = self.cnn(dummy)
         self._cnn_output_size = cnn_out.numel()
@@ -95,8 +97,8 @@ class TankPolicyNetwork(TankModelBase):
 
         Args:
             patch_tensor: Encoded patch tensor of shape
-                ``[batch, NUM_CHANNELS, patch_size, patch_size]`` or
-                ``[NUM_CHANNELS, patch_size, patch_size]`` (unbatched).
+                ``[batch, FiveChannelPatchEncoder.NUM_CHANNELS, patch_size, patch_size]`` or
+                ``[FiveChannelPatchEncoder.NUM_CHANNELS, patch_size, patch_size]`` (unbatched).
             hidden: GRU hidden state, shape ``[batch, gru_hidden_size]``
                 or ``[gru_hidden_size]``.
 

@@ -6,7 +6,6 @@ requires-python = ">=3.14"
 dependencies = [
     "hmls-core",
     "hmls-nncore",
-    "hmls-singlemki",
     "pydantic>=2.0",
     "torch>=2.0",
 ]
@@ -14,7 +13,6 @@ dependencies = [
 [tool.uv.sources]
 hmls-core = { workspace = true }
 hmls-nncore = { workspace = true }
-hmls-singlemki = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

@@ -14,8 +14,8 @@ import torch
 from torch.distributions import Categorical
 
 from hmls.core.visibility import TankPatch
+from hmls.nncore.encoding import FiveChannelPatchEncoder
 from hmls.nncore.player import NNPlayerBase
-from hmls.singlemkii.encoding import encode_patch
 from hmls.singlemkii.model import MkIITankPolicyNetwork
 
 
@@ -23,8 +23,8 @@ class NNPlayer(NNPlayerBase):
     """A neural-network-based player using the Mk-II dual-GRU model.
 
     Encodes egocentric visibility patches via
-    :func:`~hmls.singlemkii.encoding.encode_patch` and runs them
-    through a :class:`MkIITankPolicyNetwork`.  Maintains concatenated
+    :func:`~hmls.nncore.encoding.FiveChannelPatchEncoder.encode_patch` and runs them
+    through a :class:`MkIITankPolicyNetwork`.Maintains concatenated
     GRU hidden state across turns within an episode.
 
     Args:
@@ -58,7 +58,7 @@ class NNPlayer(NNPlayerBase):
 
     def _forward_play(self, patch: TankPatch) -> int:
         """Deterministic action selection via argmax over logits."""
-        patch_tensor = encode_patch(patch, self._team)
+        patch_tensor = FiveChannelPatchEncoder.encode_patch(patch, self._team)
         with torch.no_grad():
             logits, new_hidden = self._model(patch_tensor, self._hidden)
         self._hidden = new_hidden
@@ -66,7 +66,7 @@ class NNPlayer(NNPlayerBase):
 
     def _forward_learn(self, patch: TankPatch) -> tuple[int, float, torch.Tensor]:
         """Stochastic action selection with gradient-tracked log-prob."""
-        patch_tensor = encode_patch(patch, self._team)
+        patch_tensor = FiveChannelPatchEncoder.encode_patch(patch, self._team)
         logits, new_hidden = self._model(patch_tensor, self._hidden)
         self._hidden = new_hidden.detach()
         probs = torch.softmax(logits, dim=-1)

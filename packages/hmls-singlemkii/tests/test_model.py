@@ -5,7 +5,7 @@ from __future__ import annotations
 import torch
 
 from hmls.nncore.constants import NUM_ACTIONS
-from hmls.singlemkii.encoding import NUM_CHANNELS
+from hmls.nncore.encoding import FiveChannelPatchEncoder
 from hmls.singlemkii.model import MkIIModelConfig, MkIITankPolicyNetwork
 
 
@@ -15,7 +15,7 @@ def test_model_forward_unbatched() -> None:
     model = MkIITankPolicyNetwork(config)
     model.eval()
 
-    patch_tensor = torch.randn(NUM_CHANNELS, 9, 9)
+    patch_tensor = torch.randn(FiveChannelPatchEncoder.NUM_CHANNELS, 9, 9)
     hidden = model.initial_hidden(batch_size=1).squeeze(0)
 
     logits, new_hidden = model(patch_tensor, hidden)
@@ -31,7 +31,7 @@ def test_model_forward_batched() -> None:
     model.eval()
 
     batch_size = 4
-    patch_tensor = torch.randn(batch_size, NUM_CHANNELS, 9, 9)
+    patch_tensor = torch.randn(batch_size, FiveChannelPatchEncoder.NUM_CHANNELS, 9, 9)
     hidden = model.initial_hidden(batch_size=batch_size)
 
     logits, new_hidden = model(patch_tensor, hidden)
@@ -47,7 +47,7 @@ def test_model_different_patch_sizes() -> None:
         model = MkIITankPolicyNetwork(config)
         model.eval()
 
-        x = torch.randn(NUM_CHANNELS, ps, ps)
+        x = torch.randn(FiveChannelPatchEncoder.NUM_CHANNELS, ps, ps)
         h = model.initial_hidden().squeeze(0)
         logits, _ = model(x, h)
         assert logits.shape == (NUM_ACTIONS,)
@@ -75,7 +75,7 @@ def test_model_hidden_state_changes() -> None:
     model = MkIITankPolicyNetwork(config)
     model.eval()
 
-    x = torch.randn(NUM_CHANNELS, 9, 9)
+    x = torch.randn(FiveChannelPatchEncoder.NUM_CHANNELS, 9, 9)
     h = model.initial_hidden().squeeze(0)
 
     _, h_new = model(x, h)
@@ -94,7 +94,7 @@ def test_independent_gru_sizes() -> None:
     model = MkIITankPolicyNetwork(config)
     model.eval()
 
-    x = torch.randn(NUM_CHANNELS, 9, 9)
+    x = torch.randn(FiveChannelPatchEncoder.NUM_CHANNELS, 9, 9)
     h = model.initial_hidden().squeeze(0)
     logits, new_h = model(x, h)
 
