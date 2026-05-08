@@ -11,6 +11,13 @@ from pathlib import Path
 
 import torch
 
+from hmls.nncore.model import TankModelBase, TankModelConfig
+from hmls.nncore.persistence import (
+    load_model_config,
+    load_or_create_model,
+    read_model_package,
+    save_model,
+)
 from hmls.nncore.reward import DefaultReward, RewardFunction
 from hmls.reinforcetrainer.config import TrainerConfig
 from hmls.reinforcetrainer.game_runner import (
@@ -20,46 +27,30 @@ from hmls.reinforcetrainer.game_runner import (
     save_sample_game,
 )
 from hmls.reinforcetrainer.updater import reinforce_update
-from hmls.singlemki.model import ModelConfig, TankPolicyNetwork
-from hmls.singlemki.persistence import (
-    load_model,
-    load_model_config,
-    load_reward_config,
-    save_model,
-)
 
 
-def load_or_create_model(model_dir: Path) -> TankPolicyNetwork:
-    """Load an existing model from a directory or create a fresh one.
-
-    Reads ``model_config.json`` from the directory (must exist).  If a
-    ``model.pt`` file is also present, loads the trained weights.
-    Otherwise creates a new model with the configuration from the JSON.
+def _load_reward_config(model_dir: Path) -> DefaultReward:
+    """Load the reward config from a model directory via dynamic dispatch.
 
     Args:
-        model_dir: Directory containing ``model_config.json`` and
-            optionally ``model.pt``.
+        model_dir: Directory containing ``reward_config.json``.
 
     Returns:
-        A TankPolicyNetwork (either loaded or freshly initialised).
-
-    Raises:
-        FileNotFoundError: If ``model_config.json`` is missing.
+        A DefaultReward instance.
     """
-    config = load_model_config(model_dir)
+    from hmls.nncore.persistence import _import_persistence_module
 
-    model_path = model_dir / "model.pt"
-    if model_path.exists():
-        model, _metadata = load_model(model_path)
-        return model
-    return TankPolicyNetwork(config)
+    model_package = read_model_package(model_dir)
+    persistence = _import_persistence_module(model_package)
+    reward_config = persistence.load_reward_config(model_dir)
+    return DefaultReward(reward_config)
 
 
-def _validate_model_configs(config_a: ModelConfig, config_b: ModelConfig) -> None:
+def _validate_model_configs(config_a: TankModelConfig, config_b: TankModelConfig) -> None:
     """Validate that the two model configurations are compatible.
 
-    The models may differ in ``cnn_channels`` and ``gru_hidden_size``,
-    but ``patch_size`` must be identical (it determines observation
+    The models may differ in architecture (and even type), but
+    ``patch_size`` must be identical (it determines observation
     encoding size).
 
     Args:
@@ -79,8 +70,8 @@ def _validate_model_configs(config_a: ModelConfig, config_b: ModelConfig) -> Non
 
 def _validate_game_patch_size(
     game_patch_size: int,
-    model_config_a: ModelConfig,
-    model_config_b: ModelConfig,
+    model_config_a: TankModelConfig,
+    model_config_b: TankModelConfig,
 ) -> None:
     """Validate that the game patch_size matches both model configs.
 
@@ -107,7 +98,7 @@ def _validate_game_patch_size(
 
 
 def _save_weights(
-    model: TankPolicyNetwork,
+    model: TankModelBase,
     model_dir: Path,
     games_played: int,
 ) -> None:
@@ -146,11 +137,9 @@ def train(config: TrainerConfig) -> None:
     _validate_model_configs(model_config_a, model_config_b)
     _validate_game_patch_size(config.game.patch_size, model_config_a, model_config_b)
 
-    # Load reward configs
-    reward_config_a = load_reward_config(config.model_a.dir)
-    reward_config_b = load_reward_config(config.model_b.dir)
-    reward_fn_a: RewardFunction = DefaultReward(reward_config_a)
-    reward_fn_b: RewardFunction = DefaultReward(reward_config_b)
+    # Load reward configs via dynamic dispatch
+    reward_fn_a: RewardFunction = _load_reward_config(config.model_a.dir)
+    reward_fn_b: RewardFunction = _load_reward_config(config.model_b.dir)
 
     # Load or create models
     model_a = load_or_create_model(config.model_a.dir)

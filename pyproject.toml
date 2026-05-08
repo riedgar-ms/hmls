@@ -23,6 +23,7 @@ dev = [
     "hmls-replayviewer",
     "hmls-server",
     "hmls-singlemki",
+    "hmls-singlemkii",
     "hmls-testharness",
     "hmls-uxcommon",
 ]
@@ -38,6 +39,7 @@ hmls-reinforcetrainer = { workspace = true }
 hmls-replayviewer = { workspace = true }
 hmls-server = { workspace = true }
 hmls-singlemki = { workspace = true }
+hmls-singlemkii = { workspace = true }
 hmls-testharness = { workspace = true }
 hmls-uxcommon = { workspace = true }
 
@@ -51,7 +53,8 @@ extend-select = ["I"]
 
 [tool.mypy]
 files = ["packages"]
-mypy_path = "packages/hmls-core/src:packages/hmls-mapgenerator/src:packages/hmls-testharness/src:packages/hmls-uxcommon/src:packages/hmls-replayviewer/src:packages/hmls-protocol/src:packages/hmls-server/src:packages/hmls-client/src:packages/hmls-observer/src:packages/hmls-nncore/src:packages/hmls-singlemki/src:packages/hmls-reinforcetrainer/src"
+exclude = ["tests/"]
+mypy_path = "packages/hmls-core/src:packages/hmls-mapgenerator/src:packages/hmls-testharness/src:packages/hmls-uxcommon/src:packages/hmls-replayviewer/src:packages/hmls-protocol/src:packages/hmls-server/src:packages/hmls-client/src:packages/hmls-observer/src:packages/hmls-nncore/src:packages/hmls-singlemki/src:packages/hmls-singlemkii/src:packages/hmls-reinforcetrainer/src"
 plugins = ["pydantic.mypy"]
 strict = true
 explicit_package_bases = true
@@ -59,3 +62,4 @@ python_version = "3.14"
 
 [tool.pytest.ini_options]
 testpaths = ["packages"]
+addopts = ["--import-mode=importlib"]

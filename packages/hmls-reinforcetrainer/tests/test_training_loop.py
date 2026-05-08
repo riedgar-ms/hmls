@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from hmls.nncore.persistence import load_or_create_model
 from hmls.nncore.reward import DefaultRewardConfig
 from hmls.reinforcetrainer.config import (
     GameConfig,
@@ -18,7 +19,6 @@ from hmls.reinforcetrainer.config import (
 from hmls.reinforcetrainer.training_loop import (
     _validate_game_patch_size,
     _validate_model_configs,
-    load_or_create_model,
     train,
 )
 from hmls.singlemki.model import ModelConfig

@@ -18,6 +18,7 @@ members = [
     "hmls-replayviewer",
     "hmls-server",
     "hmls-singlemki",
+    "hmls-singlemkii",
     "hmls-testharness",
     "hmls-uxcommon",
     "hmls-workspace",
@@ -301,7 +302,6 @@ dependencies = [
     { name = "hmls-core" },
     { name = "hmls-mapgenerator" },
     { name = "hmls-nncore" },
-    { name = "hmls-singlemki" },
     { name = "pydantic" },
     { name = "torch" },
 ]
@@ -311,7 +311,6 @@ requires-dist = [
     { name = "hmls-core", editable = "packages/hmls-core" },
     { name = "hmls-mapgenerator", editable = "packages/hmls-mapgenerator" },
     { name = "hmls-nncore", editable = "packages/hmls-nncore" },
-    { name = "hmls-singlemki", editable = "packages/hmls-singlemki" },
     { name = "pydantic", specifier = ">=2.0" },
     { name = "torch", specifier = ">=2.0" },
 ]
@@ -372,6 +371,27 @@ requires-dist = [
 ]
 
 [[package]]
+name = "hmls-singlemkii"
+version = "0.1.0"
+source = { editable = "packages/hmls-singlemkii" }
+dependencies = [
+    { name = "hmls-core" },
+    { name = "hmls-nncore" },
+    { name = "hmls-singlemki" },
+    { name = "pydantic" },
+    { name = "torch" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "hmls-core", editable = "packages/hmls-core" },
+    { name = "hmls-nncore", editable = "packages/hmls-nncore" },
+    { name = "hmls-singlemki", editable = "packages/hmls-singlemki" },
+    { name = "pydantic", specifier = ">=2.0" },
+    { name = "torch", specifier = ">=2.0" },
+]
+
+[[package]]
 name = "hmls-testharness"
 version = "0.1.0"
 source = { editable = "packages/hmls-testharness" }
@@ -420,6 +440,7 @@ dev = [
     { name = "hmls-replayviewer" },
     { name = "hmls-server" },
     { name = "hmls-singlemki" },
+    { name = "hmls-singlemkii" },
     { name = "hmls-testharness" },
     { name = "hmls-uxcommon" },
     { name = "httpx" },
@@ -442,6 +463,7 @@ dev = [
     { name = "hmls-replayviewer", editable = "packages/hmls-replayviewer" },
     { name = "hmls-server", editable = "packages/hmls-server" },
     { name = "hmls-singlemki", editable = "packages/hmls-singlemki" },
+    { name = "hmls-singlemkii", editable = "packages/hmls-singlemkii" },
     { name = "hmls-testharness", editable = "packages/hmls-testharness" },
     { name = "hmls-uxcommon", editable = "packages/hmls-uxcommon" },
     { name = "httpx", specifier = ">=0.27" },

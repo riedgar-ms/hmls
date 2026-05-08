@@ -1,8 +1,13 @@
-"""Neural network model: CNN → GRU → policy head.
+"""Neural network model: CNN → GRU₁ → GRU₂ → policy head.
 
-The :class:`TankPolicyNetwork` processes an encoded patch tensor through
-convolutional layers (spatial features), a GRU (temporal memory across
-turns), and a linear policy head that outputs logits over the 5 actions.
+The :class:`MkIITankPolicyNetwork` processes an encoded patch tensor
+through convolutional layers (spatial features), two stacked GRU cells
+(deep temporal memory across turns), and a linear policy head that
+outputs logits over the 5 actions.
+
+Compared to the Mk-I single-GRU architecture, the Mk-II stacks two
+GRU cells with independently configurable hidden sizes, allowing the
+model to learn hierarchical temporal representations.
 """
 
 from __future__ import annotations
@@ -13,46 +18,53 @@ from pydantic import Field
 
 from hmls.nncore.constants import NUM_ACTIONS
 from hmls.nncore.model import TankModelBase, TankModelConfig
-from hmls.singlemki.encoding import NUM_CHANNELS
+from hmls.singlemkii.encoding import NUM_CHANNELS
 
 
-class ModelConfig(TankModelConfig, frozen=True):
-    """Hyperparameters for :class:`TankPolicyNetwork`.
+class MkIIModelConfig(TankModelConfig, frozen=True):
+    """Hyperparameters for :class:`MkIITankPolicyNetwork`.
 
     Attributes:
         patch_size: Side length of the input patch (must be odd, ≥ 3).
         model_package: Python package defining this model.
         cnn_channels: Number of output channels for each conv layer.
-        gru_hidden_size: Dimensionality of the GRU hidden state.
+        gru1_hidden_size: Dimensionality of the first GRU hidden state.
+        gru2_hidden_size: Dimensionality of the second GRU hidden state.
         conv_kernel_size: Kernel size for each Conv2d layer (must be odd so
             that same-padding ``kernel_size // 2`` preserves spatial dims).
         pool_kernel_size: Kernel size for each MaxPool2d layer.
         pool_stride: Stride for each MaxPool2d layer.
     """
 
-    model_package: str = "hmls.singlemki"
+    model_package: str = "hmls.singlemkii"
     cnn_channels: tuple[int, ...] = (32, 64)
-    gru_hidden_size: int = 128
+    gru1_hidden_size: int = 128
+    gru2_hidden_size: int = 64
     conv_kernel_size: int = Field(default=3, ge=1)
     pool_kernel_size: int = Field(default=2, ge=1)
     pool_stride: int = Field(default=2, ge=1)
 
 
-class TankPolicyNetwork(TankModelBase):
-    """CNN → GRU → policy head for single-tank action selection.
+class MkIITankPolicyNetwork(TankModelBase):
+    """CNN → GRU₁ → GRU₂ → policy head for single-tank action selection.
 
     The CNN extracts spatial features from the encoded patch.  These are
-    flattened and passed through a GRU cell (maintaining hidden state
-    across turns within an episode).  The GRU output feeds a linear
-    layer producing logits over the action space.
+    flattened and passed through two stacked GRU cells.  The first GRU
+    receives the CNN features; the second GRU receives the output of the
+    first.  The second GRU's output feeds a linear layer producing
+    logits over the action space.
+
+    Hidden state is stored as a single concatenated tensor of shape
+    ``[batch, gru1_hidden_size + gru2_hidden_size]`` and split
+    internally during the forward pass.
 
     Args:
         config: Model hyperparameters.
     """
 
-    def __init__(self, config: ModelConfig | None = None) -> None:
+    def __init__(self, config: MkIIModelConfig | None = None) -> None:
         super().__init__()
-        self.config: ModelConfig = config or ModelConfig()
+        self.config: MkIIModelConfig = config or MkIIModelConfig()
 
         # Build CNN layers
         layers: list[nn.Module] = []
@@ -82,11 +94,12 @@ class TankPolicyNetwork(TankModelBase):
             cnn_out = self.cnn(dummy)
         self._cnn_output_size = cnn_out.numel()
 
-        # GRU cell: takes flattened CNN features as input
-        self.gru = nn.GRUCell(self._cnn_output_size, self.config.gru_hidden_size)
+        # Stacked GRU cells
+        self.gru1 = nn.GRUCell(self._cnn_output_size, self.config.gru1_hidden_size)
+        self.gru2 = nn.GRUCell(self.config.gru1_hidden_size, self.config.gru2_hidden_size)
 
-        # Policy head: GRU hidden → action logits
-        self.policy_head = nn.Linear(self.config.gru_hidden_size, NUM_ACTIONS)
+        # Policy head: second GRU hidden → action logits
+        self.policy_head = nn.Linear(self.config.gru2_hidden_size, NUM_ACTIONS)
 
     def forward(
         self, patch_tensor: torch.Tensor, hidden: torch.Tensor
@@ -97,47 +110,55 @@ class TankPolicyNetwork(TankModelBase):
             patch_tensor: Encoded patch tensor of shape
                 ``[batch, NUM_CHANNELS, patch_size, patch_size]`` or
                 ``[NUM_CHANNELS, patch_size, patch_size]`` (unbatched).
-            hidden: GRU hidden state, shape ``[batch, gru_hidden_size]``
-                or ``[gru_hidden_size]``.
+            hidden: Concatenated GRU hidden states, shape
+                ``[batch, gru1_hidden_size + gru2_hidden_size]`` or
+                ``[gru1_hidden_size + gru2_hidden_size]`` (unbatched).
 
         Returns:
             A tuple of ``(logits, new_hidden)`` where logits has shape
             ``[batch, NUM_ACTIONS]`` and new_hidden has the same shape
             as the input hidden state.
         """
-        # Ensure batch dimension
         unbatched = patch_tensor.dim() == 3
         if unbatched:
             patch_tensor = patch_tensor.unsqueeze(0)
             hidden = hidden.unsqueeze(0)
 
+        # Split concatenated hidden state
+        h1 = hidden[:, : self.config.gru1_hidden_size]
+        h2 = hidden[:, self.config.gru1_hidden_size :]
+
         # CNN feature extraction
         cnn_features = self.cnn(patch_tensor)
         cnn_flat = cnn_features.view(cnn_features.size(0), -1)
 
-        # GRU step
-        new_hidden = self.gru(cnn_flat, hidden)
+        # Stacked GRU steps
+        new_h1 = self.gru1(cnn_flat, h1)
+        new_h2 = self.gru2(new_h1, h2)
 
         # Policy head
-        logits = self.policy_head(new_hidden)
+        logits = self.policy_head(new_h2)
+
+        # Re-concatenate hidden states
+        new_hidden = torch.cat([new_h1, new_h2], dim=1)
 
         if unbatched:
             return logits.squeeze(0), new_hidden.squeeze(0)
         return logits, new_hidden
 
     def initial_hidden(self, batch_size: int = 1) -> torch.Tensor:
-        """Return a zero-initialised GRU hidden state.
+        """Return zero-initialised concatenated GRU hidden states.
 
         Args:
             batch_size: Number of parallel episodes (default 1).
 
         Returns:
-            Tensor of shape ``[batch_size, gru_hidden_size]`` filled
-            with zeros.
+            Tensor of shape ``[batch_size, gru1_hidden_size + gru2_hidden_size]``
+            filled with zeros.
         """
-        return torch.zeros(batch_size, self.config.gru_hidden_size)
+        return torch.zeros(batch_size, self.total_hidden_size)
 
     @property
     def total_hidden_size(self) -> int:
-        """Total hidden state dimensionality (single GRU)."""
-        return self.config.gru_hidden_size
+        """Total hidden state dimensionality (sum of both GRUs)."""
+        return self.config.gru1_hidden_size + self.config.gru2_hidden_size

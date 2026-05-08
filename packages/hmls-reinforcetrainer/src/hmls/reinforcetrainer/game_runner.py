@@ -1,8 +1,8 @@
 """Game runner: sets up and plays a single training game.
 
-Generates a map, places tanks, creates :class:`NNPlayer` instances,
-runs the game via :class:`GameEngine`, and computes rewards for each
-player's trajectory.
+Generates a map, places tanks, creates player instances via dynamic
+dispatch, runs the game via :class:`GameEngine`, and computes rewards
+for each player's trajectory.
 """
 
 from __future__ import annotations
@@ -15,10 +15,10 @@ from hmls.core.engine import GameEngine, GameResult, HistoryEntry
 from hmls.core.map import GameMap
 from hmls.core.placement import place_tanks
 from hmls.mapgenerator import STRATEGY_REGISTRY, MapStrategy, generate_map
+from hmls.nncore.model import TankModelBase
+from hmls.nncore.persistence import create_player
 from hmls.nncore.player import NNPlayerBase
 from hmls.nncore.reward import DefaultReward, RewardFunction
-from hmls.singlemki.model import TankPolicyNetwork
-from hmls.singlemki.player import NNPlayer
 
 
 @dataclass
@@ -32,8 +32,8 @@ class GameOutcome:
     """
 
     result: GameResult
-    player_a: NNPlayer
-    player_b: NNPlayer
+    player_a: NNPlayerBase
+    player_b: NNPlayerBase
 
 
 def create_map(
@@ -74,8 +74,8 @@ def create_map(
 
 def run_game(
     game_map: GameMap,
-    model_a: TankPolicyNetwork,
-    model_b: TankPolicyNetwork,
+    model_a: TankModelBase,
+    model_b: TankModelBase,
     *,
     train_a: bool = True,
     train_b: bool = True,
@@ -87,8 +87,10 @@ def run_game(
 ) -> GameOutcome:
     """Run a single game between two NN models.
 
-    Creates NNPlayer instances, places tanks, runs the game engine,
-    and computes step-by-step rewards for learning players.
+    Creates player instances via dynamic dispatch (each model's
+    ``model_package`` determines the concrete player type), places
+    tanks, runs the game engine, and computes step-by-step rewards
+    for learning players.
 
     Args:
         game_map: The map to play on.
@@ -110,12 +112,14 @@ def run_game(
     if reward_fn_b is None:
         reward_fn_b = DefaultReward()
 
-    player_a = NNPlayer(
+    player_a = create_player(
+        model_package=model_a.config.model_package,
         team="A",
         model=model_a,
         mode="learn" if train_a else "play",
     )
-    player_b = NNPlayer(
+    player_b = create_player(
+        model_package=model_b.config.model_package,
         team="B",
         model=model_b,
         mode="learn" if train_b else "play",
