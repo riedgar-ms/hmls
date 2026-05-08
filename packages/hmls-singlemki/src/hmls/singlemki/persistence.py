@@ -26,7 +26,7 @@ from hmls.nncore.persistence import (
 )
 from hmls.nncore.player import NNPlayerBase
 from hmls.nncore.reward import DefaultRewardConfig
-from hmls.singlemki.model import ModelConfig, TankPolicyNetwork
+from hmls.singlemki.model import MkIModelConfig, MkITankPolicyNetwork
 
 # Re-export reward config helpers (model-agnostic, identical for all packages)
 __all__ = [
@@ -42,7 +42,7 @@ __all__ = [
 
 
 def save_model(
-    model: TankPolicyNetwork,
+    model: MkITankPolicyNetwork,
     path: Path,
     reward_config: DefaultRewardConfig | None = None,
     metadata: dict[str, Any] | None = None,
@@ -60,7 +60,7 @@ def save_model(
 
 def load_model(
     path: Path,
-) -> tuple[TankPolicyNetwork, dict[str, Any]]:
+) -> tuple[MkITankPolicyNetwork, dict[str, Any]]:
     """Load a model from disk.
 
     Args:
@@ -73,11 +73,11 @@ def load_model(
         FileNotFoundError: If *path* does not exist.
         KeyError: If the saved file is missing required keys.
     """
-    return load_model_data(path, ModelConfig, TankPolicyNetwork)
+    return load_model_data(path, MkIModelConfig, MkITankPolicyNetwork)
 
 
-def save_model_config(config: ModelConfig, directory: Path) -> None:
-    """Save a :class:`ModelConfig` as JSON to a model directory.
+def save_model_config(config: MkIModelConfig, directory: Path) -> None:
+    """Save a :class:`MkIModelConfig` as JSON to a model directory.
 
     Args:
         config: The model configuration to save.
@@ -86,46 +86,46 @@ def save_model_config(config: ModelConfig, directory: Path) -> None:
     save_model_config_data(config, directory)
 
 
-def load_model_config(directory: Path) -> ModelConfig:
-    """Load a :class:`ModelConfig` from a model directory.
+def load_model_config(directory: Path) -> MkIModelConfig:
+    """Load a :class:`MkIModelConfig` from a model directory.
 
     Args:
         directory: Directory containing the config file.
 
     Returns:
-        The loaded ModelConfig.
+        The loaded MkIModelConfig.
 
     Raises:
         FileNotFoundError: If ``model_config.json`` is not present.
     """
-    return load_model_config_data(directory, ModelConfig)
+    return load_model_config_data(directory, MkIModelConfig)
 
 
 # --- Factory functions for dynamic dispatch ---
 
 
-def create_model(config: ModelConfig) -> TankPolicyNetwork:
-    """Create a new :class:`TankPolicyNetwork` from a configuration.
+def create_model(config: MkIModelConfig) -> MkITankPolicyNetwork:
+    """Create a new :class:`MkITankPolicyNetwork` from a configuration.
 
     Args:
         config: The model configuration.
 
     Returns:
-        A freshly initialised TankPolicyNetwork.
+        A freshly initialised MkITankPolicyNetwork.
     """
-    return TankPolicyNetwork(config)
+    return MkITankPolicyNetwork(config)
 
 
 def create_player(
     team: str,
-    model: TankPolicyNetwork,
+    model: MkITankPolicyNetwork,
     mode: Literal["play", "learn"] = "play",
 ) -> NNPlayerBase:
     """Create an :class:`NNPlayer` for this model type.
 
     Args:
         team: The team this player controls.
-        model: The :class:`TankPolicyNetwork` to use.
+        model: The :class:`MkITankPolicyNetwork` to use.
         mode: ``"play"`` for deterministic inference, ``"learn"`` for
             stochastic sampling with trajectory recording.
 

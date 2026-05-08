@@ -8,7 +8,7 @@ import pytest
 import torch
 
 from hmls.nncore.reward import DefaultRewardConfig
-from hmls.singlemki.model import ModelConfig, TankPolicyNetwork
+from hmls.singlemki.model import MkIModelConfig, MkITankPolicyNetwork
 from hmls.singlemki.persistence import (
     load_model,
     load_model_config,
@@ -21,8 +21,8 @@ from hmls.singlemki.persistence import (
 
 def test_save_and_load_roundtrip(tmp_path: Path) -> None:
     """A saved model can be loaded and produces identical output."""
-    config = ModelConfig(patch_size=9, cnn_channels=(16, 32), gru_hidden_size=64)
-    model = TankPolicyNetwork(config)
+    config = MkIModelConfig(patch_size=9, cnn_channels=(16, 32), gru_hidden_size=64)
+    model = MkITankPolicyNetwork(config)
     model.eval()
 
     # Save
@@ -50,8 +50,8 @@ def test_save_and_load_roundtrip(tmp_path: Path) -> None:
 
 def test_save_creates_parent_dirs(tmp_path: Path) -> None:
     """save_model creates parent directories if needed."""
-    config = ModelConfig(patch_size=5)
-    model = TankPolicyNetwork(config)
+    config = MkIModelConfig(patch_size=5)
+    model = MkITankPolicyNetwork(config)
     deep_path = tmp_path / "a" / "b" / "c" / "model.pt"
     save_model(model, deep_path)
     assert deep_path.exists()
@@ -65,8 +65,8 @@ def test_load_nonexistent_raises(tmp_path: Path) -> None:
 
 def test_save_without_metadata(tmp_path: Path) -> None:
     """Saving without metadata stores empty dict."""
-    config = ModelConfig(patch_size=7)
-    model = TankPolicyNetwork(config)
+    config = MkIModelConfig(patch_size=7)
+    model = MkITankPolicyNetwork(config)
     model_path = tmp_path / "model.pt"
     save_model(model, model_path)
 
@@ -78,8 +78,8 @@ class TestModelConfigJson:
     """Tests for model_config.json save/load utilities."""
 
     def test_save_and_load_roundtrip(self, tmp_path: Path) -> None:
-        """ModelConfig can be saved and loaded from JSON."""
-        config = ModelConfig(patch_size=7, cnn_channels=(16, 32, 64), gru_hidden_size=256)
+        """MkIModelConfig can be saved and loaded from JSON."""
+        config = MkIModelConfig(patch_size=7, cnn_channels=(16, 32, 64), gru_hidden_size=256)
         save_model_config(config, tmp_path)
 
         loaded = load_model_config(tmp_path)
@@ -88,8 +88,8 @@ class TestModelConfigJson:
         assert loaded.gru_hidden_size == 256
 
     def test_default_config_roundtrip(self, tmp_path: Path) -> None:
-        """Default ModelConfig round-trips correctly."""
-        config = ModelConfig()
+        """Default MkIModelConfig round-trips correctly."""
+        config = MkIModelConfig()
         save_model_config(config, tmp_path)
 
         loaded = load_model_config(tmp_path)
@@ -103,7 +103,7 @@ class TestModelConfigJson:
     def test_save_creates_directory(self, tmp_path: Path) -> None:
         """save_model_config creates the directory if needed."""
         deep_dir = tmp_path / "a" / "b" / "c"
-        save_model_config(ModelConfig(), deep_dir)
+        save_model_config(MkIModelConfig(), deep_dir)
         assert (deep_dir / "model_config.json").exists()
 
 
