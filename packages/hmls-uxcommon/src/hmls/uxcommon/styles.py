@@ -27,6 +27,9 @@ IMPASSABLE_STYLE = "rgb(80,80,80)"
 FOG_STYLE = "rgb(40,40,40)"
 """Rich style for fog-of-war cells."""
 
+BOUNDARY_STYLE = "rgb(120,60,60)"
+"""Rich style for boundary cells (outside the map edge)."""
+
 # ── Cell rendering ────────────────────────────────────────────────────
 
 CELL_CHARS = "██"

@@ -6,8 +6,9 @@ from rich.text import Text
 from textual.widgets import Static
 
 from hmls.core.tank import TankId
-from hmls.core.visibility import FogCell, TankPatch, VisibleCell
+from hmls.core.visibility import BoundaryCell, FogCell, TankPatch, VisibleCell
 from hmls.uxcommon.styles import (
+    BOUNDARY_STYLE,
     CELL_CHARS,
     CELL_WIDTH,
     DEAD_MARKER,
@@ -94,6 +95,8 @@ class PatchView(Static):
             for cell in row:
                 if isinstance(cell, FogCell):
                     text.append(CELL_CHARS, style=FOG_STYLE)
+                elif isinstance(cell, BoundaryCell):
+                    text.append(CELL_CHARS, style=BOUNDARY_STYLE)
                 elif isinstance(cell, VisibleCell):
                     if cell.tank is not None:
                         tank = cell.tank

@@ -3,11 +3,11 @@
 The encoding produces a ``[5, patch_size, patch_size]`` float tensor with
 the following channels:
 
-* Channel 0 — **terrain**: passable=1.0, impassable=0.0, fog=−1.0
+* Channel 0 — **terrain**: passable=1.0, impassable/boundary=0.0, fog=−1.0
 * Channel 1 — **friendly tank**: 1.0 if an alive friendly tank occupies the cell
 * Channel 2 — **enemy tank**: 1.0 if an alive enemy tank occupies the cell
 * Channel 3 — **wreckage**: 1.0 if a dead tank (any team) occupies the cell
-* Channel 4 — **visibility mask**: 1.0 if visible, 0.0 if fog
+* Channel 4 — **visibility mask**: 1.0 if visible or boundary, 0.0 if fog
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from enum import IntEnum
 import torch
 
 from hmls.core.map import CellType
-from hmls.core.visibility import FogCell, TankPatch, VisibleCell
+from hmls.core.visibility import BoundaryCell, FogCell, TankPatch, VisibleCell
 
 
 class Channel(IntEnum):
@@ -64,6 +64,10 @@ def encode_patch(patch: TankPatch, team: str) -> torch.Tensor:
             if isinstance(cell, FogCell):
                 tensor[Channel.TERRAIN, row_idx, col_idx] = -1.0
                 tensor[Channel.VISIBILITY, row_idx, col_idx] = 0.0
+            elif isinstance(cell, BoundaryCell):
+                # Boundary is definitively impassable and known.
+                tensor[Channel.TERRAIN, row_idx, col_idx] = 0.0
+                tensor[Channel.VISIBILITY, row_idx, col_idx] = 1.0
             elif isinstance(cell, VisibleCell):
                 tensor[Channel.TERRAIN, row_idx, col_idx] = (
                     1.0 if cell.cell_type == CellType.PASSABLE else 0.0
