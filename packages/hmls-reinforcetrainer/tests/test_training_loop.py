@@ -8,7 +8,7 @@ import pytest
 
 from hmls.nncore.persistence import load_or_create_model
 from hmls.nncore.reward import DefaultRewardConfig
-from hmls.reinforcetrainer._testing.persistence import save_model_config, save_reward_config
+from hmls.reinforcetrainer._testing.persistence import PERSISTENCE as STUB_PERSISTENCE
 from hmls.reinforcetrainer._testing.stub_model import StubModelConfig
 from hmls.reinforcetrainer.config import (
     GameConfig,
@@ -32,8 +32,8 @@ def _setup_model_dir(
 ) -> None:
     """Helper to create a model directory with required config files."""
     directory.mkdir(parents=True, exist_ok=True)
-    save_model_config(model_config or StubModelConfig(), directory)
-    save_reward_config(reward_config or DefaultRewardConfig(), directory)
+    STUB_PERSISTENCE.save_model_config(model_config or StubModelConfig(), directory)
+    STUB_PERSISTENCE.save_reward_config(reward_config or DefaultRewardConfig(), directory)
 
 
 class TestLoadOrCreateModel:
@@ -56,7 +56,6 @@ class TestLoadOrCreateModel:
 
     def test_loads_existing_model(self, tmp_path: Path) -> None:
         """A directory with model.pt loads the saved model."""
-        from hmls.reinforcetrainer._testing.persistence import save_model
         from hmls.reinforcetrainer._testing.stub_model import StubTankModel
 
         model_dir = tmp_path / "model"
@@ -65,7 +64,7 @@ class TestLoadOrCreateModel:
 
         # Save a model with the same config
         original = StubTankModel(config)
-        save_model(original, model_dir / "model.pt")
+        STUB_PERSISTENCE.save_model(original, model_dir / "model.pt")
 
         loaded = load_or_create_model(model_dir)
         assert loaded.config.hidden_size == 8  # type: ignore[attr-defined]
@@ -274,7 +273,6 @@ class TestTrainIntegration:
         """A frozen model's parameters should not change during training."""
         import torch
 
-        from hmls.reinforcetrainer._testing.persistence import save_model
         from hmls.reinforcetrainer._testing.stub_model import StubTankModel
 
         trainee_dir = tmp_path / "trainee"
@@ -285,7 +283,7 @@ class TestTrainIntegration:
         # Create and save a frozen model so we can compare weights
         frozen_model = StubTankModel(StubModelConfig())
         initial_state = {k: v.clone() for k, v in frozen_model.state_dict().items()}
-        save_model(frozen_model, frozen_dir / "model.pt")
+        STUB_PERSISTENCE.save_model(frozen_model, frozen_dir / "model.pt")
 
         config = TrainerConfig(
             model_a=ModelRef(dir=trainee_dir, train=True),
@@ -303,9 +301,7 @@ class TestTrainIntegration:
         train(config)
 
         # Load the frozen model and verify weights are unchanged
-        from hmls.reinforcetrainer._testing.persistence import load_model
-
-        loaded_frozen, _ = load_model(frozen_dir / "model.pt")
+        loaded_frozen, _ = STUB_PERSISTENCE.load_model(frozen_dir / "model.pt")
         for name, param in loaded_frozen.state_dict().items():
             assert torch.allclose(initial_state[name], param), (
                 f"Frozen model param '{name}' changed during training"

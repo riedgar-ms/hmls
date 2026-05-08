@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 class TankModelConfig(BaseModel, frozen=True, extra="forbid"):
     """Base configuration shared by all tank policy networks.
 
-    Every concrete model config (e.g. Mk-I's ``ModelConfig``, Mk-II's
+    Every concrete model config (e.g. ``MkIModelConfig``,
     ``MkIIModelConfig``) must extend this class so that generic loading
     infrastructure can discover the correct model package.
 

@@ -6,13 +6,13 @@ import torch
 
 from hmls.nncore.constants import NUM_ACTIONS
 from hmls.nncore.encoding import FiveChannelPatchEncoder
-from hmls.singlemki.model import ModelConfig, TankPolicyNetwork
+from hmls.singlemki.model import MkIModelConfig, MkITankPolicyNetwork
 
 
 def test_model_forward_unbatched() -> None:
     """Model forward pass works for a single (unbatched) input."""
-    config = ModelConfig(patch_size=9)
-    model = TankPolicyNetwork(config)
+    config = MkIModelConfig(patch_size=9)
+    model = MkITankPolicyNetwork(config)
     model.eval()
 
     patch_tensor = torch.randn(FiveChannelPatchEncoder.NUM_CHANNELS, 9, 9)
@@ -26,8 +26,8 @@ def test_model_forward_unbatched() -> None:
 
 def test_model_forward_batched() -> None:
     """Model forward pass works for batched input."""
-    config = ModelConfig(patch_size=9)
-    model = TankPolicyNetwork(config)
+    config = MkIModelConfig(patch_size=9)
+    model = MkITankPolicyNetwork(config)
     model.eval()
 
     batch_size = 4
@@ -43,8 +43,8 @@ def test_model_forward_batched() -> None:
 def test_model_different_patch_sizes() -> None:
     """Model works with different patch sizes."""
     for ps in (5, 7, 9, 11):
-        config = ModelConfig(patch_size=ps)
-        model = TankPolicyNetwork(config)
+        config = MkIModelConfig(patch_size=ps)
+        model = MkITankPolicyNetwork(config)
         model.eval()
 
         x = torch.randn(FiveChannelPatchEncoder.NUM_CHANNELS, ps, ps)
@@ -55,8 +55,8 @@ def test_model_different_patch_sizes() -> None:
 
 def test_initial_hidden_is_zero() -> None:
     """Initial hidden state is all zeros."""
-    config = ModelConfig(gru_hidden_size=64)
-    model = TankPolicyNetwork(config)
+    config = MkIModelConfig(gru_hidden_size=64)
+    model = MkITankPolicyNetwork(config)
     h = model.initial_hidden(batch_size=2)
     assert h.shape == (2, 64)
     assert (h == 0).all()
@@ -64,8 +64,8 @@ def test_initial_hidden_is_zero() -> None:
 
 def test_model_hidden_state_changes() -> None:
     """GRU hidden state should change after a forward pass."""
-    config = ModelConfig(patch_size=9)
-    model = TankPolicyNetwork(config)
+    config = MkIModelConfig(patch_size=9)
+    model = MkITankPolicyNetwork(config)
     model.eval()
 
     x = torch.randn(FiveChannelPatchEncoder.NUM_CHANNELS, 9, 9)
@@ -78,7 +78,7 @@ def test_model_hidden_state_changes() -> None:
 
 def test_config_defaults() -> None:
     """New conv/pool config fields have defaults matching original hardcoded values."""
-    config = ModelConfig()
+    config = MkIModelConfig()
     assert config.conv_kernel_size == 3
     assert config.pool_kernel_size == 2
     assert config.pool_stride == 2
@@ -86,8 +86,8 @@ def test_config_defaults() -> None:
 
 def test_custom_conv_kernel_size() -> None:
     """Model works with a non-default conv kernel size."""
-    config = ModelConfig(patch_size=9, conv_kernel_size=5)
-    model = TankPolicyNetwork(config)
+    config = MkIModelConfig(patch_size=9, conv_kernel_size=5)
+    model = MkITankPolicyNetwork(config)
     model.eval()
 
     x = torch.randn(FiveChannelPatchEncoder.NUM_CHANNELS, 9, 9)
@@ -100,8 +100,8 @@ def test_custom_conv_kernel_size() -> None:
 
 def test_custom_pool_params() -> None:
     """Model works with non-default pool kernel size and stride."""
-    config = ModelConfig(patch_size=9, pool_kernel_size=3, pool_stride=3)
-    model = TankPolicyNetwork(config)
+    config = MkIModelConfig(patch_size=9, pool_kernel_size=3, pool_stride=3)
+    model = MkITankPolicyNetwork(config)
     model.eval()
 
     x = torch.randn(FiveChannelPatchEncoder.NUM_CHANNELS, 9, 9)
@@ -113,15 +113,15 @@ def test_custom_pool_params() -> None:
 
 
 def test_config_roundtrip_with_new_fields() -> None:
-    """ModelConfig with non-default conv/pool fields round-trips through JSON."""
-    config = ModelConfig(
+    """MkIModelConfig with non-default conv/pool fields round-trips through JSON."""
+    config = MkIModelConfig(
         patch_size=11,
         conv_kernel_size=5,
         pool_kernel_size=3,
         pool_stride=3,
     )
     json_str = config.model_dump_json()
-    loaded = ModelConfig.model_validate_json(json_str)
+    loaded = MkIModelConfig.model_validate_json(json_str)
 
     assert loaded == config
     assert loaded.conv_kernel_size == 5

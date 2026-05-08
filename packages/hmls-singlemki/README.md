@@ -4,7 +4,7 @@ Neural network player for the HMLS tank game — single-tank CNN→GRU→policy-
 
 ## Architecture
 
-The `TankPolicyNetwork` processes an egocentric visibility patch through three stages to produce action logits:
+The `MkITankPolicyNetwork` processes an egocentric visibility patch through three stages to produce action logits:
 
 ```
 Encoded Patch ──► CNN (spatial features) ──► GRU Cell (temporal memory) ──► Linear Head (action logits)
@@ -51,7 +51,7 @@ A single `Linear` layer maps the GRU hidden state to logits over the 5-action sp
 
 ## Model Configuration
 
-The `ModelConfig` (Pydantic model, frozen) controls the network architecture. It is serialised as `model_config.json` in the model directory.
+The `MkIModelConfig` (Pydantic model, frozen) controls the network architecture. It is serialised as `model_config.json` in the model directory.
 
 Example:
 

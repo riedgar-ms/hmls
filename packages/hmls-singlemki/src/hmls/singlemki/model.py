@@ -1,6 +1,6 @@
 """Neural network model: CNN → GRU → policy head.
 
-The :class:`TankPolicyNetwork` processes an encoded patch tensor through
+The :class:`MkITankPolicyNetwork` processes an encoded patch tensor through
 convolutional layers (spatial features), a GRU (temporal memory across
 turns), and a linear policy head that outputs logits over the 5 actions.
 """
@@ -16,8 +16,8 @@ from hmls.nncore.encoding import FiveChannelPatchEncoder
 from hmls.nncore.model import TankModelBase, TankModelConfig
 
 
-class ModelConfig(TankModelConfig, frozen=True, extra="forbid"):
-    """Hyperparameters for :class:`TankPolicyNetwork`.
+class MkIModelConfig(TankModelConfig, frozen=True, extra="forbid"):
+    """Hyperparameters for :class:`MkITankPolicyNetwork`.
 
     Attributes:
         patch_size: Side length of the input patch (must be odd, ≥ 3).
@@ -38,7 +38,7 @@ class ModelConfig(TankModelConfig, frozen=True, extra="forbid"):
     pool_stride: int = Field(default=2, ge=1)
 
 
-class TankPolicyNetwork(TankModelBase):
+class MkITankPolicyNetwork(TankModelBase):
     """CNN → GRU → policy head for single-tank action selection.
 
     The CNN extracts spatial features from the encoded patch.  These are
@@ -50,9 +50,9 @@ class TankPolicyNetwork(TankModelBase):
         config: Model hyperparameters.
     """
 
-    def __init__(self, config: ModelConfig | None = None) -> None:
+    def __init__(self, config: MkIModelConfig | None = None) -> None:
         super().__init__()
-        self.config: ModelConfig = config or ModelConfig()
+        self.config: MkIModelConfig = config or MkIModelConfig()
 
         # Build CNN layers
         layers: list[nn.Module] = []
