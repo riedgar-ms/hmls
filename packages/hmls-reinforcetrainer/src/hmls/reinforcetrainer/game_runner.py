@@ -30,11 +30,14 @@ class GameOutcome:
         result: The full GameResult (map, history, winner).
         player_a: The NNPlayer for team A (with trajectory if learning).
         player_b: The NNPlayer for team B (with trajectory if learning).
+        lethargy_loser: Team that lost due to lethargy (e.g. ``"A"``),
+            or ``None`` if the game ended normally.
     """
 
     result: GameResult
     player_a: NNPlayerBase
     player_b: NNPlayerBase
+    lethargy_loser: str | None = None
 
 
 def create_map(
@@ -208,7 +211,12 @@ def run_game(
             reward_fn_b=reward_fn_b,
         )
 
-    return GameOutcome(result=result, player_a=player_a, player_b=player_b)
+    return GameOutcome(
+        result=result,
+        player_a=player_a,
+        player_b=player_b,
+        lethargy_loser=lethargy_loser,
+    )
 
 
 def _assign_step_reward(
