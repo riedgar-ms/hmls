@@ -19,12 +19,17 @@ from hmls.nncore.persistence import (
     save_model,
 )
 from hmls.nncore.reward import DefaultReward, RewardFunction
-from hmls.reinforcetrainer.config import TrainerConfig
+from hmls.reinforcetrainer.config import LethargyConfig, TrainerConfig
 from hmls.reinforcetrainer.game_runner import (
     GameOutcome,
     create_map,
     run_game,
     save_sample_game,
+)
+from hmls.reinforcetrainer.lethargy import (
+    ConsecutiveTurnLimit,
+    LethargyPolicy,
+    NoLethargyCheck,
 )
 from hmls.reinforcetrainer.updater import reinforce_update
 
@@ -44,6 +49,28 @@ def _load_reward_config(model_dir: Path) -> DefaultReward:
     persistence = _import_persistence_module(model_package)
     reward_config = persistence.load_reward_config(model_dir)
     return DefaultReward(reward_config)
+
+
+def _create_lethargy_policy(config: LethargyConfig) -> LethargyPolicy:
+    """Instantiate a lethargy policy from configuration.
+
+    Args:
+        config: The lethargy section of the trainer config.
+
+    Returns:
+        A :class:`LethargyPolicy` instance matching the configured policy.
+
+    Raises:
+        ValueError: If the policy name is unrecognised.
+    """
+    if config.policy == "none":
+        return NoLethargyCheck()
+    elif config.policy == "consecutive_turn_limit":
+        return ConsecutiveTurnLimit(
+            max_consecutive_turns=config.max_consecutive_turns,
+        )
+    else:
+        raise ValueError(f"Unknown lethargy policy: {config.policy!r}")
 
 
 def _validate_model_configs(config_a: TankModelConfig, config_b: TankModelConfig) -> None:
@@ -141,6 +168,9 @@ def train(config: TrainerConfig) -> None:
     reward_fn_a: RewardFunction = _load_reward_config(config.model_a.dir)
     reward_fn_b: RewardFunction = _load_reward_config(config.model_b.dir)
 
+    # Instantiate lethargy policy
+    lethargy_policy = _create_lethargy_policy(config.lethargy)
+
     # Load or create models
     model_a = load_or_create_model(config.model_a.dir)
     model_b = load_or_create_model(config.model_b.dir)
@@ -162,6 +192,8 @@ def train(config: TrainerConfig) -> None:
     wins_a = 0
     wins_b = 0
     draws = 0
+    lethargy_a = 0
+    lethargy_b = 0
     total_loss_a = 0.0
     total_loss_b = 0.0
 
@@ -208,12 +240,17 @@ def train(config: TrainerConfig) -> None:
                 patch_size=config.game.patch_size,
                 reward_fn_a=reward_fn_a,
                 reward_fn_b=reward_fn_b,
+                lethargy_policy=lethargy_policy,
                 rng=rng,
             )
 
-            # Track wins
+            # Track wins and lethargy losses
             winner = outcome.result.winner
-            if winner == "A":
+            if outcome.lethargy_loser == "A":
+                lethargy_a += 1
+            elif outcome.lethargy_loser == "B":
+                lethargy_b += 1
+            elif winner == "A":
                 wins_a += 1
             elif winner == "B":
                 wins_b += 1
@@ -263,6 +300,8 @@ def train(config: TrainerConfig) -> None:
                     wins_a,
                     wins_b,
                     draws,
+                    lethargy_a,
+                    lethargy_b,
                     total_loss_a,
                     total_loss_b,
                     config.model_a.train,
@@ -276,7 +315,10 @@ def train(config: TrainerConfig) -> None:
         _save_weights(model_b, config.model_b.dir, total_games)
 
     print(f"\nTraining complete. {total_games} games played.")
-    print(f"  Final record: A wins={wins_a}, B wins={wins_b}, draws={draws}")
+    print(
+        f"  Final record: A wins={wins_a}, B wins={wins_b}, draws={draws}, "
+        f"lethargy_a={lethargy_a}, lethargy_b={lethargy_b}"
+    )
 
 
 def _log_progress(
@@ -286,6 +328,8 @@ def _log_progress(
     wins_a: int,
     wins_b: int,
     draws: int,
+    lethargy_a: int,
+    lethargy_b: int,
     loss_a: float,
     loss_b: float,
     train_a: bool,
@@ -300,6 +344,8 @@ def _log_progress(
         wins_a: Cumulative wins for team A.
         wins_b: Cumulative wins for team B.
         draws: Cumulative draws.
+        lethargy_a: Games lost by team A due to lethargy.
+        lethargy_b: Games lost by team B due to lethargy.
         loss_a: Cumulative loss for model A.
         loss_b: Cumulative loss for model B.
         train_a: Whether model A is training.
@@ -317,6 +363,9 @@ def _log_progress(
         f"B={wins_b}",
         f"draws={draws}",
     ]
+    if lethargy_a > 0 or lethargy_b > 0:
+        parts.append(f"leth_a={lethargy_a}")
+        parts.append(f"leth_b={lethargy_b}")
     if train_a:
         parts.append(f"loss_a={avg_loss_a:.4f}")
     if train_b:

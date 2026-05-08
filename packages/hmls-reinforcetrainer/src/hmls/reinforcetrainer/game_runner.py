@@ -19,6 +19,7 @@ from hmls.nncore.model import TankModelBase
 from hmls.nncore.persistence import create_player
 from hmls.nncore.player import NNPlayerBase
 from hmls.nncore.reward import DefaultReward, RewardFunction
+from hmls.reinforcetrainer.lethargy import LethargyPolicy
 
 
 @dataclass
@@ -29,11 +30,14 @@ class GameOutcome:
         result: The full GameResult (map, history, winner).
         player_a: The NNPlayer for team A (with trajectory if learning).
         player_b: The NNPlayer for team B (with trajectory if learning).
+        lethargy_loser: Team that lost due to lethargy (e.g. ``"A"``),
+            or ``None`` if the game ended normally.
     """
 
     result: GameResult
     player_a: NNPlayerBase
     player_b: NNPlayerBase
+    lethargy_loser: str | None = None
 
 
 def create_map(
@@ -83,6 +87,7 @@ def run_game(
     patch_size: int = 9,
     reward_fn_a: RewardFunction | None = None,
     reward_fn_b: RewardFunction | None = None,
+    lethargy_policy: LethargyPolicy | None = None,
     rng: random.Random | None = None,
 ) -> GameOutcome:
     """Run a single game between two NN models.
@@ -102,6 +107,9 @@ def run_game(
         patch_size: Side length of visibility patches for the game engine.
         reward_fn_a: Reward function for player A (defaults to DefaultReward).
         reward_fn_b: Reward function for player B (defaults to DefaultReward).
+        lethargy_policy: Optional policy for detecting degenerate play
+            (e.g. spinning in place).  If triggered, the offending tank's
+            team loses immediately.
         rng: Random number generator for tank placement.
 
     Returns:
@@ -143,7 +151,11 @@ def run_game(
         patch_size=patch_size,
     )
 
+    if lethargy_policy is not None:
+        lethargy_policy.reset()
+
     # Step through the game, computing rewards after each step
+    lethargy_loser: str | None = None
     while not engine.game_over:
         entry: HistoryEntry = engine.step()
 
@@ -154,27 +166,57 @@ def run_game(
         elif acting_team == "B" and train_b:
             _assign_step_reward(player_b, entry, reward_fn_b)
 
+        # Check lethargy policy
+        if lethargy_policy is not None:
+            lethargy_loser = lethargy_policy.observe_action(entry.tank_id, entry.applied_action)
+            if lethargy_loser is not None:
+                break
+
     # Compute end-of-episode rewards
-    result = engine.make_result()
-    winner = result.winner
+    if lethargy_loser is not None:
+        # A tank was caught being lethargic — build the result with the
+        # *other* team as winner.
+        lethargy_winner = "B" if lethargy_loser == "A" else "A"
+        partial_result = engine.make_result()
+        result = GameResult(
+            winner=lethargy_winner,
+            game_map=partial_result.game_map,
+            initial_state=partial_result.initial_state,
+            history=partial_result.history,
+            turns_played=partial_result.turns_played,
+        )
+        # Only penalise the lethargic player.  The "winning" player
+        # receives no end-of-episode reward because it did not earn
+        # the win — the opponent simply self-destructed, and the
+        # "winner" may itself have been playing poorly.
+        _apply_lethargy_loss(
+            loser_team=lethargy_loser,
+            player_a=player_a,
+            player_b=player_b,
+            train_a=train_a,
+            train_b=train_b,
+            reward_fn_a=reward_fn_a,
+            reward_fn_b=reward_fn_b,
+        )
+    else:
+        result = engine.make_result()
+        winner = result.winner
+        _apply_normal_end_rewards(
+            winner=winner,
+            player_a=player_a,
+            player_b=player_b,
+            train_a=train_a,
+            train_b=train_b,
+            reward_fn_a=reward_fn_a,
+            reward_fn_b=reward_fn_b,
+        )
 
-    if train_a:
-        won_a = True if winner == "A" else (False if winner == "B" else None)
-        end_reward_a = reward_fn_a.compute_episode_end_reward(won_a)
-        if len(player_a.episode) > 0:
-            last_idx = len(player_a.episode) - 1
-            current = player_a.episode.steps[last_idx].reward
-            player_a.episode.set_reward(last_idx, current + end_reward_a)
-
-    if train_b:
-        won_b = True if winner == "B" else (False if winner == "A" else None)
-        end_reward_b = reward_fn_b.compute_episode_end_reward(won_b)
-        if len(player_b.episode) > 0:
-            last_idx = len(player_b.episode) - 1
-            current = player_b.episode.steps[last_idx].reward
-            player_b.episode.set_reward(last_idx, current + end_reward_b)
-
-    return GameOutcome(result=result, player_a=player_a, player_b=player_b)
+    return GameOutcome(
+        result=result,
+        player_a=player_a,
+        player_b=player_b,
+        lethargy_loser=lethargy_loser,
+    )
 
 
 def _assign_step_reward(
@@ -200,6 +242,82 @@ def _assign_step_reward(
     step_idx = len(player.episode) - 1
     if step_idx >= 0:
         player.episode.set_reward(step_idx, reward)
+
+
+def _apply_normal_end_rewards(
+    winner: str | None,
+    player_a: NNPlayerBase,
+    player_b: NNPlayerBase,
+    train_a: bool,
+    train_b: bool,
+    reward_fn_a: RewardFunction,
+    reward_fn_b: RewardFunction,
+) -> None:
+    """Apply end-of-episode rewards for a game that ended normally.
+
+    Args:
+        winner: Winning team name, or ``None`` for a draw.
+        player_a: Player A instance.
+        player_b: Player B instance.
+        train_a: Whether player A is training.
+        train_b: Whether player B is training.
+        reward_fn_a: Reward function for player A.
+        reward_fn_b: Reward function for player B.
+    """
+    if train_a:
+        won_a = True if winner == "A" else (False if winner == "B" else None)
+        end_reward_a = reward_fn_a.compute_episode_end_reward(won_a)
+        if len(player_a.episode) > 0:
+            last_idx = len(player_a.episode) - 1
+            current = player_a.episode.steps[last_idx].reward
+            player_a.episode.set_reward(last_idx, current + end_reward_a)
+
+    if train_b:
+        won_b = True if winner == "B" else (False if winner == "A" else None)
+        end_reward_b = reward_fn_b.compute_episode_end_reward(won_b)
+        if len(player_b.episode) > 0:
+            last_idx = len(player_b.episode) - 1
+            current = player_b.episode.steps[last_idx].reward
+            player_b.episode.set_reward(last_idx, current + end_reward_b)
+
+
+def _apply_lethargy_loss(
+    loser_team: str,
+    player_a: NNPlayerBase,
+    player_b: NNPlayerBase,
+    train_a: bool,
+    train_b: bool,
+    reward_fn_a: RewardFunction,
+    reward_fn_b: RewardFunction,
+) -> None:
+    """Apply end-of-episode reward when a game ends due to lethargy.
+
+    Only the lethargic player receives a loss reward.  The opponent
+    receives **no** end-of-episode reward: it did not earn the win —
+    the opponent simply self-destructed, and the "winner" may itself
+    have been playing poorly or even spinning in the same way.
+
+    Args:
+        loser_team: Team name of the lethargic player (``"A"`` or ``"B"``).
+        player_a: Player A instance.
+        player_b: Player B instance.
+        train_a: Whether player A is training.
+        train_b: Whether player B is training.
+        reward_fn_a: Reward function for player A.
+        reward_fn_b: Reward function for player B.
+    """
+    if loser_team == "A" and train_a:
+        end_reward = reward_fn_a.compute_episode_end_reward(won=False)
+        if len(player_a.episode) > 0:
+            last_idx = len(player_a.episode) - 1
+            current = player_a.episode.steps[last_idx].reward
+            player_a.episode.set_reward(last_idx, current + end_reward)
+    elif loser_team == "B" and train_b:
+        end_reward = reward_fn_b.compute_episode_end_reward(won=False)
+        if len(player_b.episode) > 0:
+            last_idx = len(player_b.episode) - 1
+            current = player_b.episode.steps[last_idx].reward
+            player_b.episode.set_reward(last_idx, current + end_reward)
 
 
 def save_sample_game(result: GameResult, directory: Path, game_number: int) -> Path:

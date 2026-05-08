@@ -11,6 +11,7 @@ from pydantic import ValidationError
 from hmls.reinforcetrainer.config import (
     GameConfig,
     HyperparameterConfig,
+    LethargyConfig,
     MapConfig,
     ModelRef,
     OutputConfig,
@@ -169,3 +170,49 @@ class TestTrainerConfig:
         loaded = TrainerConfig.model_validate_json(json.dumps(config_data).encode())
         assert loaded.model_a.dir == Path("path/to/model_a")
         assert loaded.output.sample_game_dir == Path("output/samples")
+
+    def test_default_lethargy_config(self, tmp_path: Path) -> None:
+        """Default lethargy config uses consecutive_turn_limit with threshold 5."""
+        config = TrainerConfig(
+            model_a=ModelRef(dir=tmp_path / "a"),
+            model_b=ModelRef(dir=tmp_path / "b"),
+        )
+        assert config.lethargy.policy == "consecutive_turn_limit"
+        assert config.lethargy.max_consecutive_turns == 5
+
+    def test_lethargy_config_none_policy(self, tmp_path: Path) -> None:
+        """Lethargy can be disabled with policy='none'."""
+        config = TrainerConfig(
+            model_a=ModelRef(dir=tmp_path / "a"),
+            model_b=ModelRef(dir=tmp_path / "b"),
+            lethargy=LethargyConfig(policy="none"),
+        )
+        assert config.lethargy.policy == "none"
+
+    def test_lethargy_config_custom_threshold(self, tmp_path: Path) -> None:
+        """Custom max_consecutive_turns is accepted."""
+        config = TrainerConfig(
+            model_a=ModelRef(dir=tmp_path / "a"),
+            model_b=ModelRef(dir=tmp_path / "b"),
+            lethargy=LethargyConfig(max_consecutive_turns=10),
+        )
+        assert config.lethargy.max_consecutive_turns == 10
+
+    def test_lethargy_config_threshold_too_small(self) -> None:
+        """max_consecutive_turns below 2 raises validation error."""
+        with pytest.raises(ValidationError):
+            LethargyConfig(max_consecutive_turns=1)
+
+    def test_lethargy_config_in_json(self, tmp_path: Path) -> None:
+        """Lethargy config round-trips through JSON."""
+        config_data = {
+            "model_a": {"dir": "models/a"},
+            "model_b": {"dir": "models/b"},
+            "lethargy": {
+                "policy": "consecutive_turn_limit",
+                "max_consecutive_turns": 8,
+            },
+        }
+        loaded = TrainerConfig.model_validate_json(json.dumps(config_data).encode())
+        assert loaded.lethargy.policy == "consecutive_turn_limit"
+        assert loaded.lethargy.max_consecutive_turns == 8
