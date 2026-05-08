@@ -84,8 +84,6 @@ def test_default_reward_step_reward() -> None:
     patch = _make_empty_patch()
     reward = reward_fn.compute_step_reward(
         entry,
-        explored_positions=set(),
-        new_positions_this_step=0,
         patch=patch,
         team="alpha",
     )
@@ -99,8 +97,6 @@ def test_default_reward_hit() -> None:
     patch = _make_empty_patch()
     reward = reward_fn.compute_step_reward(
         entry,
-        explored_positions=set(),
-        new_positions_this_step=0,
         patch=patch,
         team="alpha",
     )
@@ -110,16 +106,28 @@ def test_default_reward_hit() -> None:
 def test_default_reward_exploration() -> None:
     """New positions add exploration bonus."""
     reward_fn = DefaultReward()
+    reward_fn.reset()
     entry = _make_entry()
-    patch = _make_empty_patch()
+    patch = _make_empty_patch(size=3)
+    # First observation discovers all cells; a 3x3 fully visible patch = 9 cells
+    reward_fn.observe_patch(patch)
     reward = reward_fn.compute_step_reward(
         entry,
-        explored_positions={Position(1, 1)},
-        new_positions_this_step=3,
         patch=patch,
         team="alpha",
     )
-    expected = -0.01 + 0.02 * 3
+    # step_reward + exploration_reward * 9 (all cells new)
+    expected = -0.01 + 0.02 * 9
+    assert abs(reward - expected) < 1e-7
+
+    # Second observation of same patch discovers nothing new
+    reward_fn.observe_patch(patch)
+    reward = reward_fn.compute_step_reward(
+        entry,
+        patch=patch,
+        team="alpha",
+    )
+    expected = -0.01
     assert abs(reward - expected) < 1e-7
 
 
@@ -130,8 +138,6 @@ def test_default_reward_invalid_action() -> None:
     patch = _make_empty_patch()
     reward = reward_fn.compute_step_reward(
         entry,
-        explored_positions=set(),
-        new_positions_this_step=0,
         patch=patch,
         team="alpha",
     )
@@ -146,8 +152,6 @@ def test_default_reward_fire_miss() -> None:
     patch = _make_empty_patch()
     reward = reward_fn.compute_step_reward(
         entry,
-        explored_positions=set(),
-        new_positions_this_step=0,
         patch=patch,
         team="alpha",
     )
@@ -162,8 +166,6 @@ def test_default_reward_hit_no_miss_penalty() -> None:
     patch = _make_empty_patch()
     reward = reward_fn.compute_step_reward(
         entry,
-        explored_positions=set(),
-        new_positions_this_step=0,
         patch=patch,
         team="alpha",
     )
@@ -174,19 +176,19 @@ def test_default_reward_hit_no_miss_penalty() -> None:
 def test_default_reward_episode_win() -> None:
     """Winning gives positive terminal reward."""
     reward_fn = DefaultReward()
-    assert reward_fn.compute_episode_end_reward(won=True, total_explored=10) == 1.0
+    assert reward_fn.compute_episode_end_reward(won=True) == 1.0
 
 
 def test_default_reward_episode_loss() -> None:
     """Losing gives negative terminal reward."""
     reward_fn = DefaultReward()
-    assert reward_fn.compute_episode_end_reward(won=False, total_explored=10) == -1.0
+    assert reward_fn.compute_episode_end_reward(won=False) == -1.0
 
 
 def test_default_reward_episode_draw() -> None:
     """Draw gives zero terminal reward."""
     reward_fn = DefaultReward()
-    assert reward_fn.compute_episode_end_reward(won=None, total_explored=10) == 0.0
+    assert reward_fn.compute_episode_end_reward(won=None) == 0.0
 
 
 def test_default_reward_from_config() -> None:
@@ -248,8 +250,6 @@ def test_fire_neglect_reward_enemy_ahead() -> None:
     patch = _make_patch_with_enemy_ahead()
     reward = reward_fn.compute_step_reward(
         entry,
-        explored_positions=set(),
-        new_positions_this_step=0,
         patch=patch,
         team="alpha",
     )
@@ -265,8 +265,6 @@ def test_fire_neglect_reward_not_applied_on_fire() -> None:
     patch = _make_patch_with_enemy_ahead()
     reward = reward_fn.compute_step_reward(
         entry,
-        explored_positions=set(),
-        new_positions_this_step=0,
         patch=patch,
         team="alpha",
     )
@@ -282,8 +280,6 @@ def test_fire_neglect_reward_not_applied_no_enemy() -> None:
     patch = _make_empty_patch()
     reward = reward_fn.compute_step_reward(
         entry,
-        explored_positions=set(),
-        new_positions_this_step=0,
         patch=patch,
         team="alpha",
     )
@@ -298,8 +294,6 @@ def test_pass_reward_deliberate() -> None:
     patch = _make_empty_patch()
     reward = reward_fn.compute_step_reward(
         entry,
-        explored_positions=set(),
-        new_positions_this_step=0,
         patch=patch,
         team="alpha",
     )
@@ -316,8 +310,6 @@ def test_pass_reward_not_applied_on_invalid() -> None:
     patch = _make_empty_patch()
     reward = reward_fn.compute_step_reward(
         entry,
-        explored_positions=set(),
-        new_positions_this_step=0,
         patch=patch,
         team="alpha",
     )
@@ -333,8 +325,6 @@ def test_enemy_in_cone_reward_single_enemy() -> None:
     patch = _make_patch_with_enemy_in_cone()
     reward = reward_fn.compute_step_reward(
         entry,
-        explored_positions=set(),
-        new_positions_this_step=0,
         patch=patch,
         team="alpha",
     )
@@ -355,8 +345,6 @@ def test_enemy_in_cone_reward_multiple_enemies() -> None:
     patch.grid[half - 3][half + 1] = VisibleCell(cell_type=CellType.PASSABLE, tank=enemy2)
     reward = reward_fn.compute_step_reward(
         entry,
-        explored_positions=set(),
-        new_positions_this_step=0,
         patch=patch,
         team="alpha",
     )
@@ -372,8 +360,6 @@ def test_enemy_in_cone_reward_not_applied_when_fogged() -> None:
     patch = _make_patch_with_fogged_enemy()
     reward = reward_fn.compute_step_reward(
         entry,
-        explored_positions=set(),
-        new_positions_this_step=0,
         patch=patch,
         team="alpha",
     )
@@ -391,8 +377,6 @@ def test_enemy_in_cone_friendly_not_counted() -> None:
     patch.grid[half - 2][half] = VisibleCell(cell_type=CellType.PASSABLE, tank=friendly)
     reward = reward_fn.compute_step_reward(
         entry,
-        explored_positions=set(),
-        new_positions_this_step=0,
         patch=patch,
         team="alpha",
     )
@@ -410,8 +394,6 @@ def test_missed_fire_friendly_ahead_no_penalty() -> None:
     patch.grid[half - 1][half] = VisibleCell(cell_type=CellType.PASSABLE, tank=friendly)
     reward = reward_fn.compute_step_reward(
         entry,
-        explored_positions=set(),
-        new_positions_this_step=0,
         patch=patch,
         team="alpha",
     )

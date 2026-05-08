@@ -72,7 +72,7 @@ def test_player_patch_size_mismatch_raises() -> None:
 
 
 def test_player_reset_episode() -> None:
-    """reset_episode clears trajectory and exploration."""
+    """reset_episode clears trajectory."""
     config = ModelConfig(patch_size=9)
     model = TankPolicyNetwork(config)
     player = NNPlayer(team="alpha", model=model, mode="learn")
@@ -80,24 +80,9 @@ def test_player_reset_episode() -> None:
     view = _make_view(patch_size=9)
     player.choose_action("t1", view)
     assert len(player.episode) == 1
-    assert len(player.explored_positions) > 0
 
     player.reset_episode()
     assert len(player.episode) == 0
-    assert len(player.explored_positions) == 0
-
-
-def test_player_exploration_tracking() -> None:
-    """Player tracks explored positions across turns."""
-    config = ModelConfig(patch_size=9)
-    model = TankPolicyNetwork(config)
-    player = NNPlayer(team="alpha", model=model, mode="play")
-
-    view = _make_view(patch_size=9)
-    player.choose_action("t1", view)
-
-    # All visible cells should be in explored_positions
-    assert len(player.explored_positions) > 0
 
 
 def test_player_no_patch_returns_pass() -> None:

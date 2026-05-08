@@ -3,6 +3,11 @@
 Defines a :class:`RewardFunction` abstract base class and a
 :class:`DefaultReward` implementation that provides shaped rewards
 including exploration bonuses.
+
+Reward classes that need to track state across an episode (e.g.
+explored grid cells) should do so internally, using the
+:meth:`~RewardFunction.reset` and :meth:`~RewardFunction.observe_patch`
+lifecycle hooks.
 """
 
 from __future__ import annotations
@@ -63,14 +68,38 @@ class RewardFunction(ABC):
 
     Subclasses receive game information and return scalar rewards
     that the training loop accumulates into the trajectory.
+
+    Reward functions that need to track state across an episode
+    (such as explored positions) should override :meth:`reset` and
+    :meth:`observe_patch`.
     """
+
+    def reset(self) -> None:
+        """Reset internal state for a new episode.
+
+        Called at the start of each episode before any steps are taken.
+        The default implementation is a no-op; override in subclasses
+        that maintain per-episode state.
+        """
+
+    def observe_patch(self, patch: TankPatch) -> None:
+        """Observe a visibility patch for internal bookkeeping.
+
+        Called each step *before* :meth:`compute_step_reward`, giving
+        the reward function an opportunity to update internal state
+        (e.g. exploration tracking) based on what was seen.
+
+        The default implementation is a no-op.
+
+        Args:
+            patch: The egocentric visibility patch the player saw
+                before choosing the action.
+        """
 
     @abstractmethod
     def compute_step_reward(
         self,
         entry: HistoryEntry,
-        explored_positions: set[Position],
-        new_positions_this_step: int,
         patch: TankPatch,
         team: str,
     ) -> float:
@@ -78,10 +107,6 @@ class RewardFunction(ABC):
 
         Args:
             entry: The history entry from the engine after the action.
-            explored_positions: All positions the player has seen so far
-                (including this step).
-            new_positions_this_step: Number of newly discovered positions
-                this step (cells not previously in explored_positions).
             patch: The egocentric visibility patch the player saw before
                 choosing the action.
             team: The team the player belongs to (used to distinguish
@@ -96,15 +121,12 @@ class RewardFunction(ABC):
     def compute_episode_end_reward(
         self,
         won: bool | None,
-        total_explored: int,
     ) -> float:
         """Compute the reward at the end of an episode.
 
         Args:
             won: ``True`` if the player's team won, ``False`` if they
                 lost, ``None`` for a draw.
-            total_explored: Total number of unique positions explored
-                during the episode.
 
         Returns:
             A scalar reward value.
@@ -116,7 +138,8 @@ class DefaultReward(RewardFunction):
     """Shaped reward function with exploration bonus.
 
     Provides immediate feedback for hits, deaths, exploration, and
-    a terminal reward for winning/losing.
+    a terminal reward for winning/losing.  Internally tracks which
+    grid cells have been seen to compute exploration bonuses.
 
     Configuration is held in a :class:`DefaultRewardConfig` Pydantic model
     for easy serialisation and storage of training parameters.
@@ -128,6 +151,8 @@ class DefaultReward(RewardFunction):
 
     def __init__(self, config: DefaultRewardConfig | None = None) -> None:
         self.config: DefaultRewardConfig = config or DefaultRewardConfig()
+        self._explored_positions: set[Position] = set()
+        self._last_new_positions: int = 0
 
     @property
     def fire_hit_reward(self) -> float:
@@ -184,11 +209,54 @@ class DefaultReward(RewardFunction):
         """Per-enemy reward for visible enemies in the forward cone."""
         return self.config.enemy_in_cone_reward
 
+    @property
+    def explored_positions(self) -> set[Position]:
+        """Set of all positions observed during the current episode."""
+        return self._explored_positions
+
+    @property
+    def total_explored(self) -> int:
+        """Total number of unique positions explored this episode."""
+        return len(self._explored_positions)
+
+    def reset(self) -> None:
+        """Reset exploration tracking for a new episode."""
+        self._explored_positions = set()
+        self._last_new_positions = 0
+
+    def observe_patch(self, patch: TankPatch) -> None:
+        """Update exploration state from the observed visibility patch.
+
+        Computes world positions for all visible cells in the
+        egocentric patch and records newly discovered ones.
+
+        Args:
+            patch: The egocentric visibility patch.
+        """
+        half = len(patch.grid) // 2
+        forward = patch.direction.forward_delta()
+        right = patch.direction.turn_right().forward_delta()
+        fx, fy = forward
+        rx, ry = right
+
+        new_count = 0
+        for ego_row, row in enumerate(patch.grid):
+            for ego_col, cell in enumerate(row):
+                if isinstance(cell, VisibleCell):
+                    fwd_steps = half - ego_row
+                    rgt_steps = ego_col - half
+                    world_x = patch.position.x + fwd_steps * fx + rgt_steps * rx
+                    world_y = patch.position.y + fwd_steps * fy + rgt_steps * ry
+                    pos = Position(world_x, world_y)
+                    if pos not in self._explored_positions:
+                        self._explored_positions.add(pos)
+                        new_count += 1
+
+        self._last_new_positions = new_count
+
     def compute_step_reward(
         self,
         entry: HistoryEntry,
-        explored_positions: set[Position],
-        new_positions_this_step: int,
         patch: TankPatch,
         team: str,
     ) -> float:
@@ -218,7 +286,7 @@ class DefaultReward(RewardFunction):
             reward += self.fire_neglect_reward
 
         # Exploration bonus
-        reward += self.exploration_reward * new_positions_this_step
+        reward += self.exploration_reward * self._last_new_positions
 
         # Invalid action reward
         if not entry.valid:
@@ -237,7 +305,6 @@ class DefaultReward(RewardFunction):
     def compute_episode_end_reward(
         self,
         won: bool | None,
-        total_explored: int,
     ) -> float:
         """Compute terminal reward based on game outcome."""
         if won is True:
