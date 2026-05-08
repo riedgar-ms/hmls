@@ -9,6 +9,7 @@ forward slashes (they are converted to platform-native paths automatically).
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -94,6 +95,27 @@ class OutputConfig(BaseModel, frozen=True, extra="forbid"):
     save_weights_interval: int = Field(default=100, ge=1)
 
 
+class LethargyConfig(BaseModel, frozen=True, extra="forbid"):
+    """Configuration for lethargy (degenerate-play) detection.
+
+    Controls whether and how the trainer detects tanks that are
+    behaving lethargically (e.g. spinning in place) and forces
+    an early loss.
+
+    Attributes:
+        policy: Which lethargy policy to use.
+            ``"none"`` disables detection entirely.
+            ``"consecutive_turn_limit"`` ends the game when a tank
+            makes too many consecutive turn actions.
+        max_consecutive_turns: Threshold for the
+            ``"consecutive_turn_limit"`` policy.  Ignored when
+            ``policy`` is ``"none"``.
+    """
+
+    policy: Literal["none", "consecutive_turn_limit"] = "consecutive_turn_limit"
+    max_consecutive_turns: int = Field(default=5, ge=2)
+
+
 class HyperparameterConfig(BaseModel, frozen=True, extra="forbid"):
     """Training hyperparameters.
 
@@ -122,6 +144,7 @@ class TrainerConfig(BaseModel, frozen=True, extra="forbid"):
         game: Game execution settings.
         output: Output and checkpoint settings.
         hyperparameters: Training hyperparameters.
+        lethargy: Lethargy (degenerate-play) detection settings.
     """
 
     model_a: ModelRef
@@ -130,3 +153,4 @@ class TrainerConfig(BaseModel, frozen=True, extra="forbid"):
     game: GameConfig = Field(default_factory=GameConfig)
     output: OutputConfig = Field(default_factory=OutputConfig)
     hyperparameters: HyperparameterConfig = Field(default_factory=HyperparameterConfig)
+    lethargy: LethargyConfig = Field(default_factory=LethargyConfig)

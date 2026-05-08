@@ -19,12 +19,17 @@ from hmls.nncore.persistence import (
     save_model,
 )
 from hmls.nncore.reward import DefaultReward, RewardFunction
-from hmls.reinforcetrainer.config import TrainerConfig
+from hmls.reinforcetrainer.config import LethargyConfig, TrainerConfig
 from hmls.reinforcetrainer.game_runner import (
     GameOutcome,
     create_map,
     run_game,
     save_sample_game,
+)
+from hmls.reinforcetrainer.lethargy import (
+    ConsecutiveTurnLimit,
+    LethargyPolicy,
+    NoLethargyCheck,
 )
 from hmls.reinforcetrainer.updater import reinforce_update
 
@@ -44,6 +49,28 @@ def _load_reward_config(model_dir: Path) -> DefaultReward:
     persistence = _import_persistence_module(model_package)
     reward_config = persistence.load_reward_config(model_dir)
     return DefaultReward(reward_config)
+
+
+def _create_lethargy_policy(config: LethargyConfig) -> LethargyPolicy:
+    """Instantiate a lethargy policy from configuration.
+
+    Args:
+        config: The lethargy section of the trainer config.
+
+    Returns:
+        A :class:`LethargyPolicy` instance matching the configured policy.
+
+    Raises:
+        ValueError: If the policy name is unrecognised.
+    """
+    if config.policy == "none":
+        return NoLethargyCheck()
+    elif config.policy == "consecutive_turn_limit":
+        return ConsecutiveTurnLimit(
+            max_consecutive_turns=config.max_consecutive_turns,
+        )
+    else:
+        raise ValueError(f"Unknown lethargy policy: {config.policy!r}")
 
 
 def _validate_model_configs(config_a: TankModelConfig, config_b: TankModelConfig) -> None:
@@ -141,6 +168,9 @@ def train(config: TrainerConfig) -> None:
     reward_fn_a: RewardFunction = _load_reward_config(config.model_a.dir)
     reward_fn_b: RewardFunction = _load_reward_config(config.model_b.dir)
 
+    # Instantiate lethargy policy
+    lethargy_policy = _create_lethargy_policy(config.lethargy)
+
     # Load or create models
     model_a = load_or_create_model(config.model_a.dir)
     model_b = load_or_create_model(config.model_b.dir)
@@ -208,6 +238,7 @@ def train(config: TrainerConfig) -> None:
                 patch_size=config.game.patch_size,
                 reward_fn_a=reward_fn_a,
                 reward_fn_b=reward_fn_b,
+                lethargy_policy=lethargy_policy,
                 rng=rng,
             )
 
