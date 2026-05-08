@@ -14,7 +14,7 @@ def _make_episode_with_tensors(
     model: TankPolicyNetwork, num_steps: int
 ) -> tuple[Episode, list[torch.Tensor]]:
     """Helper: run a model to get a real episode with tensor log_probs."""
-    from hmls.singlemki.encoding import NUM_CHANNELS
+    from hmls.nncore.encoding import FiveChannelPatchEncoder
 
     episode = Episode()
     log_prob_tensors: list[torch.Tensor] = []
@@ -22,7 +22,7 @@ def _make_episode_with_tensors(
 
     for i in range(num_steps):
         # Random input patch
-        patch = torch.randn(NUM_CHANNELS, 9, 9)
+        patch = torch.randn(FiveChannelPatchEncoder.NUM_CHANNELS, 9, 9)
         logits, hidden = model(patch, hidden)
         hidden = hidden.detach()
         probs = torch.softmax(logits, dim=-1)

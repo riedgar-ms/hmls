@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 import torch
 
+from hmls.nncore.encoding import FiveChannelPatchEncoder
 from hmls.nncore.reward import DefaultRewardConfig
-from hmls.singlemkii.encoding import NUM_CHANNELS
 from hmls.singlemkii.model import MkIIModelConfig, MkIITankPolicyNetwork
 from hmls.singlemkii.persistence import (
     load_model,
@@ -42,7 +42,7 @@ def test_save_and_load_roundtrip(tmp_path: Path) -> None:
     assert loaded_model.config.gru2_hidden_size == 32
 
     # Verify identical outputs
-    x = torch.randn(NUM_CHANNELS, 9, 9)
+    x = torch.randn(FiveChannelPatchEncoder.NUM_CHANNELS, 9, 9)
     h = model.initial_hidden().squeeze(0)
     with torch.no_grad():
         out1, h1 = model(x, h)
