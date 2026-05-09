@@ -499,8 +499,8 @@ def test_consecutive_turn_penalty_escalates() -> None:
     assert abs(r3 - (-0.06)) < 1e-7
 
 
-def test_consecutive_turn_penalty_resets_on_non_turn() -> None:
-    """Non-turn action resets the streak to zero."""
+def test_consecutive_turn_penalty_resets_on_valid_move_forward() -> None:
+    """Valid move forward resets the streak to zero."""
     config = DefaultRewardConfig(consecutive_turn_penalty=-0.02, step_reward=0.0)
     reward_fn = DefaultReward(config=config)
     reward_fn.reset()
@@ -520,6 +520,102 @@ def test_consecutive_turn_penalty_resets_on_non_turn() -> None:
         _make_entry(action=Action.TURN_LEFT), patch=patch, team="alpha"
     )
     assert abs(r - (-0.02)) < 1e-7
+
+
+def test_consecutive_turn_penalty_resets_on_fire_hit() -> None:
+    """Fire-and-hit resets the streak to zero."""
+    config = DefaultRewardConfig(
+        consecutive_turn_penalty=-0.02, step_reward=0.0, fire_hit_reward=0.0
+    )
+    reward_fn = DefaultReward(config=config)
+    reward_fn.reset()
+    patch = _make_empty_patch()
+
+    # Two consecutive turns
+    reward_fn.compute_step_reward(_make_entry(action=Action.TURN_LEFT), patch=patch, team="alpha")
+    reward_fn.compute_step_reward(_make_entry(action=Action.TURN_RIGHT), patch=patch, team="alpha")
+
+    # Fire hit resets streak
+    reward_fn.compute_step_reward(
+        _make_entry(action=Action.FIRE, hit=True), patch=patch, team="alpha"
+    )
+
+    # Next turn starts fresh: streak=1, penalty = -0.02 × 1 = -0.02
+    r = reward_fn.compute_step_reward(
+        _make_entry(action=Action.TURN_LEFT), patch=patch, team="alpha"
+    )
+    assert abs(r - (-0.02)) < 1e-7
+
+
+def test_consecutive_turn_penalty_not_reset_by_fire_miss() -> None:
+    """Fire-and-miss does NOT reset the streak."""
+    config = DefaultRewardConfig(
+        consecutive_turn_penalty=-0.02, step_reward=0.0, fire_miss_reward=0.0
+    )
+    reward_fn = DefaultReward(config=config)
+    reward_fn.reset()
+    patch = _make_empty_patch()
+
+    # Two consecutive turns: streak reaches 2
+    reward_fn.compute_step_reward(_make_entry(action=Action.TURN_LEFT), patch=patch, team="alpha")
+    reward_fn.compute_step_reward(_make_entry(action=Action.TURN_RIGHT), patch=patch, team="alpha")
+
+    # Fire miss: streak stays at 2 (no penalty applied for the fire step)
+    reward_fn.compute_step_reward(
+        _make_entry(action=Action.FIRE, hit=False), patch=patch, team="alpha"
+    )
+
+    # Next turn: streak=3, penalty = -0.02 × 3 = -0.06
+    r = reward_fn.compute_step_reward(
+        _make_entry(action=Action.TURN_LEFT), patch=patch, team="alpha"
+    )
+    assert abs(r - (-0.06)) < 1e-7
+
+
+def test_consecutive_turn_penalty_not_reset_by_pass() -> None:
+    """Pass action does NOT reset the streak."""
+    config = DefaultRewardConfig(consecutive_turn_penalty=-0.02, step_reward=0.0, pass_reward=0.0)
+    reward_fn = DefaultReward(config=config)
+    reward_fn.reset()
+    patch = _make_empty_patch()
+
+    # Two consecutive turns: streak reaches 2
+    reward_fn.compute_step_reward(_make_entry(action=Action.TURN_LEFT), patch=patch, team="alpha")
+    reward_fn.compute_step_reward(_make_entry(action=Action.TURN_RIGHT), patch=patch, team="alpha")
+
+    # Pass: streak stays at 2
+    reward_fn.compute_step_reward(_make_entry(action=Action.PASS), patch=patch, team="alpha")
+
+    # Next turn: streak=3, penalty = -0.02 × 3 = -0.06
+    r = reward_fn.compute_step_reward(
+        _make_entry(action=Action.TURN_LEFT), patch=patch, team="alpha"
+    )
+    assert abs(r - (-0.06)) < 1e-7
+
+
+def test_consecutive_turn_penalty_not_reset_by_invalid_move() -> None:
+    """Invalid move does NOT reset the streak."""
+    config = DefaultRewardConfig(
+        consecutive_turn_penalty=-0.02, step_reward=0.0, invalid_move_reward=0.0
+    )
+    reward_fn = DefaultReward(config=config)
+    reward_fn.reset()
+    patch = _make_empty_patch()
+
+    # Two consecutive turns: streak reaches 2
+    reward_fn.compute_step_reward(_make_entry(action=Action.TURN_LEFT), patch=patch, team="alpha")
+    reward_fn.compute_step_reward(_make_entry(action=Action.TURN_RIGHT), patch=patch, team="alpha")
+
+    # Invalid move forward: streak stays at 2
+    reward_fn.compute_step_reward(
+        _make_entry(action=Action.MOVE_FORWARD, valid=False), patch=patch, team="alpha"
+    )
+
+    # Next turn: streak=3, penalty = -0.02 × 3 = -0.06
+    r = reward_fn.compute_step_reward(
+        _make_entry(action=Action.TURN_LEFT), patch=patch, team="alpha"
+    )
+    assert abs(r - (-0.06)) < 1e-7
 
 
 def test_consecutive_turn_penalty_resets_on_episode() -> None:
