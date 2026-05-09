@@ -30,7 +30,7 @@ from hmls.reinforcetrainer.lethargy import (
     LethargyPolicy,
     NoLethargyCheck,
 )
-from hmls.reinforcetrainer.updater import reinforce_update
+from hmls.reinforcetrainer.updater import ReturnBaseline, reinforce_update
 
 
 def _load_reward_config(model_dir: Path) -> DefaultReward:
@@ -184,6 +184,25 @@ def train(config: TrainerConfig) -> None:
         else None
     )
 
+    # ── Cross-episode baselines ──────────────────────────────────
+    #
+    # One baseline per trainable player.  Each tracks a running mean
+    # of discounted returns across episodes so that advantages reflect
+    # how good an episode was *relative to the long-run average*,
+    # rather than being normalised within each episode (which destroys
+    # the signal on degenerate episodes — see ReturnBaseline docstring).
+    #
+    baseline_a = (
+        ReturnBaseline(alpha=config.hyperparameters.baseline_alpha)
+        if config.model_a.train
+        else None
+    )
+    baseline_b = (
+        ReturnBaseline(alpha=config.hyperparameters.baseline_alpha)
+        if config.model_b.train
+        else None
+    )
+
     # Training stats
     total_games = 0
     wins_a = 0
@@ -261,6 +280,9 @@ def train(config: TrainerConfig) -> None:
                     optimizer_a,
                     config.hyperparameters.gamma,
                     log_prob_tensors=outcome.player_a.log_prob_tensors,
+                    entropy_tensors=outcome.player_a.entropy_tensors,
+                    entropy_coeff=config.hyperparameters.entropy_coeff,
+                    baseline=baseline_a,
                 )
                 total_loss_a += loss_a
 
@@ -270,6 +292,9 @@ def train(config: TrainerConfig) -> None:
                     optimizer_b,
                     config.hyperparameters.gamma,
                     log_prob_tensors=outcome.player_b.log_prob_tensors,
+                    entropy_tensors=outcome.player_b.entropy_tensors,
+                    entropy_coeff=config.hyperparameters.entropy_coeff,
+                    baseline=baseline_b,
                 )
                 total_loss_b += loss_b
 

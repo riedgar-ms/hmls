@@ -88,8 +88,8 @@ class StubNNPlayer(NNPlayerBase):
         self._action_records.append(ActionRecord(patch=patch, action_index=action_idx, mode="play"))
         return action_idx
 
-    def _forward_learn(self, patch: TankPatch) -> tuple[int, float, torch.Tensor]:
-        """Stochastic action selection with gradient-tracked log-prob."""
+    def _forward_learn(self, patch: TankPatch) -> tuple[int, float, torch.Tensor, torch.Tensor]:
+        """Stochastic action selection with gradient-tracked log-prob and entropy."""
         patch_tensor = FiveChannelPatchEncoder.encode_patch(patch, self._team)
         logits, new_hidden = self._model(patch_tensor, self._hidden)
         self._hidden = new_hidden.detach()
@@ -98,10 +98,11 @@ class StubNNPlayer(NNPlayerBase):
         action_tensor = dist.sample()  # type: ignore[no-untyped-call]
         action_idx = int(action_tensor.item())
         log_prob_tensor: torch.Tensor = dist.log_prob(action_tensor)  # type: ignore[no-untyped-call]
+        entropy_tensor: torch.Tensor = dist.entropy()  # type: ignore[no-untyped-call]
         self._action_records.append(
             ActionRecord(patch=patch, action_index=action_idx, mode="learn")
         )
-        return action_idx, float(log_prob_tensor.item()), log_prob_tensor
+        return action_idx, float(log_prob_tensor.item()), log_prob_tensor, entropy_tensor
 
     def _reset_model_state(self) -> None:
         """Reset hidden state and action records."""

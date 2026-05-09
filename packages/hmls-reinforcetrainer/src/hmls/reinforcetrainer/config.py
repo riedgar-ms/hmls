@@ -123,11 +123,22 @@ class HyperparameterConfig(BaseModel, frozen=True, extra="forbid"):
         learning_rate: Adam optimizer learning rate.
         gamma: Discount factor for computing returns.
         seed: Optional random seed for reproducibility.
+        baseline_alpha: EMA decay for the cross-episode return baseline
+            (see :class:`~hmls.reinforcetrainer.updater.ReturnBaseline`).
+            Higher values make the baseline adapt more slowly; ``0.99``
+            averages over roughly the last 100 episodes.
+        entropy_coeff: Weight of the entropy bonus in the policy
+            gradient loss.  Encourages the policy to maintain
+            exploration across all actions, preventing collapse onto a
+            narrow subset (e.g. always turning).  ``0.0`` disables the
+            bonus; ``0.01`` is a reasonable starting point.
     """
 
     learning_rate: float = Field(default=1e-3, gt=0.0)
     gamma: float = Field(default=0.99, gt=0.0, le=1.0)
     seed: int | None = None
+    baseline_alpha: float = Field(default=0.99, gt=0.0, lt=1.0)
+    entropy_coeff: float = Field(default=0.01, ge=0.0)
 
 
 class TrainerConfig(BaseModel, frozen=True, extra="forbid"):

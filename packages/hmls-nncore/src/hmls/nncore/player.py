@@ -51,6 +51,7 @@ class NNPlayerBase(Player):
         self._mode = mode
         self._episode = Episode()
         self._log_prob_tensors: list[torch.Tensor] = []
+        self._entropy_tensors: list[torch.Tensor] = []
         self._last_patch: TankPatch | None = None
 
     # ── Properties ────────────────────────────────────────────────────
@@ -89,6 +90,16 @@ class NNPlayerBase(Player):
         return self._log_prob_tensors
 
     @property
+    def entropy_tensors(self) -> list[torch.Tensor]:
+        """Per-step entropy tensors from the action distributions (learn mode).
+
+        Used by the entropy bonus in the REINFORCE loss to encourage
+        the policy to maintain exploration across all actions, preventing
+        collapse onto a narrow subset (e.g. always turning).
+        """
+        return self._entropy_tensors
+
+    @property
     def last_patch(self) -> TankPatch | None:
         """The last egocentric patch seen by this player.
 
@@ -108,6 +119,7 @@ class NNPlayerBase(Player):
         """
         self._episode = Episode()
         self._log_prob_tensors = []
+        self._entropy_tensors = []
         self._last_patch = None
         self._reset_model_state()
 
@@ -152,8 +164,9 @@ class NNPlayerBase(Player):
         if self._mode == "play":
             action_idx = self._forward_play(patch)
         else:
-            action_idx, log_prob, log_prob_tensor = self._forward_learn(patch)
+            action_idx, log_prob, log_prob_tensor, entropy_tensor = self._forward_learn(patch)
             self._log_prob_tensors.append(log_prob_tensor)
+            self._entropy_tensors.append(entropy_tensor)
             self._episode.add_step(action_index=action_idx, log_prob=log_prob)
 
         return ACTION_INDEX_TO_ACTION[action_idx]
@@ -173,19 +186,22 @@ class NNPlayerBase(Player):
         ...
 
     @abstractmethod
-    def _forward_learn(self, patch: TankPatch) -> tuple[int, float, torch.Tensor]:
+    def _forward_learn(self, patch: TankPatch) -> tuple[int, float, torch.Tensor, torch.Tensor]:
         """Select an action stochastically for training.
 
         Must sample from the policy distribution and return the
-        log-probability tensor with gradient information intact.
+        log-probability tensor with gradient information intact,
+        along with the entropy of the distribution for regularisation.
 
         Args:
             patch: The tank's egocentric visibility patch.
 
         Returns:
-            A tuple of ``(action_index, log_prob_float, log_prob_tensor)``
-            where *log_prob_tensor* retains ``grad_fn`` for
-            backpropagation.
+            A tuple of ``(action_index, log_prob_float, log_prob_tensor,
+            entropy_tensor)`` where *log_prob_tensor* retains ``grad_fn``
+            for backpropagation and *entropy_tensor* is the entropy of
+            the action distribution (used for the entropy bonus in the
+            REINFORCE loss).
         """
         ...
 
@@ -245,8 +261,8 @@ class NNPlayer(NNPlayerBase):
         self._hidden = new_hidden
         return int(logits.argmax().item())
 
-    def _forward_learn(self, patch: TankPatch) -> tuple[int, float, torch.Tensor]:
-        """Stochastic action selection with gradient-tracked log-prob."""
+    def _forward_learn(self, patch: TankPatch) -> tuple[int, float, torch.Tensor, torch.Tensor]:
+        """Stochastic action selection with gradient-tracked log-prob and entropy."""
         patch_tensor = FiveChannelPatchEncoder.encode_patch(patch, self._team)
         logits, new_hidden = self._model(patch_tensor, self._hidden)
         self._hidden = new_hidden.detach()
@@ -255,7 +271,8 @@ class NNPlayer(NNPlayerBase):
         action_tensor = dist.sample()  # type: ignore[no-untyped-call]
         action_idx = int(action_tensor.item())
         log_prob_tensor: torch.Tensor = dist.log_prob(action_tensor)  # type: ignore[no-untyped-call]
-        return action_idx, float(log_prob_tensor.item()), log_prob_tensor
+        entropy_tensor: torch.Tensor = dist.entropy()  # type: ignore[no-untyped-call]
+        return action_idx, float(log_prob_tensor.item()), log_prob_tensor, entropy_tensor
 
     def _reset_model_state(self) -> None:
         """Reset recurrent hidden state to zeros."""
