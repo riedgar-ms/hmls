@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from hmls.core.engine import HistoryEntry
 from hmls.core.tank import TankId
 from hmls.core.types import Action
 
@@ -35,13 +36,14 @@ class LethargyPolicy(ABC):
         ...
 
     @abstractmethod
-    def observe_action(self, tank_id: TankId, action: Action) -> str | None:
+    def observe_action(self, entry: HistoryEntry) -> str | None:
         """Observe an action and optionally declare a loser.
 
         Args:
-            tank_id: The tank that just acted (e.g. ``"A1"``, ``"B2"``).
-            action: The action that was actually applied (after
-                validity resolution).
+            entry: The history entry from the engine describing the
+                action just taken, including the tank ID, the applied
+                action, whether it was valid, and whether a fire action
+                hit.
 
         Returns:
             The team name (e.g. ``"A"``) that should lose due to
@@ -56,7 +58,7 @@ class NoLethargyCheck(LethargyPolicy):
     def reset(self) -> None:
         """No-op: nothing to reset."""
 
-    def observe_action(self, tank_id: TankId, action: Action) -> str | None:
+    def observe_action(self, entry: HistoryEntry) -> str | None:
         """Always returns ``None`` — no lethargy detection."""
         return None
 
@@ -86,23 +88,38 @@ class ConsecutiveTurnLimit(LethargyPolicy):
         """Clear all per-tank turn counters."""
         self._streak.clear()
 
-    def observe_action(self, tank_id: TankId, action: Action) -> str | None:
+    def observe_action(self, entry: HistoryEntry) -> str | None:
         """Track consecutive turns and trigger on threshold.
 
+        The streak counter increments on turn actions and only resets
+        when the tank performs a *meaningful* non-turn action:
+
+        - **Fire & hit**: resets the streak (the tank did something
+          productive).
+        - **Valid move forward**: resets the streak (the tank moved).
+        - All other actions (pass, fire & miss, invalid move): leave
+          the streak unchanged — they don't count as turns but also
+          don't prove the tank has stopped spinning.
+
         Args:
-            tank_id: The acting tank.
-            action: The applied action.
+            entry: The history entry from the engine.
 
         Returns:
             The losing team name if the tank exceeded the consecutive
             turn limit, otherwise ``None``.
         """
+        tank_id = entry.tank_id
+        action = entry.applied_action
+
         if action in self._TURN_ACTIONS:
             count = self._streak.get(tank_id, 0) + 1
             self._streak[tank_id] = count
             if count >= self._max:
                 # Team is the first character of the tank ID (e.g. "A1" → "A")
                 return tank_id[0]
-        else:
+        elif entry.hit is True or (action == Action.MOVE_FORWARD and entry.valid):
+            # Meaningful non-turn action: reset the streak.
             self._streak[tank_id] = 0
+        # All other actions (pass, fire-miss, invalid move) leave the
+        # streak unchanged — they are neither turns nor productive.
         return None

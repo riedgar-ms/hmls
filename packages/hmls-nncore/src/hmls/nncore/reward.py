@@ -51,6 +51,25 @@ class DefaultRewardConfig(BaseModel, frozen=True, extra="forbid"):
         turn_left_reward: Reward for choosing to turn left.
         turn_right_reward: Reward for choosing to turn right.
         move_forward_reward: Reward for choosing to move forward.
+        consecutive_turn_penalty: Escalating penalty multiplier for
+            consecutive turn actions.  When a tank takes N consecutive
+            turns (``TURN_LEFT`` or ``TURN_RIGHT``), the Nth turn
+            incurs an additional penalty of
+            ``consecutive_turn_penalty × N``.  For example, with
+            ``consecutive_turn_penalty = -0.02`` and
+            ``turn_left_reward = -0.02``:
+
+            - Turn 1 (streak=1): ``-0.02 + (-0.02 × 1) = -0.04``
+            - Turn 2 (streak=2): ``-0.02 + (-0.02 × 2) = -0.06``
+            - Turn 3 (streak=3): ``-0.02 + (-0.02 × 3) = -0.08``
+
+            The streak resets to 0 only on *meaningful* non-turn
+            actions: a fire that hits (``entry.hit is True``) or a
+            valid move forward.  Other actions — pass, fire-miss,
+            invalid move — leave the streak unchanged but do not
+            incur the escalating penalty.
+
+            Set to ``0.0`` (the default) to disable.
     """
 
     fire_hit_reward: float = 0.5
@@ -67,6 +86,7 @@ class DefaultRewardConfig(BaseModel, frozen=True, extra="forbid"):
     turn_left_reward: float = 0.0
     turn_right_reward: float = 0.0
     move_forward_reward: float = 0.0
+    consecutive_turn_penalty: float = 0.0
 
 
 class RewardFunction(ABC):
@@ -159,6 +179,9 @@ class DefaultReward(RewardFunction):
         self.config: DefaultRewardConfig = config or DefaultRewardConfig()
         self._explored_positions: set[Position] = set()
         self._last_new_positions: int = 0
+        # Per-tank consecutive-turn streak for escalating penalty.
+        # See DefaultRewardConfig.consecutive_turn_penalty for details.
+        self._turn_streaks: dict[str, int] = {}
 
     @property
     def fire_hit_reward(self) -> float:
@@ -231,6 +254,11 @@ class DefaultReward(RewardFunction):
         return self.config.move_forward_reward
 
     @property
+    def consecutive_turn_penalty(self) -> float:
+        """Escalating per-turn penalty multiplier for consecutive turns."""
+        return self.config.consecutive_turn_penalty
+
+    @property
     def explored_positions(self) -> set[Position]:
         """Set of all positions observed during the current episode."""
         return self._explored_positions
@@ -241,9 +269,10 @@ class DefaultReward(RewardFunction):
         return len(self._explored_positions)
 
     def reset(self) -> None:
-        """Reset exploration tracking for a new episode."""
+        """Reset exploration and streak tracking for a new episode."""
         self._explored_positions = set()
         self._last_new_positions = 0
+        self._turn_streaks = {}
 
     def observe_patch(self, patch: TankPatch) -> None:
         """Update exploration state from the observed visibility patch.
@@ -296,6 +325,8 @@ class DefaultReward(RewardFunction):
         - turn_right_reward: for turning right
         - move_forward_reward: for moving forward
         - enemy_in_cone_reward: per visible enemy in the forward cone
+        - consecutive_turn_penalty: escalating penalty for consecutive
+          turns (penalty × streak count; see config docstring)
         """
         reward = self.step_reward
 
@@ -327,6 +358,27 @@ class DefaultReward(RewardFunction):
             reward += self.turn_right_reward
         elif entry.requested_action == Action.MOVE_FORWARD and entry.valid:
             reward += self.move_forward_reward
+
+        # ── Escalating consecutive-turn penalty ──────────────────
+        #
+        # Tracks a per-tank streak of consecutive turn actions.  Each
+        # successive turn incurs penalty × streak_count, creating a
+        # progressively stronger signal to stop spinning.
+        #
+        # The streak only resets on *meaningful* non-turn actions:
+        # fire-and-hit or a valid move forward.  Other actions (pass,
+        # fire-miss, invalid move) leave the streak unchanged — they
+        # don't prove the tank has stopped spinning, but they also
+        # don't receive the escalating penalty.
+        #
+        _TURN_ACTIONS = frozenset({Action.TURN_LEFT, Action.TURN_RIGHT})
+        tank_id = entry.tank_id
+        if entry.requested_action in _TURN_ACTIONS and entry.valid:
+            streak = self._turn_streaks.get(tank_id, 0) + 1
+            self._turn_streaks[tank_id] = streak
+            reward += self.consecutive_turn_penalty * streak
+        elif entry.hit is True or (entry.requested_action == Action.MOVE_FORWARD and entry.valid):
+            self._turn_streaks[tank_id] = 0
 
         # Enemy in forward cone reward
         cone_enemies = _count_enemies_in_cone(patch, team)

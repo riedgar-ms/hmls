@@ -38,6 +38,8 @@ class TestTrainerConfig:
         assert config.game.max_turns == 200
         assert config.game.patch_size == 9
         assert config.hyperparameters.gamma == 0.99
+        assert config.hyperparameters.baseline_alpha == 0.99
+        assert config.hyperparameters.entropy_coeff == 0.01
 
     def test_full_config(self, tmp_path: Path) -> None:
         """Config with all fields specified."""

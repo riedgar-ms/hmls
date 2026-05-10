@@ -168,7 +168,7 @@ def run_game(
 
         # Check lethargy policy
         if lethargy_policy is not None:
-            lethargy_loser = lethargy_policy.observe_action(entry.tank_id, entry.applied_action)
+            lethargy_loser = lethargy_policy.observe_action(entry)
             if lethargy_loser is not None:
                 break
 
