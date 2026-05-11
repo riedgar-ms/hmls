@@ -33,7 +33,7 @@ from typing import Any, Generic, Literal, TypeVar
 import torch
 
 from hmls.nncore.model import TankModelBase, TankModelConfig
-from hmls.nncore.reward import BasicRewardConfig, RewardConfig
+from hmls.nncore.reward import RewardConfig
 
 MODEL_CONFIG_FILENAME = "model_config.json"
 
@@ -261,7 +261,7 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
 
         metadata: dict[str, Any] = save_data.get("metadata", {})
         if "reward_config" in save_data:
-            metadata["reward_config"] = BasicRewardConfig.model_validate(save_data["reward_config"])
+            metadata["reward_config"] = RewardConfig.model_validate(save_data["reward_config"])
 
         return model, metadata
 

@@ -3,44 +3,66 @@
     "dir": "weights/model_a",
     "train": true,
     "reward": {
-      "reward_type": "basic",
-      "fire_hit_reward": 0.5,
-      "death_reward": -1.0,
-      "win_reward": 1.0,
-      "loss_reward": -1.0,
-      "step_reward": -0.01,
-      "exploration_reward": 0.02,
-      "invalid_move_reward": -0.1,
-      "fire_miss_reward": -0.05,
-      "fire_neglect_reward": -0.1,
-      "pass_reward": -0.02,
-      "enemy_in_cone_reward": 0.1,
-      "turn_left_reward": -0.01,
-      "turn_right_reward": -0.01,
-      "move_forward_reward": 0.01,
-      "consecutive_turn_reward": -0.01
+      "actions": {
+        "move_forward": 0.01,
+        "turn_left": -0.01,
+        "turn_right": -0.01,
+        "fire": 0.0,
+        "pass_action": -0.02,
+        "consecutive_turn": -0.01
+      },
+      "firing": {
+        "hit": 0.5,
+        "miss": -0.05,
+        "neglect": -0.1
+      },
+      "game_state": {
+        "win": 1.0,
+        "loss": -1.0,
+        "invalid_move": -0.1,
+        "step": -0.01,
+        "death": -1.0
+      },
+      "exploration": {
+        "see_cell": 0.02,
+        "occupy_cell": 0.0
+      },
+      "situational": {
+        "enemy_in_cone": 0.1
+      }
     }
   },
   "model_b": {
     "dir": "weights/model_b",
     "train": true,
     "reward": {
-      "reward_type": "basic",
-      "fire_hit_reward": 0.5,
-      "death_reward": -1.0,
-      "win_reward": 1.0,
-      "loss_reward": -1.0,
-      "step_reward": -0.01,
-      "exploration_reward": 0.02,
-      "invalid_move_reward": -0.1,
-      "fire_miss_reward": -0.05,
-      "fire_neglect_reward": -0.1,
-      "pass_reward": -0.02,
-      "enemy_in_cone_reward": 0.1,
-      "turn_left_reward": -0.01,
-      "turn_right_reward": -0.01,
-      "move_forward_reward": 0.01,
-      "consecutive_turn_reward": -0.02
+      "actions": {
+        "move_forward": 0.01,
+        "turn_left": -0.01,
+        "turn_right": -0.01,
+        "fire": 0.0,
+        "pass_action": -0.02,
+        "consecutive_turn": -0.02
+      },
+      "firing": {
+        "hit": 0.5,
+        "miss": -0.05,
+        "neglect": -0.1
+      },
+      "game_state": {
+        "win": 1.0,
+        "loss": -1.0,
+        "invalid_move": -0.1,
+        "step": -0.01,
+        "death": -1.0
+      },
+      "exploration": {
+        "see_cell": 0.02,
+        "occupy_cell": 0.0
+      },
+      "situational": {
+        "enemy_in_cone": 0.1
+      }
     }
   },
   "map": {

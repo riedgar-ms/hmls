@@ -1,0 +1,1320 @@
+{
+  "winner": "A",
+  "game_map": {
+    "width": 16,
+    "height": 16,
+    "cells": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "initial_state": {
+    "tanks": [
+      {
+        "id": "A1",
+        "team": "A",
+        "position": [
+          0,
+          6
+        ],
+        "direction": 1,
+        "alive": true
+      },
+      {
+        "id": "A2",
+        "team": "A",
+        "position": [
+          3,
+          5
+        ],
+        "direction": 0,
+        "alive": true
+      },
+      {
+        "id": "B1",
+        "team": "B",
+        "position": [
+          6,
+          4
+        ],
+        "direction": 2,
+        "alive": true
+      },
+      {
+        "id": "B2",
+        "team": "B",
+        "position": [
+          5,
+          8
+        ],
+        "direction": 1,
+        "alive": true
+      }
+    ],
+    "current_tank_id": "A1"
+  },
+  "history": [
+    {
+      "tank_id": "A1",
+      "requested_action": "move_forward",
+      "applied_action": "move_forward",
+      "valid": true,
+      "reason": "",
+      "hit": null,
+      "state_after": {
+        "tanks": [
+          {
+            "id": "A1",
+            "team": "A",
+            "position": [
+              1,
+              6
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "A2",
+            "team": "A",
+            "position": [
+              3,
+              5
+            ],
+            "direction": 0,
+            "alive": true
+          },
+          {
+            "id": "B1",
+            "team": "B",
+            "position": [
+              6,
+              4
+            ],
+            "direction": 2,
+            "alive": true
+          },
+          {
+            "id": "B2",
+            "team": "B",
+            "position": [
+              5,
+              8
+            ],
+            "direction": 1,
+            "alive": true
+          }
+        ],
+        "current_tank_id": "B1"
+      }
+    },
+    {
+      "tank_id": "B1",
+      "requested_action": "fire",
+      "applied_action": "fire",
+      "valid": true,
+      "reason": "",
+      "hit": false,
+      "state_after": {
+        "tanks": [
+          {
+            "id": "A1",
+            "team": "A",
+            "position": [
+              1,
+              6
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "A2",
+            "team": "A",
+            "position": [
+              3,
+              5
+            ],
+            "direction": 0,
+            "alive": true
+          },
+          {
+            "id": "B1",
+            "team": "B",
+            "position": [
+              6,
+              4
+            ],
+            "direction": 2,
+            "alive": true
+          },
+          {
+            "id": "B2",
+            "team": "B",
+            "position": [
+              5,
+              8
+            ],
+            "direction": 1,
+            "alive": true
+          }
+        ],
+        "current_tank_id": "A2"
+      }
+    },
+    {
+      "tank_id": "A2",
+      "requested_action": "move_forward",
+      "applied_action": "move_forward",
+      "valid": true,
+      "reason": "",
+      "hit": null,
+      "state_after": {
+        "tanks": [
+          {
+            "id": "A1",
+            "team": "A",
+            "position": [
+              1,
+              6
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "A2",
+            "team": "A",
+            "position": [
+              3,
+              4
+            ],
+            "direction": 0,
+            "alive": true
+          },
+          {
+            "id": "B1",
+            "team": "B",
+            "position": [
+              6,
+              4
+            ],
+            "direction": 2,
+            "alive": true
+          },
+          {
+            "id": "B2",
+            "team": "B",
+            "position": [
+              5,
+              8
+            ],
+            "direction": 1,
+            "alive": true
+          }
+        ],
+        "current_tank_id": "B2"
+      }
+    },
+    {
+      "tank_id": "B2",
+      "requested_action": "turn_left",
+      "applied_action": "turn_left",
+      "valid": true,
+      "reason": "",
+      "hit": null,
+      "state_after": {
+        "tanks": [
+          {
+            "id": "A1",
+            "team": "A",
+            "position": [
+              1,
+              6
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "A2",
+            "team": "A",
+            "position": [
+              3,
+              4
+            ],
+            "direction": 0,
+            "alive": true
+          },
+          {
+            "id": "B1",
+            "team": "B",
+            "position": [
+              6,
+              4
+            ],
+            "direction": 2,
+            "alive": true
+          },
+          {
+            "id": "B2",
+            "team": "B",
+            "position": [
+              5,
+              8
+            ],
+            "direction": 0,
+            "alive": true
+          }
+        ],
+        "current_tank_id": "A1"
+      }
+    },
+    {
+      "tank_id": "A1",
+      "requested_action": "move_forward",
+      "applied_action": "move_forward",
+      "valid": true,
+      "reason": "",
+      "hit": null,
+      "state_after": {
+        "tanks": [
+          {
+            "id": "A1",
+            "team": "A",
+            "position": [
+              2,
+              6
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "A2",
+            "team": "A",
+            "position": [
+              3,
+              4
+            ],
+            "direction": 0,
+            "alive": true
+          },
+          {
+            "id": "B1",
+            "team": "B",
+            "position": [
+              6,
+              4
+            ],
+            "direction": 2,
+            "alive": true
+          },
+          {
+            "id": "B2",
+            "team": "B",
+            "position": [
+              5,
+              8
+            ],
+            "direction": 0,
+            "alive": true
+          }
+        ],
+        "current_tank_id": "B1"
+      }
+    },
+    {
+      "tank_id": "B1",
+      "requested_action": "move_forward",
+      "applied_action": "move_forward",
+      "valid": true,
+      "reason": "",
+      "hit": null,
+      "state_after": {
+        "tanks": [
+          {
+            "id": "A1",
+            "team": "A",
+            "position": [
+              2,
+              6
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "A2",
+            "team": "A",
+            "position": [
+              3,
+              4
+            ],
+            "direction": 0,
+            "alive": true
+          },
+          {
+            "id": "B1",
+            "team": "B",
+            "position": [
+              6,
+              5
+            ],
+            "direction": 2,
+            "alive": true
+          },
+          {
+            "id": "B2",
+            "team": "B",
+            "position": [
+              5,
+              8
+            ],
+            "direction": 0,
+            "alive": true
+          }
+        ],
+        "current_tank_id": "A2"
+      }
+    },
+    {
+      "tank_id": "A2",
+      "requested_action": "turn_right",
+      "applied_action": "turn_right",
+      "valid": true,
+      "reason": "",
+      "hit": null,
+      "state_after": {
+        "tanks": [
+          {
+            "id": "A1",
+            "team": "A",
+            "position": [
+              2,
+              6
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "A2",
+            "team": "A",
+            "position": [
+              3,
+              4
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "B1",
+            "team": "B",
+            "position": [
+              6,
+              5
+            ],
+            "direction": 2,
+            "alive": true
+          },
+          {
+            "id": "B2",
+            "team": "B",
+            "position": [
+              5,
+              8
+            ],
+            "direction": 0,
+            "alive": true
+          }
+        ],
+        "current_tank_id": "B2"
+      }
+    },
+    {
+      "tank_id": "B2",
+      "requested_action": "move_forward",
+      "applied_action": "move_forward",
+      "valid": true,
+      "reason": "",
+      "hit": null,
+      "state_after": {
+        "tanks": [
+          {
+            "id": "A1",
+            "team": "A",
+            "position": [
+              2,
+              6
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "A2",
+            "team": "A",
+            "position": [
+              3,
+              4
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "B1",
+            "team": "B",
+            "position": [
+              6,
+              5
+            ],
+            "direction": 2,
+            "alive": true
+          },
+          {
+            "id": "B2",
+            "team": "B",
+            "position": [
+              5,
+              7
+            ],
+            "direction": 0,
+            "alive": true
+          }
+        ],
+        "current_tank_id": "A1"
+      }
+    },
+    {
+      "tank_id": "A1",
+      "requested_action": "move_forward",
+      "applied_action": "move_forward",
+      "valid": true,
+      "reason": "",
+      "hit": null,
+      "state_after": {
+        "tanks": [
+          {
+            "id": "A1",
+            "team": "A",
+            "position": [
+              3,
+              6
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "A2",
+            "team": "A",
+            "position": [
+              3,
+              4
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "B1",
+            "team": "B",
+            "position": [
+              6,
+              5
+            ],
+            "direction": 2,
+            "alive": true
+          },
+          {
+            "id": "B2",
+            "team": "B",
+            "position": [
+              5,
+              7
+            ],
+            "direction": 0,
+            "alive": true
+          }
+        ],
+        "current_tank_id": "B1"
+      }
+    },
+    {
+      "tank_id": "B1",
+      "requested_action": "turn_right",
+      "applied_action": "turn_right",
+      "valid": true,
+      "reason": "",
+      "hit": null,
+      "state_after": {
+        "tanks": [
+          {
+            "id": "A1",
+            "team": "A",
+            "position": [
+              3,
+              6
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "A2",
+            "team": "A",
+            "position": [
+              3,
+              4
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "B1",
+            "team": "B",
+            "position": [
+              6,
+              5
+            ],
+            "direction": 3,
+            "alive": true
+          },
+          {
+            "id": "B2",
+            "team": "B",
+            "position": [
+              5,
+              7
+            ],
+            "direction": 0,
+            "alive": true
+          }
+        ],
+        "current_tank_id": "A2"
+      }
+    },
+    {
+      "tank_id": "A2",
+      "requested_action": "move_forward",
+      "applied_action": "move_forward",
+      "valid": true,
+      "reason": "",
+      "hit": null,
+      "state_after": {
+        "tanks": [
+          {
+            "id": "A1",
+            "team": "A",
+            "position": [
+              3,
+              6
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "A2",
+            "team": "A",
+            "position": [
+              4,
+              4
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "B1",
+            "team": "B",
+            "position": [
+              6,
+              5
+            ],
+            "direction": 3,
+            "alive": true
+          },
+          {
+            "id": "B2",
+            "team": "B",
+            "position": [
+              5,
+              7
+            ],
+            "direction": 0,
+            "alive": true
+          }
+        ],
+        "current_tank_id": "B2"
+      }
+    },
+    {
+      "tank_id": "B2",
+      "requested_action": "move_forward",
+      "applied_action": "move_forward",
+      "valid": true,
+      "reason": "",
+      "hit": null,
+      "state_after": {
+        "tanks": [
+          {
+            "id": "A1",
+            "team": "A",
+            "position": [
+              3,
+              6
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "A2",
+            "team": "A",
+            "position": [
+              4,
+              4
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "B1",
+            "team": "B",
+            "position": [
+              6,
+              5
+            ],
+            "direction": 3,
+            "alive": true
+          },
+          {
+            "id": "B2",
+            "team": "B",
+            "position": [
+              5,
+              6
+            ],
+            "direction": 0,
+            "alive": true
+          }
+        ],
+        "current_tank_id": "A1"
+      }
+    },
+    {
+      "tank_id": "A1",
+      "requested_action": "move_forward",
+      "applied_action": "move_forward",
+      "valid": true,
+      "reason": "",
+      "hit": null,
+      "state_after": {
+        "tanks": [
+          {
+            "id": "A1",
+            "team": "A",
+            "position": [
+              4,
+              6
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "A2",
+            "team": "A",
+            "position": [
+              4,
+              4
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "B1",
+            "team": "B",
+            "position": [
+              6,
+              5
+            ],
+            "direction": 3,
+            "alive": true
+          },
+          {
+            "id": "B2",
+            "team": "B",
+            "position": [
+              5,
+              6
+            ],
+            "direction": 0,
+            "alive": true
+          }
+        ],
+        "current_tank_id": "B1"
+      }
+    },
+    {
+      "tank_id": "B1",
+      "requested_action": "turn_right",
+      "applied_action": "turn_right",
+      "valid": true,
+      "reason": "",
+      "hit": null,
+      "state_after": {
+        "tanks": [
+          {
+            "id": "A1",
+            "team": "A",
+            "position": [
+              4,
+              6
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "A2",
+            "team": "A",
+            "position": [
+              4,
+              4
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "B1",
+            "team": "B",
+            "position": [
+              6,
+              5
+            ],
+            "direction": 0,
+            "alive": true
+          },
+          {
+            "id": "B2",
+            "team": "B",
+            "position": [
+              5,
+              6
+            ],
+            "direction": 0,
+            "alive": true
+          }
+        ],
+        "current_tank_id": "A2"
+      }
+    },
+    {
+      "tank_id": "A2",
+      "requested_action": "move_forward",
+      "applied_action": "move_forward",
+      "valid": true,
+      "reason": "",
+      "hit": null,
+      "state_after": {
+        "tanks": [
+          {
+            "id": "A1",
+            "team": "A",
+            "position": [
+              4,
+              6
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "A2",
+            "team": "A",
+            "position": [
+              5,
+              4
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "B1",
+            "team": "B",
+            "position": [
+              6,
+              5
+            ],
+            "direction": 0,
+            "alive": true
+          },
+          {
+            "id": "B2",
+            "team": "B",
+            "position": [
+              5,
+              6
+            ],
+            "direction": 0,
+            "alive": true
+          }
+        ],
+        "current_tank_id": "B2"
+      }
+    },
+    {
+      "tank_id": "B2",
+      "requested_action": "turn_left",
+      "applied_action": "turn_left",
+      "valid": true,
+      "reason": "",
+      "hit": null,
+      "state_after": {
+        "tanks": [
+          {
+            "id": "A1",
+            "team": "A",
+            "position": [
+              4,
+              6
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "A2",
+            "team": "A",
+            "position": [
+              5,
+              4
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "B1",
+            "team": "B",
+            "position": [
+              6,
+              5
+            ],
+            "direction": 0,
+            "alive": true
+          },
+          {
+            "id": "B2",
+            "team": "B",
+            "position": [
+              5,
+              6
+            ],
+            "direction": 3,
+            "alive": true
+          }
+        ],
+        "current_tank_id": "A1"
+      }
+    },
+    {
+      "tank_id": "A1",
+      "requested_action": "fire",
+      "applied_action": "fire",
+      "valid": true,
+      "reason": "",
+      "hit": true,
+      "state_after": {
+        "tanks": [
+          {
+            "id": "A1",
+            "team": "A",
+            "position": [
+              4,
+              6
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "A2",
+            "team": "A",
+            "position": [
+              5,
+              4
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "B1",
+            "team": "B",
+            "position": [
+              6,
+              5
+            ],
+            "direction": 0,
+            "alive": true
+          },
+          {
+            "id": "B2",
+            "team": "B",
+            "position": [
+              5,
+              6
+            ],
+            "direction": 3,
+            "alive": false
+          }
+        ],
+        "current_tank_id": "B1"
+      }
+    },
+    {
+      "tank_id": "B1",
+      "requested_action": "move_forward",
+      "applied_action": "move_forward",
+      "valid": true,
+      "reason": "",
+      "hit": null,
+      "state_after": {
+        "tanks": [
+          {
+            "id": "A1",
+            "team": "A",
+            "position": [
+              4,
+              6
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "A2",
+            "team": "A",
+            "position": [
+              5,
+              4
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "B1",
+            "team": "B",
+            "position": [
+              6,
+              4
+            ],
+            "direction": 0,
+            "alive": true
+          },
+          {
+            "id": "B2",
+            "team": "B",
+            "position": [
+              5,
+              6
+            ],
+            "direction": 3,
+            "alive": false
+          }
+        ],
+        "current_tank_id": "A2"
+      }
+    },
+    {
+      "tank_id": "A2",
+      "requested_action": "fire",
+      "applied_action": "fire",
+      "valid": true,
+      "reason": "",
+      "hit": true,
+      "state_after": {
+        "tanks": [
+          {
+            "id": "A1",
+            "team": "A",
+            "position": [
+              4,
+              6
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "A2",
+            "team": "A",
+            "position": [
+              5,
+              4
+            ],
+            "direction": 1,
+            "alive": true
+          },
+          {
+            "id": "B1",
+            "team": "B",
+            "position": [
+              6,
+              4
+            ],
+            "direction": 0,
+            "alive": false
+          },
+          {
+            "id": "B2",
+            "team": "B",
+            "position": [
+              5,
+              6
+            ],
+            "direction": 3,
+            "alive": false
+          }
+        ],
+        "current_tank_id": "A2"
+      }
+    }
+  ],
+  "turns_played": 19
+}

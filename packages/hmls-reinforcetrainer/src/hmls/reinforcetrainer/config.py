@@ -13,7 +13,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from hmls.nncore.reward import BasicRewardConfig, RewardConfig
+from hmls.nncore.reward import RewardConfig
 
 
 class MapConfig(BaseModel, frozen=True, extra="forbid"):
@@ -78,13 +78,13 @@ class ModelRef(BaseModel, frozen=True, extra="forbid"):
         train: Whether this model is updated during training.
         reward: Reward configuration for this model.  Controls the
             reward shaping used when computing returns for this
-            player's episodes.  Defaults to :class:`BasicRewardConfig`
+            player's episodes.  Defaults to :class:`RewardConfig`
             with all default values.
     """
 
     dir: Path
     train: bool = True
-    reward: RewardConfig = Field(default_factory=BasicRewardConfig)
+    reward: RewardConfig = Field(default_factory=RewardConfig)
 
 
 class OutputConfig(BaseModel, frozen=True, extra="forbid"):

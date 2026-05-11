@@ -9,7 +9,7 @@ import torch
 
 from hmls.nncore.model import TankModelBase, TankModelConfig
 from hmls.nncore.persistence import NNPlayerModelPersistence
-from hmls.nncore.reward import BasicRewardConfig
+from hmls.nncore.reward import FiringRewardConfig, RewardConfig
 
 # ── Minimal stub model for testing ────────────────────────────────────
 
@@ -90,14 +90,14 @@ class TestModelData:
         """Saved reward_config appears in metadata on load."""
         model = _StubModel()
         path = tmp_path / "model.pt"
-        reward = BasicRewardConfig(fire_hit_reward=5.0)
+        reward = RewardConfig(firing=FiringRewardConfig(hit=5.0))
 
         persistence.save_model(model, path, reward_config=reward)
         _, metadata = persistence.load_model(path)
 
         assert "reward_config" in metadata
-        assert isinstance(metadata["reward_config"], BasicRewardConfig)
-        assert metadata["reward_config"].fire_hit_reward == 5.0
+        assert isinstance(metadata["reward_config"], RewardConfig)
+        assert metadata["reward_config"].firing.hit == 5.0
 
     def test_no_metadata(
         self,
