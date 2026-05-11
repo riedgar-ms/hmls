@@ -1,7 +1,8 @@
 """CLI argument parsing for the REINFORCE trainer.
 
 Accepts a single positional argument — the path to a JSON configuration
-file — and produces a :class:`TrainerConfig`.
+file — and produces a :class:`CLIResult` containing a
+:class:`TrainerConfig` and the requested log level.
 
 Relative paths in the configuration file are resolved relative to the
 directory containing the config file itself, making configurations
@@ -11,10 +12,29 @@ portable regardless of the working directory.
 from __future__ import annotations
 
 import argparse
-import sys
+import logging
+from dataclasses import dataclass
 from pathlib import Path
 
 from hmls.reinforcetrainer.config import ModelRef, OutputConfig, TrainerConfig
+
+logger = logging.getLogger(__name__)
+
+#: Valid choices for the ``--log-level`` CLI argument.
+_LOG_LEVEL_CHOICES = ("DEBUG", "INFO", "WARNING", "ERROR")
+
+
+@dataclass(frozen=True)
+class CLIResult:
+    """Result of parsing CLI arguments.
+
+    Attributes:
+        config: The validated training configuration.
+        log_level: The logging level string (e.g. ``"INFO"``).
+    """
+
+    config: TrainerConfig
+    log_level: str
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -31,6 +51,12 @@ def build_parser() -> argparse.ArgumentParser:
         "config_file",
         type=Path,
         help="Path to the JSON configuration file.",
+    )
+    parser.add_argument(
+        "--log-level",
+        choices=_LOG_LEVEL_CHOICES,
+        default="INFO",
+        help="Set the logging verbosity (default: INFO).",
     )
     return parser
 
@@ -112,7 +138,7 @@ def load_config(config_path: Path) -> TrainerConfig:
         pydantic.ValidationError: If the JSON content is invalid.
     """
     if not config_path.exists():
-        print(f"Error: config file not found: {config_path}", file=sys.stderr)
+        logger.error("Config file not found: %s", config_path)
         raise SystemExit(1)
 
     json_bytes = config_path.read_bytes()
@@ -120,15 +146,16 @@ def load_config(config_path: Path) -> TrainerConfig:
     return _resolve_config_paths(config, config_path.parent)
 
 
-def parse_args(argv: list[str] | None = None) -> TrainerConfig:
+def parse_args(argv: list[str] | None = None) -> CLIResult:
     """Parse command-line arguments and load the config file.
 
     Args:
         argv: Optional argument list (defaults to sys.argv[1:]).
 
     Returns:
-        A validated TrainerConfig instance.
+        A :class:`CLIResult` with the validated config and log level.
     """
     parser = build_parser()
     args = parser.parse_args(argv)
-    return load_config(args.config_file)
+    config = load_config(args.config_file)
+    return CLIResult(config=config, log_level=args.log_level)
