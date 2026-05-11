@@ -205,3 +205,7 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Sample configs: training artifacts
+sample_configs/**/model.pt
+sample_configs/**/output/
