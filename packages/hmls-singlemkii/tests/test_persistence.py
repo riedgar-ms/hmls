@@ -8,7 +8,7 @@ import pytest
 import torch
 
 from hmls.nncore.encoding import FiveChannelPatchEncoder
-from hmls.nncore.reward import DefaultRewardConfig
+from hmls.nncore.reward import BasicRewardConfig
 from hmls.singlemkii.model import MkIIModelConfig, MkIITankPolicyNetwork
 from hmls.singlemkii.persistence import PERSISTENCE
 
@@ -97,8 +97,8 @@ class TestRewardConfigJson:
     """Tests for reward_config.json save/load utilities."""
 
     def test_save_and_load_roundtrip(self, tmp_path: Path) -> None:
-        """DefaultRewardConfig can be saved and loaded from JSON."""
-        config = DefaultRewardConfig(fire_hit_reward=1.0, death_reward=-2.0)
+        """BasicRewardConfig can be saved and loaded from JSON."""
+        config = BasicRewardConfig(fire_hit_reward=1.0, death_reward=-2.0)
         PERSISTENCE.save_reward_config(config, tmp_path)
 
         loaded = PERSISTENCE.load_reward_config(tmp_path)

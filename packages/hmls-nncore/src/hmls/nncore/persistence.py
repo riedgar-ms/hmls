@@ -33,7 +33,7 @@ from typing import Any, Generic, Literal, TypeVar
 import torch
 
 from hmls.nncore.model import TankModelBase, TankModelConfig
-from hmls.nncore.reward import DefaultRewardConfig
+from hmls.nncore.reward import BasicRewardConfig, RewardConfig
 
 MODEL_CONFIG_FILENAME = "model_config.json"
 REWARD_CONFIG_FILENAME = "reward_config.json"
@@ -64,7 +64,7 @@ class ModelPersistence(ABC, Generic[ConfigT, ModelT]):
         self,
         model: ModelT,
         path: Path,
-        reward_config: DefaultRewardConfig | None = None,
+        reward_config: RewardConfig | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> None:
         """Save a trained model to disk.
@@ -120,7 +120,7 @@ class ModelPersistence(ABC, Generic[ConfigT, ModelT]):
         ...
 
     @abstractmethod
-    def save_reward_config(self, config: DefaultRewardConfig, directory: Path) -> None:
+    def save_reward_config(self, config: RewardConfig, directory: Path) -> None:
         """Save a reward configuration to a directory.
 
         Args:
@@ -130,14 +130,14 @@ class ModelPersistence(ABC, Generic[ConfigT, ModelT]):
         ...
 
     @abstractmethod
-    def load_reward_config(self, directory: Path) -> DefaultRewardConfig:
+    def load_reward_config(self, directory: Path) -> RewardConfig:
         """Load a reward configuration from a directory.
 
         Args:
             directory: Directory containing the reward config file.
 
         Returns:
-            The loaded DefaultRewardConfig.
+            The loaded reward configuration.
 
         Raises:
             FileNotFoundError: If the config file is missing.
@@ -188,7 +188,7 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
 
     - ``model.pt`` (torch checkpoint with state_dict + config dict)
     - ``model_config.json`` (Pydantic model config as JSON)
-    - ``reward_config.json`` (:class:`DefaultRewardConfig` as JSON)
+    - ``reward_config.json`` (:class:`RewardConfig` as JSON)
     - :class:`~hmls.nncore.player.NNPlayer` for game play
 
     To use, simply instantiate with the concrete config and model
@@ -233,7 +233,7 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
         self,
         model: ModelT,
         path: Path,
-        reward_config: DefaultRewardConfig | None = None,
+        reward_config: RewardConfig | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> None:
         """Save a trained model as a torch checkpoint.
@@ -258,7 +258,7 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
 
         Reconstructs the model from the saved config dict and loads
         trained weights.  If a ``reward_config`` was saved, it is
-        rehydrated into a :class:`DefaultRewardConfig` and placed in
+        rehydrated into a :class:`BasicRewardConfig` and placed in
         ``metadata["reward_config"]``.
         """
         if not path.exists():
@@ -272,9 +272,7 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
 
         metadata: dict[str, Any] = save_data.get("metadata", {})
         if "reward_config" in save_data:
-            metadata["reward_config"] = DefaultRewardConfig.model_validate(
-                save_data["reward_config"]
-            )
+            metadata["reward_config"] = BasicRewardConfig.model_validate(save_data["reward_config"])
 
         return model, metadata
 
@@ -297,14 +295,14 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
             )
         return self._config_cls.model_validate_json(path.read_text())
 
-    def save_reward_config(self, config: DefaultRewardConfig, directory: Path) -> None:
-        """Save a :class:`DefaultRewardConfig` as ``reward_config.json``."""
+    def save_reward_config(self, config: RewardConfig, directory: Path) -> None:
+        """Save a :class:`RewardConfig` as ``reward_config.json``."""
         directory.mkdir(parents=True, exist_ok=True)
         path = directory / REWARD_CONFIG_FILENAME
         path.write_text(config.model_dump_json(indent=2))
 
-    def load_reward_config(self, directory: Path) -> DefaultRewardConfig:
-        """Load a :class:`DefaultRewardConfig` from ``reward_config.json``."""
+    def load_reward_config(self, directory: Path) -> RewardConfig:
+        """Load a :class:`RewardConfig` from ``reward_config.json``."""
         path = directory / REWARD_CONFIG_FILENAME
         if not path.exists():
             raise FileNotFoundError(
@@ -312,7 +310,10 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
                 f"Each model directory must contain a "
                 f"'{REWARD_CONFIG_FILENAME}'."
             )
-        return DefaultRewardConfig.model_validate_json(path.read_text())
+        from pydantic import TypeAdapter
+
+        adapter: TypeAdapter[RewardConfig] = TypeAdapter(RewardConfig)
+        return adapter.validate_json(path.read_text())
 
     # ── Factory methods ───────────────────────────────────────────────
 
@@ -441,7 +442,7 @@ def load_model(path: Path) -> tuple[TankModelBase, dict[str, Any]]:
 def save_model(
     model: TankModelBase,
     path: Path,
-    reward_config: DefaultRewardConfig | None = None,
+    reward_config: RewardConfig | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> None:
     """Save a model using dynamic package dispatch.
@@ -512,7 +513,7 @@ def create_player(
     return persistence.create_player(team=team, model=model, mode=mode)
 
 
-def load_reward_config_for_package(directory: Path) -> DefaultRewardConfig:
+def load_reward_config_for_package(directory: Path) -> RewardConfig:
     """Load reward config using dynamic package dispatch.
 
     Reads ``model_config.json`` to discover the ``model_package``,
@@ -523,7 +524,7 @@ def load_reward_config_for_package(directory: Path) -> DefaultRewardConfig:
             ``reward_config.json``.
 
     Returns:
-        The loaded :class:`DefaultRewardConfig`.
+        The loaded :class:`RewardConfig`.
     """
     model_package = read_model_package(directory)
     persistence = _get_persistence(model_package)

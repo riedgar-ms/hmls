@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import torch
 
-from hmls.nncore.reward import DefaultRewardConfig
+from hmls.nncore.reward import BasicRewardConfig
 from hmls.singlemki.model import MkIModelConfig, MkITankPolicyNetwork
 from hmls.singlemki.persistence import PERSISTENCE
 
@@ -104,8 +104,8 @@ class TestRewardConfigJson:
     """Tests for reward_config.json save/load utilities."""
 
     def test_save_and_load_roundtrip(self, tmp_path: Path) -> None:
-        """DefaultRewardConfig can be saved and loaded from JSON."""
-        config = DefaultRewardConfig(
+        """BasicRewardConfig can be saved and loaded from JSON."""
+        config = BasicRewardConfig(
             fire_hit_reward=1.0,
             death_reward=-2.0,
             exploration_reward=0.05,
@@ -118,8 +118,8 @@ class TestRewardConfigJson:
         assert loaded.exploration_reward == 0.05
 
     def test_default_config_roundtrip(self, tmp_path: Path) -> None:
-        """Default DefaultRewardConfig round-trips correctly."""
-        config = DefaultRewardConfig()
+        """Default BasicRewardConfig round-trips correctly."""
+        config = BasicRewardConfig()
         PERSISTENCE.save_reward_config(config, tmp_path)
 
         loaded = PERSISTENCE.load_reward_config(tmp_path)
@@ -133,5 +133,5 @@ class TestRewardConfigJson:
     def test_save_creates_directory(self, tmp_path: Path) -> None:
         """save_reward_config creates the directory if needed."""
         deep_dir = tmp_path / "a" / "b" / "c"
-        PERSISTENCE.save_reward_config(DefaultRewardConfig(), deep_dir)
+        PERSISTENCE.save_reward_config(BasicRewardConfig(), deep_dir)
         assert (deep_dir / "reward_config.json").exists()

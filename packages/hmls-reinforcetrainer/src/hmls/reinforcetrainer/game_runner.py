@@ -18,7 +18,7 @@ from hmls.mapgenerator import STRATEGY_REGISTRY, MapStrategy, generate_map
 from hmls.nncore.model import TankModelBase
 from hmls.nncore.persistence import create_player
 from hmls.nncore.player import NNPlayerBase
-from hmls.nncore.reward import DefaultReward, RewardFunction
+from hmls.nncore.reward import BasicReward, RewardFunction
 from hmls.reinforcetrainer.lethargy import LethargyPolicy
 
 
@@ -105,8 +105,8 @@ def run_game(
         train_b: Whether player B is in learn mode.
         max_turns: Maximum turns before the game is a draw.
         patch_size: Side length of visibility patches for the game engine.
-        reward_fn_a: Reward function for player A (defaults to DefaultReward).
-        reward_fn_b: Reward function for player B (defaults to DefaultReward).
+        reward_fn_a: Reward function for player A (defaults to BasicReward).
+        reward_fn_b: Reward function for player B (defaults to BasicReward).
         lethargy_policy: Optional policy for detecting degenerate play
             (e.g. spinning in place).  If triggered, the offending tank's
             team loses immediately.
@@ -116,9 +116,9 @@ def run_game(
         A GameOutcome with the result and player references.
     """
     if reward_fn_a is None:
-        reward_fn_a = DefaultReward()
+        reward_fn_a = BasicReward()
     if reward_fn_b is None:
-        reward_fn_b = DefaultReward()
+        reward_fn_b = BasicReward()
 
     # NOTE (REINFORCE_AUDIT item C): If future models use dropout or
     # batch normalisation, add model.train() / model.eval() calls

@@ -8,7 +8,7 @@ from hmls.core.map import CellType
 from hmls.core.tank import Tank
 from hmls.core.types import Action, Direction, Position
 from hmls.core.visibility import FogCell, TankPatch, VisibleCell
-from hmls.nncore.reward import DefaultReward, DefaultRewardConfig
+from hmls.nncore.reward import BasicReward, BasicRewardConfig
 
 
 def _make_entry(
@@ -79,7 +79,7 @@ def _make_patch_with_fogged_enemy(size: int = 9) -> TankPatch:
 
 def test_default_reward_step_reward() -> None:
     """A plain step incurs the step reward."""
-    reward_fn = DefaultReward()
+    reward_fn = BasicReward()
     entry = _make_entry(action=Action.MOVE_FORWARD)
     patch = _make_empty_patch()
     reward = reward_fn.compute_step_reward(
@@ -92,7 +92,7 @@ def test_default_reward_step_reward() -> None:
 
 def test_default_reward_hit() -> None:
     """A successful hit adds the hit reward."""
-    reward_fn = DefaultReward()
+    reward_fn = BasicReward()
     entry = _make_entry(action=Action.FIRE, hit=True)
     patch = _make_empty_patch()
     reward = reward_fn.compute_step_reward(
@@ -105,7 +105,7 @@ def test_default_reward_hit() -> None:
 
 def test_default_reward_exploration() -> None:
     """New positions add exploration bonus."""
-    reward_fn = DefaultReward()
+    reward_fn = BasicReward()
     reward_fn.reset()
     entry = _make_entry()
     patch = _make_empty_patch(size=3)
@@ -133,7 +133,7 @@ def test_default_reward_exploration() -> None:
 
 def test_default_reward_invalid_action() -> None:
     """Invalid action incurs the dedicated invalid_move_reward."""
-    reward_fn = DefaultReward()
+    reward_fn = BasicReward()
     entry = _make_entry(valid=False)
     patch = _make_empty_patch()
     reward = reward_fn.compute_step_reward(
@@ -147,7 +147,7 @@ def test_default_reward_invalid_action() -> None:
 
 def test_default_reward_fire_miss() -> None:
     """Firing and missing incurs the fire_miss_reward (penalty)."""
-    reward_fn = DefaultReward()
+    reward_fn = BasicReward()
     entry = _make_entry(action=Action.FIRE, hit=False)
     patch = _make_empty_patch()
     reward = reward_fn.compute_step_reward(
@@ -161,7 +161,7 @@ def test_default_reward_fire_miss() -> None:
 
 def test_default_reward_hit_no_miss_penalty() -> None:
     """A successful hit does NOT incur the fire miss reward."""
-    reward_fn = DefaultReward()
+    reward_fn = BasicReward()
     entry = _make_entry(action=Action.FIRE, hit=True)
     patch = _make_empty_patch()
     reward = reward_fn.compute_step_reward(
@@ -175,26 +175,26 @@ def test_default_reward_hit_no_miss_penalty() -> None:
 
 def test_default_reward_episode_win() -> None:
     """Winning gives positive terminal reward."""
-    reward_fn = DefaultReward()
+    reward_fn = BasicReward()
     assert reward_fn.compute_episode_end_reward(won=True) == 1.0
 
 
 def test_default_reward_episode_loss() -> None:
     """Losing gives negative terminal reward."""
-    reward_fn = DefaultReward()
+    reward_fn = BasicReward()
     assert reward_fn.compute_episode_end_reward(won=False) == -1.0
 
 
 def test_default_reward_episode_draw() -> None:
     """Draw gives zero terminal reward."""
-    reward_fn = DefaultReward()
+    reward_fn = BasicReward()
     assert reward_fn.compute_episode_end_reward(won=None) == 0.0
 
 
 def test_default_reward_from_config() -> None:
     """Construction from an explicit config works correctly."""
-    config = DefaultRewardConfig(fire_hit_reward=1.0, step_reward=-0.05)
-    reward_fn = DefaultReward(config=config)
+    config = BasicRewardConfig(fire_hit_reward=1.0, step_reward=-0.05)
+    reward_fn = BasicReward(config=config)
     assert reward_fn.fire_hit_reward == 1.0
     assert reward_fn.step_reward == -0.05
     # Other defaults are preserved
@@ -204,7 +204,7 @@ def test_default_reward_from_config() -> None:
 
 def test_default_reward_config_round_trip() -> None:
     """Config survives serialisation round-trip via model_dump/model_validate."""
-    config = DefaultRewardConfig(
+    config = BasicRewardConfig(
         fire_hit_reward=0.8,
         death_reward=-0.5,
         win_reward=2.0,
@@ -218,21 +218,21 @@ def test_default_reward_config_round_trip() -> None:
         enemy_in_cone_reward=0.05,
     )
     dumped = config.model_dump()
-    restored = DefaultRewardConfig.model_validate(dumped)
+    restored = BasicRewardConfig.model_validate(dumped)
     assert restored == config
 
 
 def test_default_reward_config_json_round_trip() -> None:
     """Config survives JSON serialisation round-trip."""
-    config = DefaultRewardConfig(fire_hit_reward=0.75)
+    config = BasicRewardConfig(fire_hit_reward=0.75)
     json_str = config.model_dump_json()
-    restored = DefaultRewardConfig.model_validate_json(json_str)
+    restored = BasicRewardConfig.model_validate_json(json_str)
     assert restored == config
 
 
 def test_default_reward_config_is_frozen() -> None:
     """Config should be immutable."""
-    config = DefaultRewardConfig()
+    config = BasicRewardConfig()
     try:
         config.fire_hit_reward = 999.0  # type: ignore[misc]
         assert False, "Should have raised"
@@ -245,7 +245,7 @@ def test_default_reward_config_is_frozen() -> None:
 
 def test_fire_neglect_reward_enemy_ahead() -> None:
     """Non-fire action when enemy is directly ahead incurs fire_neglect_reward."""
-    reward_fn = DefaultReward()
+    reward_fn = BasicReward()
     entry = _make_entry(action=Action.MOVE_FORWARD)
     patch = _make_patch_with_enemy_ahead()
     reward = reward_fn.compute_step_reward(
@@ -260,7 +260,7 @@ def test_fire_neglect_reward_enemy_ahead() -> None:
 
 def test_fire_neglect_reward_not_applied_on_fire() -> None:
     """Fire neglect reward is NOT applied when the action was FIRE (hit)."""
-    reward_fn = DefaultReward()
+    reward_fn = BasicReward()
     entry = _make_entry(action=Action.FIRE, hit=True)
     patch = _make_patch_with_enemy_ahead()
     reward = reward_fn.compute_step_reward(
@@ -275,7 +275,7 @@ def test_fire_neglect_reward_not_applied_on_fire() -> None:
 
 def test_fire_neglect_reward_not_applied_no_enemy() -> None:
     """No fire neglect reward when there is no enemy directly ahead."""
-    reward_fn = DefaultReward()
+    reward_fn = BasicReward()
     entry = _make_entry(action=Action.TURN_LEFT)
     patch = _make_empty_patch()
     reward = reward_fn.compute_step_reward(
@@ -289,7 +289,7 @@ def test_fire_neglect_reward_not_applied_no_enemy() -> None:
 
 def test_pass_reward_deliberate() -> None:
     """A deliberate PASS incurs the pass_reward."""
-    reward_fn = DefaultReward()
+    reward_fn = BasicReward()
     entry = _make_entry(action=Action.PASS, valid=True)
     patch = _make_empty_patch()
     reward = reward_fn.compute_step_reward(
@@ -304,7 +304,7 @@ def test_pass_reward_deliberate() -> None:
 
 def test_pass_reward_not_applied_on_invalid() -> None:
     """Invalid action converted to PASS does NOT incur pass_reward."""
-    reward_fn = DefaultReward()
+    reward_fn = BasicReward()
     # requested MOVE_FORWARD but invalid -> applied PASS
     entry = _make_entry(action=Action.MOVE_FORWARD, valid=False)
     patch = _make_empty_patch()
@@ -320,7 +320,7 @@ def test_pass_reward_not_applied_on_invalid() -> None:
 
 def test_enemy_in_cone_reward_single_enemy() -> None:
     """A single enemy in the forward cone gives one unit of reward."""
-    reward_fn = DefaultReward()
+    reward_fn = BasicReward()
     entry = _make_entry(action=Action.MOVE_FORWARD)
     patch = _make_patch_with_enemy_in_cone()
     reward = reward_fn.compute_step_reward(
@@ -335,7 +335,7 @@ def test_enemy_in_cone_reward_single_enemy() -> None:
 
 def test_enemy_in_cone_reward_multiple_enemies() -> None:
     """Multiple enemies in the forward cone scale the reward linearly."""
-    reward_fn = DefaultReward()
+    reward_fn = BasicReward()
     entry = _make_entry(action=Action.MOVE_FORWARD)
     patch = _make_empty_patch()
     half = 9 // 2
@@ -355,7 +355,7 @@ def test_enemy_in_cone_reward_multiple_enemies() -> None:
 
 def test_enemy_in_cone_reward_not_applied_when_fogged() -> None:
     """Enemies behind fog are not counted for the cone reward."""
-    reward_fn = DefaultReward()
+    reward_fn = BasicReward()
     entry = _make_entry(action=Action.MOVE_FORWARD)
     patch = _make_patch_with_fogged_enemy()
     reward = reward_fn.compute_step_reward(
@@ -369,7 +369,7 @@ def test_enemy_in_cone_reward_not_applied_when_fogged() -> None:
 
 def test_enemy_in_cone_friendly_not_counted() -> None:
     """Friendly tanks in the forward cone do NOT trigger the reward."""
-    reward_fn = DefaultReward()
+    reward_fn = BasicReward()
     entry = _make_entry(action=Action.MOVE_FORWARD)
     patch = _make_empty_patch()
     half = 9 // 2
@@ -386,8 +386,8 @@ def test_enemy_in_cone_friendly_not_counted() -> None:
 
 def test_turn_left_reward_applied() -> None:
     """Turn left reward is applied when the action is TURN_LEFT and valid."""
-    config = DefaultRewardConfig(turn_left_reward=0.05)
-    reward_fn = DefaultReward(config=config)
+    config = BasicRewardConfig(turn_left_reward=0.05)
+    reward_fn = BasicReward(config=config)
     entry = _make_entry(action=Action.TURN_LEFT)
     patch = _make_empty_patch()
     reward = reward_fn.compute_step_reward(entry, patch=patch, team="alpha")
@@ -397,8 +397,8 @@ def test_turn_left_reward_applied() -> None:
 
 def test_turn_right_reward_applied() -> None:
     """Turn right reward is applied when the action is TURN_RIGHT and valid."""
-    config = DefaultRewardConfig(turn_right_reward=0.03)
-    reward_fn = DefaultReward(config=config)
+    config = BasicRewardConfig(turn_right_reward=0.03)
+    reward_fn = BasicReward(config=config)
     entry = _make_entry(action=Action.TURN_RIGHT)
     patch = _make_empty_patch()
     reward = reward_fn.compute_step_reward(entry, patch=patch, team="alpha")
@@ -408,8 +408,8 @@ def test_turn_right_reward_applied() -> None:
 
 def test_move_forward_reward_applied() -> None:
     """Move forward reward is applied when the action is MOVE_FORWARD and valid."""
-    config = DefaultRewardConfig(move_forward_reward=0.04)
-    reward_fn = DefaultReward(config=config)
+    config = BasicRewardConfig(move_forward_reward=0.04)
+    reward_fn = BasicReward(config=config)
     entry = _make_entry(action=Action.MOVE_FORWARD)
     patch = _make_empty_patch()
     reward = reward_fn.compute_step_reward(entry, patch=patch, team="alpha")
@@ -419,8 +419,8 @@ def test_move_forward_reward_applied() -> None:
 
 def test_turn_left_reward_not_applied_when_invalid() -> None:
     """Turn left reward is NOT applied when the action is invalid."""
-    config = DefaultRewardConfig(turn_left_reward=0.05)
-    reward_fn = DefaultReward(config=config)
+    config = BasicRewardConfig(turn_left_reward=0.05)
+    reward_fn = BasicReward(config=config)
     entry = _make_entry(action=Action.TURN_LEFT, valid=False)
     patch = _make_empty_patch()
     reward = reward_fn.compute_step_reward(entry, patch=patch, team="alpha")
@@ -431,7 +431,7 @@ def test_turn_left_reward_not_applied_when_invalid() -> None:
 
 def test_movement_rewards_default_to_zero() -> None:
     """Movement rewards default to zero and don't affect existing behaviour."""
-    reward_fn = DefaultReward()
+    reward_fn = BasicReward()
     assert reward_fn.turn_left_reward == 0.0
     assert reward_fn.turn_right_reward == 0.0
     assert reward_fn.move_forward_reward == 0.0
@@ -445,7 +445,7 @@ def test_movement_rewards_default_to_zero() -> None:
 
 def test_missed_fire_friendly_ahead_no_penalty() -> None:
     """No missed fire reward when a friendly tank is directly ahead."""
-    reward_fn = DefaultReward()
+    reward_fn = BasicReward()
     entry = _make_entry(action=Action.MOVE_FORWARD)
     patch = _make_empty_patch()
     half = 9 // 2
@@ -465,7 +465,7 @@ def test_missed_fire_friendly_ahead_no_penalty() -> None:
 
 def test_consecutive_turn_penalty_disabled_by_default() -> None:
     """Default config has consecutive_turn_penalty=0.0, so no extra penalty."""
-    reward_fn = DefaultReward()
+    reward_fn = BasicReward()
     assert reward_fn.consecutive_turn_penalty == 0.0
 
     reward_fn.reset()
@@ -478,8 +478,8 @@ def test_consecutive_turn_penalty_disabled_by_default() -> None:
 
 def test_consecutive_turn_penalty_escalates() -> None:
     """Consecutive turns incur escalating penalty: penalty × streak_count."""
-    config = DefaultRewardConfig(consecutive_turn_penalty=-0.02, step_reward=0.0)
-    reward_fn = DefaultReward(config=config)
+    config = BasicRewardConfig(consecutive_turn_penalty=-0.02, step_reward=0.0)
+    reward_fn = BasicReward(config=config)
     reward_fn.reset()
     patch = _make_empty_patch()
 
@@ -501,8 +501,8 @@ def test_consecutive_turn_penalty_escalates() -> None:
 
 def test_consecutive_turn_penalty_resets_on_valid_move_forward() -> None:
     """Valid move forward resets the streak to zero."""
-    config = DefaultRewardConfig(consecutive_turn_penalty=-0.02, step_reward=0.0)
-    reward_fn = DefaultReward(config=config)
+    config = BasicRewardConfig(consecutive_turn_penalty=-0.02, step_reward=0.0)
+    reward_fn = BasicReward(config=config)
     reward_fn.reset()
     patch = _make_empty_patch()
 
@@ -524,10 +524,8 @@ def test_consecutive_turn_penalty_resets_on_valid_move_forward() -> None:
 
 def test_consecutive_turn_penalty_resets_on_fire_hit() -> None:
     """Fire-and-hit resets the streak to zero."""
-    config = DefaultRewardConfig(
-        consecutive_turn_penalty=-0.02, step_reward=0.0, fire_hit_reward=0.0
-    )
-    reward_fn = DefaultReward(config=config)
+    config = BasicRewardConfig(consecutive_turn_penalty=-0.02, step_reward=0.0, fire_hit_reward=0.0)
+    reward_fn = BasicReward(config=config)
     reward_fn.reset()
     patch = _make_empty_patch()
 
@@ -549,10 +547,10 @@ def test_consecutive_turn_penalty_resets_on_fire_hit() -> None:
 
 def test_consecutive_turn_penalty_not_reset_by_fire_miss() -> None:
     """Fire-and-miss does NOT reset the streak."""
-    config = DefaultRewardConfig(
+    config = BasicRewardConfig(
         consecutive_turn_penalty=-0.02, step_reward=0.0, fire_miss_reward=0.0
     )
-    reward_fn = DefaultReward(config=config)
+    reward_fn = BasicReward(config=config)
     reward_fn.reset()
     patch = _make_empty_patch()
 
@@ -574,8 +572,8 @@ def test_consecutive_turn_penalty_not_reset_by_fire_miss() -> None:
 
 def test_consecutive_turn_penalty_not_reset_by_pass() -> None:
     """Pass action does NOT reset the streak."""
-    config = DefaultRewardConfig(consecutive_turn_penalty=-0.02, step_reward=0.0, pass_reward=0.0)
-    reward_fn = DefaultReward(config=config)
+    config = BasicRewardConfig(consecutive_turn_penalty=-0.02, step_reward=0.0, pass_reward=0.0)
+    reward_fn = BasicReward(config=config)
     reward_fn.reset()
     patch = _make_empty_patch()
 
@@ -595,10 +593,10 @@ def test_consecutive_turn_penalty_not_reset_by_pass() -> None:
 
 def test_consecutive_turn_penalty_not_reset_by_invalid_move() -> None:
     """Invalid move does NOT reset the streak."""
-    config = DefaultRewardConfig(
+    config = BasicRewardConfig(
         consecutive_turn_penalty=-0.02, step_reward=0.0, invalid_move_reward=0.0
     )
-    reward_fn = DefaultReward(config=config)
+    reward_fn = BasicReward(config=config)
     reward_fn.reset()
     patch = _make_empty_patch()
 
@@ -620,8 +618,8 @@ def test_consecutive_turn_penalty_not_reset_by_invalid_move() -> None:
 
 def test_consecutive_turn_penalty_resets_on_episode() -> None:
     """reset() clears streak tracking between episodes."""
-    config = DefaultRewardConfig(consecutive_turn_penalty=-0.02, step_reward=0.0)
-    reward_fn = DefaultReward(config=config)
+    config = BasicRewardConfig(consecutive_turn_penalty=-0.02, step_reward=0.0)
+    reward_fn = BasicReward(config=config)
     reward_fn.reset()
     patch = _make_empty_patch()
 
@@ -641,7 +639,69 @@ def test_consecutive_turn_penalty_resets_on_episode() -> None:
 
 def test_consecutive_turn_penalty_config_round_trip() -> None:
     """consecutive_turn_penalty survives config serialisation round-trip."""
-    config = DefaultRewardConfig(consecutive_turn_penalty=-0.03)
+    config = BasicRewardConfig(consecutive_turn_penalty=-0.03)
     dumped = config.model_dump()
-    restored = DefaultRewardConfig.model_validate(dumped)
+    restored = BasicRewardConfig.model_validate(dumped)
     assert restored.consecutive_turn_penalty == -0.03
+
+
+# ── Discriminated union & factory tests ───────────────────────────────
+
+
+def test_reward_config_discriminated_union_basic() -> None:
+    """RewardConfig union correctly deserialises a 'basic' reward config."""
+    from pydantic import TypeAdapter
+
+    from hmls.nncore.reward import RewardConfig
+
+    adapter: TypeAdapter[RewardConfig] = TypeAdapter(RewardConfig)
+    raw_json = '{"reward_type": "basic", "fire_hit_reward": 0.9}'
+    config = adapter.validate_json(raw_json)
+    assert isinstance(config, BasicRewardConfig)
+    assert config.reward_type == "basic"
+    assert config.fire_hit_reward == 0.9
+
+
+def test_reward_config_union_rejects_unknown_type() -> None:
+    """RewardConfig union rejects an unknown reward_type value."""
+    import pytest
+    from pydantic import TypeAdapter, ValidationError
+
+    from hmls.nncore.reward import RewardConfig
+
+    adapter: TypeAdapter[RewardConfig] = TypeAdapter(RewardConfig)
+    raw_json = '{"reward_type": "unknown", "fire_hit_reward": 0.9}'
+    with pytest.raises(ValidationError):
+        adapter.validate_json(raw_json)
+
+
+def test_create_reward_returns_basic_reward() -> None:
+    """create_reward produces a BasicReward from a BasicRewardConfig."""
+    from hmls.nncore.reward import create_reward
+
+    config = BasicRewardConfig(fire_hit_reward=0.7)
+    reward_fn = create_reward(config)
+    assert isinstance(reward_fn, BasicReward)
+    assert reward_fn.fire_hit_reward == 0.7
+
+
+def test_create_reward_rejects_unknown_config() -> None:
+    """create_reward raises TypeError for unrecognised config types."""
+    import pytest
+
+    from hmls.nncore.reward import create_reward
+
+    class FakeConfig:
+        reward_type = "fake"
+
+    with pytest.raises(TypeError, match="Unknown reward config type"):
+        create_reward(FakeConfig())  # type: ignore[arg-type]
+
+
+def test_basic_reward_config_includes_reward_type_in_json() -> None:
+    """Serialised JSON includes the reward_type discriminator field."""
+    import json
+
+    config = BasicRewardConfig(fire_hit_reward=0.5)
+    data = json.loads(config.model_dump_json())
+    assert data["reward_type"] == "basic"

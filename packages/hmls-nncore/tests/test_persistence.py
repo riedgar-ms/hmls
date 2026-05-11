@@ -9,7 +9,7 @@ import torch
 
 from hmls.nncore.model import TankModelBase, TankModelConfig
 from hmls.nncore.persistence import NNPlayerModelPersistence
-from hmls.nncore.reward import DefaultRewardConfig
+from hmls.nncore.reward import BasicRewardConfig
 
 # ── Minimal stub model for testing ────────────────────────────────────
 
@@ -65,8 +65,8 @@ class TestRewardConfig:
         tmp_path: Path,
         persistence: NNPlayerModelPersistence[_StubConfig, _StubModel],
     ) -> None:
-        """DefaultRewardConfig can be saved and loaded from JSON."""
-        config = DefaultRewardConfig(fire_hit_reward=1.0, death_reward=-2.0)
+        """BasicRewardConfig can be saved and loaded from JSON."""
+        config = BasicRewardConfig(fire_hit_reward=1.0, death_reward=-2.0)
         persistence.save_reward_config(config, tmp_path)
         loaded = persistence.load_reward_config(tmp_path)
         assert loaded.fire_hit_reward == 1.0
@@ -78,7 +78,7 @@ class TestRewardConfig:
         persistence: NNPlayerModelPersistence[_StubConfig, _StubModel],
     ) -> None:
         """Default config round-trips correctly."""
-        config = DefaultRewardConfig()
+        config = BasicRewardConfig()
         persistence.save_reward_config(config, tmp_path)
         loaded = persistence.load_reward_config(tmp_path)
         assert loaded == config
@@ -99,7 +99,7 @@ class TestRewardConfig:
     ) -> None:
         """save_reward_config creates the directory if needed."""
         deep_dir = tmp_path / "a" / "b"
-        persistence.save_reward_config(DefaultRewardConfig(), deep_dir)
+        persistence.save_reward_config(BasicRewardConfig(), deep_dir)
         assert (deep_dir / "reward_config.json").exists()
 
 
@@ -139,13 +139,13 @@ class TestModelData:
         """Saved reward_config appears in metadata on load."""
         model = _StubModel()
         path = tmp_path / "model.pt"
-        reward = DefaultRewardConfig(fire_hit_reward=5.0)
+        reward = BasicRewardConfig(fire_hit_reward=5.0)
 
         persistence.save_model(model, path, reward_config=reward)
         _, metadata = persistence.load_model(path)
 
         assert "reward_config" in metadata
-        assert isinstance(metadata["reward_config"], DefaultRewardConfig)
+        assert isinstance(metadata["reward_config"], BasicRewardConfig)
         assert metadata["reward_config"].fire_hit_reward == 5.0
 
     def test_no_metadata(

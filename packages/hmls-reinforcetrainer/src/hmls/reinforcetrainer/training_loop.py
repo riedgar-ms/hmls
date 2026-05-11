@@ -17,7 +17,7 @@ from hmls.nncore.persistence import (
     load_or_create_model,
     save_model,
 )
-from hmls.nncore.reward import DefaultReward, RewardFunction
+from hmls.nncore.reward import RewardFunction, create_reward
 from hmls.reinforcetrainer.config import LethargyConfig, TrainerConfig
 from hmls.reinforcetrainer.game_runner import (
     GameOutcome,
@@ -33,19 +33,19 @@ from hmls.reinforcetrainer.lethargy import (
 from hmls.reinforcetrainer.updater import ReturnBaseline, reinforce_update
 
 
-def _load_reward_config(model_dir: Path) -> DefaultReward:
+def _load_reward_config(model_dir: Path) -> RewardFunction:
     """Load the reward config from a model directory via dynamic dispatch.
 
     Args:
         model_dir: Directory containing ``reward_config.json``.
 
     Returns:
-        A DefaultReward instance.
+        A RewardFunction instance matching the config's reward_type.
     """
     from hmls.nncore.persistence import load_reward_config_for_package
 
     reward_config = load_reward_config_for_package(model_dir)
-    return DefaultReward(reward_config)
+    return create_reward(reward_config)
 
 
 def _create_lethargy_policy(config: LethargyConfig) -> LethargyPolicy:

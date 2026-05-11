@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from hmls.nncore.persistence import load_or_create_model
-from hmls.nncore.reward import DefaultRewardConfig
+from hmls.nncore.reward import BasicRewardConfig
 from hmls.reinforcetrainer._testing.persistence import PERSISTENCE as STUB_PERSISTENCE
 from hmls.reinforcetrainer._testing.stub_model import StubModelConfig
 from hmls.reinforcetrainer.config import (
@@ -28,12 +28,12 @@ from hmls.reinforcetrainer.training_loop import (
 def _setup_model_dir(
     directory: Path,
     model_config: StubModelConfig | None = None,
-    reward_config: DefaultRewardConfig | None = None,
+    reward_config: BasicRewardConfig | None = None,
 ) -> None:
     """Helper to create a model directory with required config files."""
     directory.mkdir(parents=True, exist_ok=True)
     STUB_PERSISTENCE.save_model_config(model_config or StubModelConfig(), directory)
-    STUB_PERSISTENCE.save_reward_config(reward_config or DefaultRewardConfig(), directory)
+    STUB_PERSISTENCE.save_reward_config(reward_config or BasicRewardConfig(), directory)
 
 
 class TestLoadOrCreateModel:
@@ -245,11 +245,11 @@ class TestTrainIntegration:
         model_b_dir = tmp_path / "model_b"
         _setup_model_dir(
             model_a_dir,
-            reward_config=DefaultRewardConfig(fire_hit_reward=1.0),
+            reward_config=BasicRewardConfig(fire_hit_reward=1.0),
         )
         _setup_model_dir(
             model_b_dir,
-            reward_config=DefaultRewardConfig(fire_hit_reward=0.1, exploration_reward=0.1),
+            reward_config=BasicRewardConfig(fire_hit_reward=0.1, exploration_reward=0.1),
         )
 
         config = TrainerConfig(
