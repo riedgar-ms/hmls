@@ -33,10 +33,9 @@ from typing import Any, Generic, Literal, TypeVar
 import torch
 
 from hmls.nncore.model import TankModelBase, TankModelConfig
-from hmls.nncore.reward import DefaultRewardConfig
+from hmls.nncore.reward import BasicRewardConfig, RewardConfig
 
 MODEL_CONFIG_FILENAME = "model_config.json"
-REWARD_CONFIG_FILENAME = "reward_config.json"
 
 ModelT = TypeVar("ModelT", bound=TankModelBase)
 ConfigT = TypeVar("ConfigT", bound=TankModelConfig)
@@ -64,7 +63,7 @@ class ModelPersistence(ABC, Generic[ConfigT, ModelT]):
         self,
         model: ModelT,
         path: Path,
-        reward_config: DefaultRewardConfig | None = None,
+        reward_config: RewardConfig | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> None:
         """Save a trained model to disk.
@@ -72,8 +71,13 @@ class ModelPersistence(ABC, Generic[ConfigT, ModelT]):
         Args:
             model: The model to save.
             path: Destination file path (typically ``.pt`` extension).
-            reward_config: Optional reward configuration used during
-                training.
+            reward_config: Optional reward configuration to store as
+                **informational metadata only**.  This records which
+                reward shaping was in effect when the weights were
+                produced, but it is never read back or used by any
+                trainer on reload.  Trainers always derive their active
+                reward configuration from their own run config (e.g.
+                :class:`~hmls.reinforcetrainer.config.TrainerConfig`).
             metadata: Optional dictionary of extra information.
         """
         ...
@@ -88,6 +92,10 @@ class ModelPersistence(ABC, Generic[ConfigT, ModelT]):
         Returns:
             A tuple of ``(model, metadata)`` where *metadata* is the
             dict stored at save time (empty dict if none was provided).
+            If a ``reward_config`` was saved alongside the weights, it
+            is included in the metadata dict under the key
+            ``"reward_config"`` for **informational/auditing purposes
+            only** — trainers never consume it from here.
 
         Raises:
             FileNotFoundError: If *path* does not exist.
@@ -113,31 +121,6 @@ class ModelPersistence(ABC, Generic[ConfigT, ModelT]):
 
         Returns:
             The loaded config instance.
-
-        Raises:
-            FileNotFoundError: If the config file is missing.
-        """
-        ...
-
-    @abstractmethod
-    def save_reward_config(self, config: DefaultRewardConfig, directory: Path) -> None:
-        """Save a reward configuration to a directory.
-
-        Args:
-            config: The reward configuration to save.
-            directory: Target directory (created if it does not exist).
-        """
-        ...
-
-    @abstractmethod
-    def load_reward_config(self, directory: Path) -> DefaultRewardConfig:
-        """Load a reward configuration from a directory.
-
-        Args:
-            directory: Directory containing the reward config file.
-
-        Returns:
-            The loaded DefaultRewardConfig.
 
         Raises:
             FileNotFoundError: If the config file is missing.
@@ -188,7 +171,6 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
 
     - ``model.pt`` (torch checkpoint with state_dict + config dict)
     - ``model_config.json`` (Pydantic model config as JSON)
-    - ``reward_config.json`` (:class:`DefaultRewardConfig` as JSON)
     - :class:`~hmls.nncore.player.NNPlayer` for game play
 
     To use, simply instantiate with the concrete config and model
@@ -233,13 +215,18 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
         self,
         model: ModelT,
         path: Path,
-        reward_config: DefaultRewardConfig | None = None,
+        reward_config: RewardConfig | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> None:
         """Save a trained model as a torch checkpoint.
 
         The checkpoint contains ``state_dict``, ``config``, and
         optionally ``reward_config`` and ``metadata``.
+
+        Note: ``reward_config`` is stored as a provenance record only —
+        it documents which reward shaping produced these weights.  No
+        trainer reads it back from the checkpoint; the active reward
+        configuration always comes from the trainer's own run config.
         """
         save_data: dict[str, Any] = {
             "state_dict": model.state_dict(),
@@ -258,8 +245,10 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
 
         Reconstructs the model from the saved config dict and loads
         trained weights.  If a ``reward_config`` was saved, it is
-        rehydrated into a :class:`DefaultRewardConfig` and placed in
-        ``metadata["reward_config"]``.
+        rehydrated into a :class:`BasicRewardConfig` and placed in
+        ``metadata["reward_config"]`` for provenance/auditing purposes.
+        Trainers do **not** consume this value — they always use the
+        reward configuration from their own run config.
         """
         if not path.exists():
             raise FileNotFoundError(f"Model file not found: {path}")
@@ -272,9 +261,7 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
 
         metadata: dict[str, Any] = save_data.get("metadata", {})
         if "reward_config" in save_data:
-            metadata["reward_config"] = DefaultRewardConfig.model_validate(
-                save_data["reward_config"]
-            )
+            metadata["reward_config"] = BasicRewardConfig.model_validate(save_data["reward_config"])
 
         return model, metadata
 
@@ -296,23 +283,6 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
                 f"'{MODEL_CONFIG_FILENAME}'."
             )
         return self._config_cls.model_validate_json(path.read_text())
-
-    def save_reward_config(self, config: DefaultRewardConfig, directory: Path) -> None:
-        """Save a :class:`DefaultRewardConfig` as ``reward_config.json``."""
-        directory.mkdir(parents=True, exist_ok=True)
-        path = directory / REWARD_CONFIG_FILENAME
-        path.write_text(config.model_dump_json(indent=2))
-
-    def load_reward_config(self, directory: Path) -> DefaultRewardConfig:
-        """Load a :class:`DefaultRewardConfig` from ``reward_config.json``."""
-        path = directory / REWARD_CONFIG_FILENAME
-        if not path.exists():
-            raise FileNotFoundError(
-                f"Reward configuration file not found: {path}. "
-                f"Each model directory must contain a "
-                f"'{REWARD_CONFIG_FILENAME}'."
-            )
-        return DefaultRewardConfig.model_validate_json(path.read_text())
 
     # ── Factory methods ───────────────────────────────────────────────
 
@@ -441,7 +411,7 @@ def load_model(path: Path) -> tuple[TankModelBase, dict[str, Any]]:
 def save_model(
     model: TankModelBase,
     path: Path,
-    reward_config: DefaultRewardConfig | None = None,
+    reward_config: RewardConfig | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> None:
     """Save a model using dynamic package dispatch.
@@ -510,21 +480,3 @@ def create_player(
     """
     persistence = _get_persistence(model_package)
     return persistence.create_player(team=team, model=model, mode=mode)
-
-
-def load_reward_config_for_package(directory: Path) -> DefaultRewardConfig:
-    """Load reward config using dynamic package dispatch.
-
-    Reads ``model_config.json`` to discover the ``model_package``,
-    then delegates to the package's persistence instance.
-
-    Args:
-        directory: Directory containing ``model_config.json`` and
-            ``reward_config.json``.
-
-    Returns:
-        The loaded :class:`DefaultRewardConfig`.
-    """
-    model_package = read_model_package(directory)
-    persistence = _get_persistence(model_package)
-    return persistence.load_reward_config(directory)

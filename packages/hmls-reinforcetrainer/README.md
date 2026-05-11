@@ -16,12 +16,11 @@ uv sync
 
 ## Model Directory Structure
 
-Each model directory **must** contain two JSON configuration files before training starts:
+Each model directory **must** contain a JSON configuration file before training starts:
 
 ```
 models/player_a/
 ├── model_config.json    # Neural network architecture
-├── reward_config.json   # Reward function parameters
 └── model.pt             # (created during training)
 ```
 
@@ -45,42 +44,6 @@ Defines the neural network architecture. Example:
 
 The two models may have different `cnn_channels` and `gru_hidden_size`, but **`patch_size` must match** between them.
 
-### `reward_config.json`
-
-Defines the reward shaping parameters. Example:
-
-```json
-{
-  "fire_hit_reward": 0.5,
-  "death_reward": -1.0,
-  "win_reward": 1.0,
-  "loss_reward": -1.0,
-  "step_reward": -0.01,
-  "exploration_reward": 0.02,
-  "invalid_move_reward": -0.1,
-  "fire_miss_reward": -0.05,
-  "fire_neglect_reward": -0.1,
-  "pass_reward": -0.02,
-  "enemy_in_cone_reward": 0.01
-}
-```
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `fire_hit_reward` | float | `0.5` | Reward for hitting an enemy tank |
-| `death_reward` | float | `-1.0` | Reward (negative) when the player's tank dies |
-| `win_reward` | float | `1.0` | Reward for winning the game |
-| `loss_reward` | float | `-1.0` | Reward (negative) for losing the game |
-| `step_reward` | float | `-0.01` | Per-step reward (negative to encourage faster play) |
-| `exploration_reward` | float | `0.02` | Reward per newly discovered cell |
-| `invalid_move_reward` | float | `-0.1` | Reward (negative) for attempting an invalid action |
-| `fire_miss_reward` | float | `-0.05` | Reward (negative) for firing and missing |
-| `fire_neglect_reward` | float | `-0.1` | Reward (negative) for not firing when an enemy is directly ahead |
-| `pass_reward` | float | `-0.02` | Reward (negative) for deliberately choosing to pass |
-| `enemy_in_cone_reward` | float | `0.01` | Per-enemy reward for visible enemies in the forward cone |
-
-Each model uses its own reward configuration, so you can experiment with different reward shaping strategies.
-
 ## Usage
 
 ### Basic self-play training (both models learn)
@@ -100,7 +63,7 @@ Then run:
 uv run hmls-reinforcetrainer train_config.json
 ```
 
-Both model directories must contain `model_config.json` and `reward_config.json`. If no `model.pt` exists, a fresh model is created using the architecture from `model_config.json`.
+Both model directories must contain `model_config.json`. If no `model.pt` exists, a fresh model is created using the architecture from `model_config.json`. Reward shaping is configured per-model in `train_config.json` (see below).
 
 ### Train one model against a frozen opponent
 
@@ -115,8 +78,23 @@ Both model directories must contain `model_config.json` and `reward_config.json`
 
 ```json
 {
-  "model_a": { "dir": "models/player_a", "train": true },
-  "model_b": { "dir": "models/player_b", "train": true },
+  "model_a": {
+    "dir": "models/player_a",
+    "train": true,
+    "reward": {
+      "reward_type": "basic",
+      "fire_hit_reward": 0.5,
+      "exploration_reward": 0.05
+    }
+  },
+  "model_b": {
+    "dir": "models/player_b",
+    "train": true,
+    "reward": {
+      "reward_type": "basic",
+      "fire_hit_reward": 0.3
+    }
+  },
   "map": {
     "min_size": 15,
     "max_size": 25,
@@ -164,6 +142,30 @@ The configuration file is a JSON object with the following sections. All section
 |-------|------|---------|-------------|
 | `dir` | string | *(required)* | Path to model directory (must contain config files) |
 | `train` | bool | `true` | Whether to train this model (false = frozen opponent) |
+| `reward` | object | *(basic defaults)* | Reward shaping config (see below) |
+
+#### `reward` (nested in `model_a` / `model_b`)
+
+Each model can have its own reward shaping parameters. The `reward_type` field selects which reward function to use (currently only `"basic"` is supported). All fields have sensible defaults and may be omitted.
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `reward_type` | string | `"basic"` | Discriminator for the reward function type |
+| `fire_hit_reward` | float | `0.5` | Reward for hitting an enemy tank |
+| `death_reward` | float | `-1.0` | Reward (negative) when the player's tank dies |
+| `win_reward` | float | `1.0` | Reward for winning the game |
+| `loss_reward` | float | `-1.0` | Reward (negative) for losing the game |
+| `step_reward` | float | `-0.01` | Per-step reward (negative to encourage faster play) |
+| `exploration_reward` | float | `0.02` | Reward per newly discovered cell |
+| `invalid_move_reward` | float | `-0.1` | Reward (negative) for attempting an invalid action |
+| `fire_miss_reward` | float | `-0.05` | Reward (negative) for firing and missing |
+| `fire_neglect_reward` | float | `-0.1` | Reward (negative) for not firing when an enemy is directly ahead |
+| `pass_reward` | float | `-0.02` | Reward (negative) for deliberately choosing to pass |
+| `enemy_in_cone_reward` | float | `0.01` | Per-enemy reward for visible enemies in the forward cone |
+| `turn_left_reward` | float | `0.0` | Reward for choosing to turn left |
+| `turn_right_reward` | float | `0.0` | Reward for choosing to turn right |
+| `move_forward_reward` | float | `0.0` | Reward for choosing to move forward |
+| `consecutive_turn_penalty` | float | `0.0` | Escalating penalty multiplier for consecutive turns |
 
 ### `map`
 

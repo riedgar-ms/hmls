@@ -8,7 +8,6 @@ import pytest
 import torch
 
 from hmls.nncore.encoding import FiveChannelPatchEncoder
-from hmls.nncore.reward import DefaultRewardConfig
 from hmls.singlemkii.model import MkIIModelConfig, MkIITankPolicyNetwork
 from hmls.singlemkii.persistence import PERSISTENCE
 
@@ -91,21 +90,3 @@ class TestModelConfigJson:
         """Loading from a directory without model_config.json raises."""
         with pytest.raises(FileNotFoundError, match="model_config.json"):
             PERSISTENCE.load_model_config(tmp_path)
-
-
-class TestRewardConfigJson:
-    """Tests for reward_config.json save/load utilities."""
-
-    def test_save_and_load_roundtrip(self, tmp_path: Path) -> None:
-        """DefaultRewardConfig can be saved and loaded from JSON."""
-        config = DefaultRewardConfig(fire_hit_reward=1.0, death_reward=-2.0)
-        PERSISTENCE.save_reward_config(config, tmp_path)
-
-        loaded = PERSISTENCE.load_reward_config(tmp_path)
-        assert loaded.fire_hit_reward == 1.0
-        assert loaded.death_reward == -2.0
-
-    def test_load_missing_raises(self, tmp_path: Path) -> None:
-        """Loading from a directory without reward_config.json raises."""
-        with pytest.raises(FileNotFoundError, match="reward_config.json"):
-            PERSISTENCE.load_reward_config(tmp_path)

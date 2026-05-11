@@ -13,6 +13,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+from hmls.nncore.reward import BasicRewardConfig, RewardConfig
+
 
 class MapConfig(BaseModel, frozen=True, extra="forbid"):
     """Configuration for map generation.
@@ -74,10 +76,15 @@ class ModelRef(BaseModel, frozen=True, extra="forbid"):
         dir: Directory for model weights (loaded if existing, created if empty).
             Specified as a unix-style path in JSON.
         train: Whether this model is updated during training.
+        reward: Reward configuration for this model.  Controls the
+            reward shaping used when computing returns for this
+            player's episodes.  Defaults to :class:`BasicRewardConfig`
+            with all default values.
     """
 
     dir: Path
     train: bool = True
+    reward: RewardConfig = Field(default_factory=BasicRewardConfig)
 
 
 class OutputConfig(BaseModel, frozen=True, extra="forbid"):

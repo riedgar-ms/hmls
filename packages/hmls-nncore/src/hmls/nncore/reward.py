@@ -1,36 +1,48 @@
 """Reward functions for NN-controlled tank players.
 
 Defines a :class:`RewardFunction` abstract base class and a
-:class:`DefaultReward` implementation that provides shaped rewards
+:class:`BasicReward` implementation that provides shaped rewards
 including exploration bonuses.
 
 Reward classes that need to track state across an episode (e.g.
 explored grid cells) should do so internally, using the
 :meth:`~RewardFunction.reset` and :meth:`~RewardFunction.observe_patch`
 lifecycle hooks.
+
+New reward types are added by:
+
+1. Defining a new config model (subclass of :class:`~pydantic.BaseModel`)
+   with a ``reward_type`` :class:`~typing.Literal` field set to a
+   unique tag string.
+2. Implementing a corresponding :class:`RewardFunction` subclass.
+3. Adding the config to the :data:`RewardConfig` discriminated union.
+4. Registering the mapping in :func:`create_reward`.
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Annotated, Literal, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Discriminator, Tag
 
 from hmls.core.engine import HistoryEntry
 from hmls.core.types import Action, Position
 from hmls.core.visibility import TankPatch, VisibleCell
 
 
-class DefaultRewardConfig(BaseModel, frozen=True, extra="forbid"):
-    """Serialisable configuration for :class:`DefaultReward`.
+class BasicRewardConfig(BaseModel, frozen=True, extra="forbid"):
+    """Serialisable configuration for :class:`BasicReward`.
 
-    All fields have sensible defaults so ``DefaultRewardConfig()``
+    All fields have sensible defaults so ``BasicRewardConfig()``
     produces a usable configuration out of the box.
 
     All values are rewards: positive values reinforce behaviour,
     negative values discourage it.
 
     Attributes:
+        reward_type: Discriminator tag — always ``"basic"`` for this
+            config variant.
         fire_hit_reward: Reward for hitting an enemy tank.
         death_reward: Reward (negative) when the player's tank dies.
         win_reward: Reward for winning the game.
@@ -72,6 +84,7 @@ class DefaultRewardConfig(BaseModel, frozen=True, extra="forbid"):
             Set to ``0.0`` (the default) to disable.
     """
 
+    reward_type: Literal["basic"] = "basic"
     fire_hit_reward: float = 0.5
     death_reward: float = -1.0
     win_reward: float = 1.0
@@ -160,27 +173,27 @@ class RewardFunction(ABC):
         ...
 
 
-class DefaultReward(RewardFunction):
+class BasicReward(RewardFunction):
     """Shaped reward function with exploration bonus.
 
     Provides immediate feedback for hits, deaths, exploration, and
     a terminal reward for winning/losing.  Internally tracks which
     grid cells have been seen to compute exploration bonuses.
 
-    Configuration is held in a :class:`DefaultRewardConfig` Pydantic model
+    Configuration is held in a :class:`BasicRewardConfig` Pydantic model
     for easy serialisation and storage of training parameters.
 
     Args:
-        config: A :class:`DefaultRewardConfig` instance. Uses defaults
+        config: A :class:`BasicRewardConfig` instance. Uses defaults
             if not provided.
     """
 
-    def __init__(self, config: DefaultRewardConfig | None = None) -> None:
-        self.config: DefaultRewardConfig = config or DefaultRewardConfig()
+    def __init__(self, config: BasicRewardConfig | None = None) -> None:
+        self.config: BasicRewardConfig = config or BasicRewardConfig()
         self._explored_positions: set[Position] = set()
         self._last_new_positions: int = 0
         # Per-tank consecutive-turn streak for escalating penalty.
-        # See DefaultRewardConfig.consecutive_turn_penalty for details.
+        # See BasicRewardConfig.consecutive_turn_penalty for details.
         self._turn_streaks: dict[str, int] = {}
 
     @property
@@ -397,6 +410,40 @@ class DefaultReward(RewardFunction):
             return self.loss_reward
         else:
             return 0.0
+
+
+# ── Discriminated union & factory ─────────────────────────────────────
+
+RewardConfig = Annotated[
+    Union[Annotated[BasicRewardConfig, Tag("basic")]],
+    Discriminator("reward_type"),
+]
+"""Discriminated union of all reward config types.
+
+The ``reward_type`` field in the JSON selects which concrete config
+class to deserialise into.  To add a new reward type, define its
+config model with a unique ``reward_type: Literal[...]`` field and
+add it to this union.
+"""
+
+
+def create_reward(config: RewardConfig) -> RewardFunction:
+    """Instantiate a :class:`RewardFunction` from a config union member.
+
+    Maps each concrete config type to its corresponding reward class.
+
+    Args:
+        config: A member of the :data:`RewardConfig` discriminated union.
+
+    Returns:
+        A :class:`RewardFunction` instance configured by *config*.
+
+    Raises:
+        TypeError: If *config* is not a recognised reward config type.
+    """
+    if isinstance(config, BasicRewardConfig):
+        return BasicReward(config)
+    raise TypeError(f"Unknown reward config type: {type(config).__name__}")
 
 
 # ── Helper functions ──────────────────────────────────────────────────
