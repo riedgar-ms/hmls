@@ -35,21 +35,21 @@
       "fire_miss_reward": -0.1,
       "fire_neglect_reward": -0.7,
       "exploration_reward": 0.05,
-      "liveliness_window": 10,
+      "liveliness_window": 8,
       "liveliness_target": 5,
       "liveliness_reward": 0.1
     }
   },
   "map": {
-    "min_size": 15,
-    "max_size": 25,
-    "impassable_fraction": 0.3,
+    "min_size": 10,
+    "max_size": 15,
+    "impassable_fraction": 0.2,
     "strategy": "Blob & Line"
   },
   "game": {
     "games_per_map": 10,
     "total_maps": 100,
-    "max_turns": 200,
+    "max_turns": 400,
     "patch_size": 9
   },
   "output": {
@@ -59,15 +59,15 @@
   },
   "hyperparameters": {
     "learning_rate": 0.001,
-    "gamma": 0.99,
+    "gamma": 0.995,
     "seed": 42,
     "baseline_alpha": 0.99,
     "entropy_coeff": 0.01,
-    "loss_reduction": "sum",
+    "loss_reduction": "mean",
     "max_grad_norm": 1.0
   },
   "lethargy": {
     "policy": "consecutive_turn_limit",
-    "max_consecutive_turns": 5
+    "max_consecutive_turns": 10
   }
 }
