@@ -54,15 +54,15 @@
   },
   "output": {
     "sample_game_dir": "output/sample_games",
-    "sample_game_interval": 50,
-    "save_weights_interval": 100
+    "sample_game_interval": 100,
+    "save_weights_interval": 200
   },
   "hyperparameters": {
     "learning_rate": 0.001,
     "gamma": 0.995,
     "seed": 42,
     "baseline_alpha": 0.99,
-    "entropy_coeff": 0.01,
+    "entropy_coeff": 0.1,
     "loss_reduction": "mean",
     "max_grad_norm": 1.0
   },
