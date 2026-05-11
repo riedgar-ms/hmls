@@ -18,7 +18,7 @@ from hmls.mapgenerator import STRATEGY_REGISTRY, MapStrategy, generate_map
 from hmls.nncore.model import TankModelBase
 from hmls.nncore.persistence import create_player
 from hmls.nncore.player import NNPlayerBase
-from hmls.nncore.reward import BasicReward, RewardFunction
+from hmls.nncore.reward import RewardFunction
 from hmls.reinforcetrainer.lethargy import LethargyPolicy
 
 
@@ -116,9 +116,9 @@ def run_game(
         A GameOutcome with the result and player references.
     """
     if reward_fn_a is None:
-        reward_fn_a = BasicReward()
+        reward_fn_a = RewardFunction()
     if reward_fn_b is None:
-        reward_fn_b = BasicReward()
+        reward_fn_b = RewardFunction()
 
     # NOTE (REINFORCE_AUDIT item C): If future models use dropout or
     # batch normalisation, add model.train() / model.eval() calls

@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from hmls.nncore.reward import BasicRewardConfig
+from hmls.nncore.reward import FiringRewardConfig, GameStateRewardConfig, RewardConfig
 from hmls.reinforcetrainer.config import (
     GameConfig,
     HyperparameterConfig,
@@ -286,23 +286,25 @@ class TestTrainerConfig:
             model_a=ModelRef(dir=tmp_path / "a"),
             model_b=ModelRef(dir=tmp_path / "b"),
         )
-        assert isinstance(config.model_a.reward, BasicRewardConfig)
-        assert config.model_a.reward.fire_hit_reward == 0.5
-        assert config.model_a.reward.step_reward == -0.01
+        assert isinstance(config.model_a.reward, RewardConfig)
+        assert config.model_a.reward.firing.hit == 0.5
+        assert config.model_a.reward.game_state.step == -0.01
 
     def test_custom_reward_config(self, tmp_path: Path) -> None:
         """Custom reward config in ModelRef is accepted."""
         config = TrainerConfig(
             model_a=ModelRef(
                 dir=tmp_path / "a",
-                reward=BasicRewardConfig(fire_hit_reward=2.0, win_reward=5.0),
+                reward=RewardConfig(
+                    firing=FiringRewardConfig(hit=2.0), game_state=GameStateRewardConfig(win=5.0)
+                ),
             ),
             model_b=ModelRef(dir=tmp_path / "b"),
         )
-        assert config.model_a.reward.fire_hit_reward == 2.0
-        assert config.model_a.reward.win_reward == 5.0
+        assert config.model_a.reward.firing.hit == 2.0
+        assert config.model_a.reward.game_state.win == 5.0
         # model_b should have defaults
-        assert config.model_b.reward.fire_hit_reward == 0.5
+        assert config.model_b.reward.firing.hit == 0.5
 
     def test_reward_config_in_json(self, tmp_path: Path) -> None:
         """Reward config round-trips through JSON."""
@@ -310,30 +312,29 @@ class TestTrainerConfig:
             "model_a": {
                 "dir": "models/a",
                 "reward": {
-                    "reward_type": "basic",
-                    "fire_hit_reward": 1.5,
-                    "exploration_reward": 0.1,
+                    "firing": {"hit": 1.5},
+                    "exploration": {"see_cell": 0.1},
                 },
             },
             "model_b": {"dir": "models/b"},
         }
         loaded = TrainerConfig.model_validate_json(json.dumps(config_data).encode())
-        assert loaded.model_a.reward.fire_hit_reward == 1.5
-        assert loaded.model_a.reward.exploration_reward == 0.1
+        assert loaded.model_a.reward.firing.hit == 1.5
+        assert loaded.model_a.reward.exploration.see_cell == 0.1
         # model_b gets defaults
-        assert loaded.model_b.reward.fire_hit_reward == 0.5
+        assert loaded.model_b.reward.firing.hit == 0.5
 
     def test_different_reward_configs_per_model(self, tmp_path: Path) -> None:
         """Each model can have a different reward config."""
         config = TrainerConfig(
             model_a=ModelRef(
                 dir=tmp_path / "a",
-                reward=BasicRewardConfig(fire_hit_reward=1.0),
+                reward=RewardConfig(firing=FiringRewardConfig(hit=1.0)),
             ),
             model_b=ModelRef(
                 dir=tmp_path / "b",
-                reward=BasicRewardConfig(fire_hit_reward=0.1),
+                reward=RewardConfig(firing=FiringRewardConfig(hit=0.1)),
             ),
         )
-        assert config.model_a.reward.fire_hit_reward == 1.0
-        assert config.model_b.reward.fire_hit_reward == 0.1
+        assert config.model_a.reward.firing.hit == 1.0
+        assert config.model_b.reward.firing.hit == 0.1

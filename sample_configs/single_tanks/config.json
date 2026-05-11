@@ -1,0 +1,98 @@
+{
+  "model_a": {
+    "dir": "weights/model_a",
+    "train": true,
+    "reward": {
+      "actions": {
+        "move_forward": 0.03,
+        "turn_left": -0.01,
+        "turn_right": -0.01,
+        "fire": 0.0,
+        "pass_action": -0.02,
+        "consecutive_turn": -0.01
+      },
+      "firing": {
+        "hit": 0.5,
+        "miss": -0.05,
+        "neglect": -0.3
+      },
+      "game_state": {
+        "win": 1.0,
+        "loss": -1.0,
+        "invalid_move": -0.1,
+        "step": -0.01,
+        "death": -1.0
+      },
+      "exploration": {
+        "see_cell": 0.001,
+        "occupy_cell": 0.01
+      },
+      "situational": {
+        "enemy_in_cone": 0.1
+      }
+    }
+  },
+  "model_b": {
+    "dir": "weights/model_b",
+    "train": true,
+    "reward": {
+      "actions": {
+        "move_forward": 0.03,
+        "turn_left": -0.01,
+        "turn_right": -0.01,
+        "fire": 0.0,
+        "pass_action": -0.02,
+        "consecutive_turn": -0.02
+      },
+      "firing": {
+        "hit": 0.5,
+        "miss": -0.05,
+        "neglect": -0.4
+      },
+      "game_state": {
+        "win": 1.0,
+        "loss": -1.0,
+        "invalid_move": -0.2,
+        "step": -0.01,
+        "death": -1.0
+      },
+      "exploration": {
+        "see_cell": 0.02,
+        "occupy_cell": 0.01
+      },
+      "situational": {
+        "enemy_in_cone": 0.1
+      }
+    }
+  },
+  "map": {
+    "min_size": 10,
+    "max_size": 15,
+    "impassable_fraction": 0.1,
+    "strategy": "Blob & Line"
+  },
+  "game": {
+    "games_per_map": 10,
+    "total_maps": 100,
+    "max_turns": 400,
+    "patch_size": 9
+  },
+  "output": {
+    "sample_game_dir": "output/sample_games",
+    "sample_game_interval": 100,
+    "save_weights_interval": 200
+  },
+  "hyperparameters": {
+    "learning_rate": 0.001,
+    "gamma": 0.995,
+    "seed": 42,
+    "baseline_alpha": 0.99,
+    "entropy_coeff": 0.1,
+    "loss_reduction": "mean",
+    "max_grad_norm": 1.0
+  },
+  "lethargy": {
+    "policy": "consecutive_turn_limit",
+    "max_consecutive_turns": 10
+  }
+}

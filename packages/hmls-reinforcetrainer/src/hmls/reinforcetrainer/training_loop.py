@@ -17,7 +17,7 @@ from hmls.nncore.persistence import (
     load_or_create_model,
     save_model,
 )
-from hmls.nncore.reward import RewardFunction, create_reward
+from hmls.nncore.reward import RewardFunction
 from hmls.reinforcetrainer.config import LethargyConfig, TrainerConfig
 from hmls.reinforcetrainer.game_runner import (
     GameOutcome,
@@ -147,8 +147,8 @@ def train(config: TrainerConfig) -> None:
     _validate_game_patch_size(config.game.patch_size, model_config_a, model_config_b)
 
     # Create reward functions from training config
-    reward_fn_a: RewardFunction = create_reward(config.model_a.reward)
-    reward_fn_b: RewardFunction = create_reward(config.model_b.reward)
+    reward_fn_a: RewardFunction = RewardFunction(config.model_a.reward)
+    reward_fn_b: RewardFunction = RewardFunction(config.model_b.reward)
 
     # Instantiate lethargy policy
     lethargy_policy = _create_lethargy_policy(config.lethargy)

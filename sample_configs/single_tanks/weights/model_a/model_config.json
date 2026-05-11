@@ -1,0 +1,9 @@
+{
+  "model_package": "hmls.singlemki",
+  "patch_size": 9,
+  "cnn_channels": [32, 64, 128],
+  "gru_hidden_size": 128,
+  "conv_kernel_size": 3,
+  "pool_kernel_size": 2,
+  "pool_stride": 2
+}

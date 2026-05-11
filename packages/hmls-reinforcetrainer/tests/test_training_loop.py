@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from hmls.nncore.persistence import load_or_create_model
-from hmls.nncore.reward import BasicRewardConfig
+from hmls.nncore.reward import ExplorationRewardConfig, FiringRewardConfig, RewardConfig
 from hmls.reinforcetrainer._testing.persistence import PERSISTENCE as STUB_PERSISTENCE
 from hmls.reinforcetrainer._testing.stub_model import StubModelConfig
 from hmls.reinforcetrainer.config import (
@@ -247,11 +247,14 @@ class TestTrainIntegration:
         config = TrainerConfig(
             model_a=ModelRef(
                 dir=model_a_dir,
-                reward=BasicRewardConfig(fire_hit_reward=1.0),
+                reward=RewardConfig(firing=FiringRewardConfig(hit=1.0)),
             ),
             model_b=ModelRef(
                 dir=model_b_dir,
-                reward=BasicRewardConfig(fire_hit_reward=0.1, exploration_reward=0.1),
+                reward=RewardConfig(
+                    firing=FiringRewardConfig(hit=0.1),
+                    exploration=ExplorationRewardConfig(see_cell=0.1),
+                ),
             ),
             map=MapConfig(min_size=8, max_size=8),
             game=GameConfig(games_per_map=2, total_maps=1, max_turns=20),
