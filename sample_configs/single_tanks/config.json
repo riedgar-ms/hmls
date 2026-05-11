@@ -25,7 +25,7 @@
       },
       "exploration": {
         "see_cell": 0.001,
-        "occupy_cell": 0.01
+        "occupy_cell": 0.1
       },
       "situational": {
         "enemy_in_cone": 0.1
@@ -58,7 +58,7 @@
       },
       "exploration": {
         "see_cell": 0.02,
-        "occupy_cell": 0.01
+        "occupy_cell": 0.1
       },
       "situational": {
         "enemy_in_cone": 0.1
