@@ -50,3 +50,11 @@ DIRECTION_ARROWS: dict[int, str] = {
 
 DEAD_MARKER = "✕ "
 """2-char marker for destroyed tanks."""
+
+# ── Team style mapping ────────────────────────────────────────────────
+
+TEAM_STYLES: dict[str, str] = {
+    "A": TEAM_A_STYLE,
+    "B": TEAM_B_STYLE,
+}
+"""Mapping of team ID → Rich style string for rendering team-coloured elements."""

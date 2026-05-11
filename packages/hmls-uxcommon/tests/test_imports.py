@@ -35,6 +35,7 @@ class TestStylesImport:
             PASSABLE_STYLE,
             TEAM_A_STYLE,
             TEAM_B_STYLE,
+            TEAM_STYLES,
         )
 
 
@@ -62,3 +63,9 @@ class TestWidgetImports:
         from hmls.uxcommon.widgets import PlayerViewRegion
 
         assert issubclass(PlayerViewRegion, Widget)
+
+    def test_import_team_legend(self) -> None:
+        """TeamLegend is importable and is a Textual Widget subclass."""
+        from hmls.uxcommon.widgets import TeamLegend
+
+        assert issubclass(TeamLegend, Widget)

@@ -18,7 +18,9 @@ from hmls.core.game_state import GameState
 from hmls.core.map import GameMap
 from hmls.replayviewer.cli import build_state_timeline, load_game_result, parse_args
 from hmls.uxcommon import LogStatusMixin
+from hmls.uxcommon.styles import TEAM_STYLES
 from hmls.uxcommon.widgets.map_view import MapView
+from hmls.uxcommon.widgets.team_legend import TeamLegend
 
 # ── Constants ─────────────────────────────────────────────────────────
 
@@ -100,6 +102,7 @@ class ReplayViewerApp(LogStatusMixin, App[None]):
     def compose(self) -> ComposeResult:
         """Compose the application layout."""
         yield Header()
+        yield TeamLegend(TEAM_STYLES, id="team-legend")
 
         with ScrollableContainer(id="map-scroll"):
             yield MapView(

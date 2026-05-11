@@ -20,13 +20,8 @@ from hmls.uxcommon.styles import (
     IMPASSABLE_STYLE,
     PASSABLE_STYLE,
     TEAM_A_STYLE,
-    TEAM_B_STYLE,
+    TEAM_STYLES,
 )
-
-_TEAM_STYLES: dict[str, str] = {
-    "A": TEAM_A_STYLE,
-    "B": TEAM_B_STYLE,
-}
 
 
 class MapView(Static):
@@ -98,7 +93,7 @@ class MapView(Static):
                         if is_active:
                             style = ACTIVE_HIGHLIGHT_STYLE
                         else:
-                            style = _TEAM_STYLES.get(team, TEAM_A_STYLE)
+                            style = TEAM_STYLES.get(team, TEAM_A_STYLE)
                         text.append(arrow, style=style)
                 elif game_map[x, y] == CellType.PASSABLE:
                     text.append(CELL_CHARS, style=PASSABLE_STYLE)
