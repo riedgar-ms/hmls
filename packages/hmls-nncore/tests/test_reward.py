@@ -463,10 +463,10 @@ def test_missed_fire_friendly_ahead_no_penalty() -> None:
 # ── Consecutive turn penalty tests ───────────────────────────────────
 
 
-def test_consecutive_turn_penalty_disabled_by_default() -> None:
-    """Default config has consecutive_turn_penalty=0.0, so no extra penalty."""
+def test_consecutive_turn_reward_disabled_by_default() -> None:
+    """Default config has consecutive_turn_reward=0.0, so no extra penalty."""
     reward_fn = BasicReward()
-    assert reward_fn.consecutive_turn_penalty == 0.0
+    assert reward_fn.consecutive_turn_reward == 0.0
 
     reward_fn.reset()
     entry = _make_entry(action=Action.TURN_LEFT)
@@ -476,9 +476,9 @@ def test_consecutive_turn_penalty_disabled_by_default() -> None:
     assert abs(reward - (-0.01)) < 1e-7
 
 
-def test_consecutive_turn_penalty_escalates() -> None:
-    """Consecutive turns incur escalating penalty: penalty × streak_count."""
-    config = BasicRewardConfig(consecutive_turn_penalty=-0.02, step_reward=0.0)
+def test_consecutive_turn_reward_escalates() -> None:
+    """Consecutive turns incur escalating reward: reward × streak_count."""
+    config = BasicRewardConfig(consecutive_turn_reward=-0.02, step_reward=0.0)
     reward_fn = BasicReward(config=config)
     reward_fn.reset()
     patch = _make_empty_patch()
@@ -499,9 +499,9 @@ def test_consecutive_turn_penalty_escalates() -> None:
     assert abs(r3 - (-0.06)) < 1e-7
 
 
-def test_consecutive_turn_penalty_resets_on_valid_move_forward() -> None:
+def test_consecutive_turn_reward_resets_on_valid_move_forward() -> None:
     """Valid move forward resets the streak to zero."""
-    config = BasicRewardConfig(consecutive_turn_penalty=-0.02, step_reward=0.0)
+    config = BasicRewardConfig(consecutive_turn_reward=-0.02, step_reward=0.0)
     reward_fn = BasicReward(config=config)
     reward_fn.reset()
     patch = _make_empty_patch()
@@ -522,9 +522,9 @@ def test_consecutive_turn_penalty_resets_on_valid_move_forward() -> None:
     assert abs(r - (-0.02)) < 1e-7
 
 
-def test_consecutive_turn_penalty_resets_on_fire_hit() -> None:
+def test_consecutive_turn_reward_resets_on_fire_hit() -> None:
     """Fire-and-hit resets the streak to zero."""
-    config = BasicRewardConfig(consecutive_turn_penalty=-0.02, step_reward=0.0, fire_hit_reward=0.0)
+    config = BasicRewardConfig(consecutive_turn_reward=-0.02, step_reward=0.0, fire_hit_reward=0.0)
     reward_fn = BasicReward(config=config)
     reward_fn.reset()
     patch = _make_empty_patch()
@@ -545,11 +545,9 @@ def test_consecutive_turn_penalty_resets_on_fire_hit() -> None:
     assert abs(r - (-0.02)) < 1e-7
 
 
-def test_consecutive_turn_penalty_not_reset_by_fire_miss() -> None:
+def test_consecutive_turn_reward_not_reset_by_fire_miss() -> None:
     """Fire-and-miss does NOT reset the streak."""
-    config = BasicRewardConfig(
-        consecutive_turn_penalty=-0.02, step_reward=0.0, fire_miss_reward=0.0
-    )
+    config = BasicRewardConfig(consecutive_turn_reward=-0.02, step_reward=0.0, fire_miss_reward=0.0)
     reward_fn = BasicReward(config=config)
     reward_fn.reset()
     patch = _make_empty_patch()
@@ -570,9 +568,9 @@ def test_consecutive_turn_penalty_not_reset_by_fire_miss() -> None:
     assert abs(r - (-0.06)) < 1e-7
 
 
-def test_consecutive_turn_penalty_not_reset_by_pass() -> None:
+def test_consecutive_turn_reward_not_reset_by_pass() -> None:
     """Pass action does NOT reset the streak."""
-    config = BasicRewardConfig(consecutive_turn_penalty=-0.02, step_reward=0.0, pass_reward=0.0)
+    config = BasicRewardConfig(consecutive_turn_reward=-0.02, step_reward=0.0, pass_reward=0.0)
     reward_fn = BasicReward(config=config)
     reward_fn.reset()
     patch = _make_empty_patch()
@@ -591,10 +589,10 @@ def test_consecutive_turn_penalty_not_reset_by_pass() -> None:
     assert abs(r - (-0.06)) < 1e-7
 
 
-def test_consecutive_turn_penalty_not_reset_by_invalid_move() -> None:
+def test_consecutive_turn_reward_not_reset_by_invalid_move() -> None:
     """Invalid move does NOT reset the streak."""
     config = BasicRewardConfig(
-        consecutive_turn_penalty=-0.02, step_reward=0.0, invalid_move_reward=0.0
+        consecutive_turn_reward=-0.02, step_reward=0.0, invalid_move_reward=0.0
     )
     reward_fn = BasicReward(config=config)
     reward_fn.reset()
@@ -616,9 +614,9 @@ def test_consecutive_turn_penalty_not_reset_by_invalid_move() -> None:
     assert abs(r - (-0.06)) < 1e-7
 
 
-def test_consecutive_turn_penalty_resets_on_episode() -> None:
+def test_consecutive_turn_reward_resets_on_episode() -> None:
     """reset() clears streak tracking between episodes."""
-    config = BasicRewardConfig(consecutive_turn_penalty=-0.02, step_reward=0.0)
+    config = BasicRewardConfig(consecutive_turn_reward=-0.02, step_reward=0.0)
     reward_fn = BasicReward(config=config)
     reward_fn.reset()
     patch = _make_empty_patch()
@@ -637,12 +635,12 @@ def test_consecutive_turn_penalty_resets_on_episode() -> None:
     assert abs(r - (-0.02)) < 1e-7
 
 
-def test_consecutive_turn_penalty_config_round_trip() -> None:
-    """consecutive_turn_penalty survives config serialisation round-trip."""
-    config = BasicRewardConfig(consecutive_turn_penalty=-0.03)
+def test_consecutive_turn_reward_config_round_trip() -> None:
+    """consecutive_turn_reward survives config serialisation round-trip."""
+    config = BasicRewardConfig(consecutive_turn_reward=-0.03)
     dumped = config.model_dump()
     restored = BasicRewardConfig.model_validate(dumped)
-    assert restored.consecutive_turn_penalty == -0.03
+    assert restored.consecutive_turn_reward == -0.03
 
 
 # ── Discriminated union & factory tests ───────────────────────────────

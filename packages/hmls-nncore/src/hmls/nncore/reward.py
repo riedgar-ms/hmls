@@ -64,12 +64,12 @@ class BasicRewardConfig(BaseModel, frozen=True, extra="forbid"):
         turn_left_reward: Reward for choosing to turn left.
         turn_right_reward: Reward for choosing to turn right.
         move_forward_reward: Reward for choosing to move forward.
-        consecutive_turn_penalty: Escalating penalty multiplier for
-            consecutive turn actions.  When a tank takes N consecutive
-            turns (``TURN_LEFT`` or ``TURN_RIGHT``), the Nth turn
-            incurs an additional penalty of
-            ``consecutive_turn_penalty × N``.  For example, with
-            ``consecutive_turn_penalty = -0.02`` and
+        consecutive_turn_reward: Escalating reward multiplier for
+            consecutive turn actions (typically negative).  When a tank
+            takes N consecutive turns (``TURN_LEFT`` or ``TURN_RIGHT``),
+            the Nth turn incurs an additional reward of
+            ``consecutive_turn_reward × N``.  For example, with
+            ``consecutive_turn_reward = -0.02`` and
             ``turn_left_reward = -0.02``:
 
             - Turn 1 (streak=1): ``-0.02 + (-0.02 × 1) = -0.04``
@@ -100,7 +100,7 @@ class BasicRewardConfig(BaseModel, frozen=True, extra="forbid"):
     turn_left_reward: float = 0.0
     turn_right_reward: float = 0.0
     move_forward_reward: float = 0.0
-    consecutive_turn_penalty: float = 0.0
+    consecutive_turn_reward: float = 0.0
 
 
 class RewardFunction(ABC):
@@ -193,8 +193,8 @@ class BasicReward(RewardFunction):
         self.config: BasicRewardConfig = config or BasicRewardConfig()
         self._explored_positions: set[Position] = set()
         self._last_new_positions: int = 0
-        # Per-tank consecutive-turn streak for escalating penalty.
-        # See BasicRewardConfig.consecutive_turn_penalty for details.
+        # Per-tank consecutive-turn streak for escalating reward.
+        # See BasicRewardConfig.consecutive_turn_reward for details.
         self._turn_streaks: dict[str, int] = {}
 
     @property
@@ -268,9 +268,9 @@ class BasicReward(RewardFunction):
         return self.config.move_forward_reward
 
     @property
-    def consecutive_turn_penalty(self) -> float:
-        """Escalating per-turn penalty multiplier for consecutive turns."""
-        return self.config.consecutive_turn_penalty
+    def consecutive_turn_reward(self) -> float:
+        """Escalating per-turn reward multiplier for consecutive turns."""
+        return self.config.consecutive_turn_reward
 
     @property
     def explored_positions(self) -> set[Position]:
@@ -339,8 +339,8 @@ class BasicReward(RewardFunction):
         - turn_right_reward: for turning right
         - move_forward_reward: for moving forward
         - enemy_in_cone_reward: per visible enemy in the forward cone
-        - consecutive_turn_penalty: escalating penalty for consecutive
-          turns (penalty × streak count; see config docstring)
+        - consecutive_turn_reward: escalating reward for consecutive
+          turns (reward × streak count; see config docstring)
         """
         reward = self.step_reward
 
@@ -373,10 +373,10 @@ class BasicReward(RewardFunction):
         elif entry.requested_action == Action.MOVE_FORWARD and entry.valid:
             reward += self.move_forward_reward
 
-        # ── Escalating consecutive-turn penalty ──────────────────
+        # ── Escalating consecutive-turn reward ───────────────────
         #
         # Tracks a per-tank streak of consecutive turn actions.  Each
-        # successive turn incurs penalty × streak_count, creating a
+        # successive turn incurs reward × streak_count, creating a
         # progressively stronger signal to stop spinning.
         #
         # The streak only resets on *meaningful* non-turn actions:
@@ -390,7 +390,7 @@ class BasicReward(RewardFunction):
         if entry.requested_action in _TURN_ACTIONS and entry.valid:
             streak = self._turn_streaks.get(tank_id, 0) + 1
             self._turn_streaks[tank_id] = streak
-            reward += self.consecutive_turn_penalty * streak
+            reward += self.consecutive_turn_reward * streak
         elif entry.hit is True or (entry.requested_action == Action.MOVE_FORWARD and entry.valid):
             self._turn_streaks[tank_id] = 0
 
