@@ -71,8 +71,13 @@ class ModelPersistence(ABC, Generic[ConfigT, ModelT]):
         Args:
             model: The model to save.
             path: Destination file path (typically ``.pt`` extension).
-            reward_config: Optional reward configuration used during
-                training.
+            reward_config: Optional reward configuration to store as
+                **informational metadata only**.  This records which
+                reward shaping was in effect when the weights were
+                produced, but it is never read back or used by any
+                trainer on reload.  Trainers always derive their active
+                reward configuration from their own run config (e.g.
+                :class:`~hmls.reinforcetrainer.config.TrainerConfig`).
             metadata: Optional dictionary of extra information.
         """
         ...
@@ -87,6 +92,10 @@ class ModelPersistence(ABC, Generic[ConfigT, ModelT]):
         Returns:
             A tuple of ``(model, metadata)`` where *metadata* is the
             dict stored at save time (empty dict if none was provided).
+            If a ``reward_config`` was saved alongside the weights, it
+            is included in the metadata dict under the key
+            ``"reward_config"`` for **informational/auditing purposes
+            only** — trainers never consume it from here.
 
         Raises:
             FileNotFoundError: If *path* does not exist.
@@ -213,6 +222,11 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
 
         The checkpoint contains ``state_dict``, ``config``, and
         optionally ``reward_config`` and ``metadata``.
+
+        Note: ``reward_config`` is stored as a provenance record only —
+        it documents which reward shaping produced these weights.  No
+        trainer reads it back from the checkpoint; the active reward
+        configuration always comes from the trainer's own run config.
         """
         save_data: dict[str, Any] = {
             "state_dict": model.state_dict(),
@@ -232,7 +246,9 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
         Reconstructs the model from the saved config dict and loads
         trained weights.  If a ``reward_config`` was saved, it is
         rehydrated into a :class:`BasicRewardConfig` and placed in
-        ``metadata["reward_config"]``.
+        ``metadata["reward_config"]`` for provenance/auditing purposes.
+        Trainers do **not** consume this value — they always use the
+        reward configuration from their own run config.
         """
         if not path.exists():
             raise FileNotFoundError(f"Model file not found: {path}")
