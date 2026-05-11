@@ -19,7 +19,7 @@
       "game_state": {
         "win": 1.0,
         "loss": -1.0,
-        "invalid_move": -0.1,
+        "invalid_move": -0.2,
         "step": -0.01,
         "death": -1.0
       },
@@ -28,7 +28,8 @@
         "occupy_cell": 0.1
       },
       "situational": {
-        "enemy_in_cone": 0.1
+        "enemy_in_cone": 0.4,
+        "enemy_in_cone_distance_discount": 0.95
       }
     }
   },
@@ -61,7 +62,8 @@
         "occupy_cell": 0.1
       },
       "situational": {
-        "enemy_in_cone": 0.1
+        "enemy_in_cone": 0.4,
+        "enemy_in_cone_distance_discount": 0.95
       }
     }
   },
@@ -73,8 +75,8 @@
   },
   "game": {
     "games_per_map": 10,
-    "total_maps": 100,
-    "max_turns": 400,
+    "total_maps": 200,
+    "max_turns": 500,
     "patch_size": 9
   },
   "output": {
