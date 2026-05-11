@@ -23,7 +23,10 @@ class TestStylesImport:
     def test_import_style_constants(self) -> None:
         """Every documented style constant is importable."""
         from hmls.uxcommon.styles import (  # noqa: F401
+            ACTIVE_DEAD_STYLE,
+            ACTIVE_HIGHLIGHT_BG,
             ACTIVE_HIGHLIGHT_STYLE,
+            ACTIVE_TEAM_STYLES,
             BOUNDARY_STYLE,
             CELL_CHARS,
             CELL_WIDTH,

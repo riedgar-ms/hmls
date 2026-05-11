@@ -36,7 +36,8 @@ from hmls.protocol import (
 )
 from hmls.uxcommon.mixins import LogStatusMixin
 from hmls.uxcommon.styles import (
-    ACTIVE_HIGHLIGHT_STYLE,
+    ACTIVE_DEAD_STYLE,
+    ACTIVE_TEAM_STYLES,
     CELL_CHARS,
     CELL_WIDTH,
     DEAD_MARKER,
@@ -115,12 +116,15 @@ class AutoMapView(Static):
                     is_active = tank.tank_id == self._active_tank_id
 
                     if not tank.alive:
-                        style = ACTIVE_HIGHLIGHT_STYLE if is_active else DEAD_STYLE
+                        style = ACTIVE_DEAD_STYLE if is_active else DEAD_STYLE
                         text.append(DEAD_MARKER, style=style)
                     else:
                         arrow = DIRECTION_ARROWS.get(int(tank.direction), "? ")
                         if is_active:
-                            style = ACTIVE_HIGHLIGHT_STYLE
+                            style = ACTIVE_TEAM_STYLES.get(
+                                self._team,
+                                _TEAM_STYLES.get(self._team, TEAM_A_STYLE),
+                            )
                         else:
                             style = _TEAM_STYLES.get(self._team, TEAM_A_STYLE)
                         text.append(arrow, style=style)
