@@ -120,6 +120,11 @@ def run_game(
     if reward_fn_b is None:
         reward_fn_b = DefaultReward()
 
+    # NOTE (REINFORCE_AUDIT item C): If future models use dropout or
+    # batch normalisation, add model.train() / model.eval() calls
+    # here — model.train() for trainable models, model.eval() for
+    # frozen ones.  Currently unnecessary because no model uses these
+    # layers, but this is the correct place for the calls.
     player_a = create_player(
         model_package=model_a.config.model_package,
         team="A",

@@ -218,3 +218,63 @@ class TestTrainerConfig:
         loaded = TrainerConfig.model_validate_json(json.dumps(config_data).encode())
         assert loaded.lethargy.policy == "consecutive_turn_limit"
         assert loaded.lethargy.max_consecutive_turns == 8
+
+    def test_default_loss_reduction(self, tmp_path: Path) -> None:
+        """Default loss_reduction is 'sum' (preserves original behaviour)."""
+        config = TrainerConfig(
+            model_a=ModelRef(dir=tmp_path / "a"),
+            model_b=ModelRef(dir=tmp_path / "b"),
+        )
+        assert config.hyperparameters.loss_reduction == "sum"
+
+    def test_loss_reduction_mean(self, tmp_path: Path) -> None:
+        """loss_reduction='mean' is accepted."""
+        config = TrainerConfig(
+            model_a=ModelRef(dir=tmp_path / "a"),
+            model_b=ModelRef(dir=tmp_path / "b"),
+            hyperparameters=HyperparameterConfig(loss_reduction="mean"),
+        )
+        assert config.hyperparameters.loss_reduction == "mean"
+
+    def test_invalid_loss_reduction_raises(self) -> None:
+        """Invalid loss_reduction value raises ValidationError."""
+        with pytest.raises(ValidationError):
+            HyperparameterConfig(loss_reduction="max")  # type: ignore[arg-type]
+
+    def test_default_max_grad_norm_is_none(self, tmp_path: Path) -> None:
+        """Default max_grad_norm is None (no clipping)."""
+        config = TrainerConfig(
+            model_a=ModelRef(dir=tmp_path / "a"),
+            model_b=ModelRef(dir=tmp_path / "b"),
+        )
+        assert config.hyperparameters.max_grad_norm is None
+
+    def test_max_grad_norm_positive(self, tmp_path: Path) -> None:
+        """Positive max_grad_norm is accepted."""
+        config = TrainerConfig(
+            model_a=ModelRef(dir=tmp_path / "a"),
+            model_b=ModelRef(dir=tmp_path / "b"),
+            hyperparameters=HyperparameterConfig(max_grad_norm=1.0),
+        )
+        assert config.hyperparameters.max_grad_norm == 1.0
+
+    def test_max_grad_norm_zero_raises(self) -> None:
+        """max_grad_norm=0 raises ValidationError (must be positive)."""
+        with pytest.raises(ValidationError):
+            HyperparameterConfig(max_grad_norm=0.0)
+
+    def test_max_grad_norm_negative_raises(self) -> None:
+        """Negative max_grad_norm raises ValidationError."""
+        with pytest.raises(ValidationError):
+            HyperparameterConfig(max_grad_norm=-1.0)
+
+    def test_loss_reduction_in_json(self, tmp_path: Path) -> None:
+        """loss_reduction round-trips through JSON."""
+        config_data = {
+            "model_a": {"dir": "models/a"},
+            "model_b": {"dir": "models/b"},
+            "hyperparameters": {"loss_reduction": "mean", "max_grad_norm": 5.0},
+        }
+        loaded = TrainerConfig.model_validate_json(json.dumps(config_data).encode())
+        assert loaded.hyperparameters.loss_reduction == "mean"
+        assert loaded.hyperparameters.max_grad_norm == 5.0

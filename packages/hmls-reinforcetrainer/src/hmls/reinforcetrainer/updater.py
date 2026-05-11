@@ -11,6 +11,8 @@ normalisation used in earlier versions.
 
 from __future__ import annotations
 
+from typing import Literal
+
 import torch
 from torch.optim import Optimizer
 
@@ -131,6 +133,8 @@ def reinforce_update(
     entropy_tensors: list[torch.Tensor] | None = None,
     entropy_coeff: float = 0.0,
     baseline: ReturnBaseline | None = None,
+    reduction: Literal["sum", "mean"] = "sum",
+    max_grad_norm: float | None = None,
 ) -> float:
     """Perform a single REINFORCE update from one episode.
 
@@ -169,6 +173,15 @@ def reinforce_update(
         baseline: A :class:`ReturnBaseline` for cross-episode advantage
             computation.  If ``None``, falls back to per-episode
             mean/std normalisation (the old, less effective approach).
+        reduction: How to aggregate the per-step loss across time
+            steps.  ``"sum"`` (default) matches the original Williams
+            (1992) REINFORCE derivation.  ``"mean"`` provides more
+            stable per-step gradient magnitudes when episode lengths
+            vary.
+        max_grad_norm: If set, clip the total gradient norm to this
+            value using ``torch.nn.utils.clip_grad_norm_`` after
+            ``loss.backward()`` and before ``optimizer.step()``.
+            ``None`` (default) disables clipping.
 
     Returns:
         The scalar policy gradient loss value (for logging).
@@ -220,7 +233,13 @@ def reinforce_update(
     #
     # Core REINFORCE: −Σ(log π(a|s) × advantage)
     #
-    policy_loss = -(log_probs_stacked * advantages.detach()).sum()
+    # The reduction controls whether the per-step terms are summed
+    # or averaged.  "sum" matches the original Williams (1992)
+    # derivation; "mean" normalises by episode length for more
+    # stable gradients across varying episode lengths.
+    #
+    reduce = torch.Tensor.sum if reduction == "sum" else torch.Tensor.mean
+    policy_loss = -reduce(log_probs_stacked * advantages.detach())
 
     # ── Entropy bonus ────────────────────────────────────────────
     #
@@ -233,12 +252,24 @@ def reinforce_update(
     entropy_bonus = torch.tensor(0.0)
     if entropy_coeff > 0.0 and entropy_tensors is not None:
         if len(entropy_tensors) == len(episode):
-            entropy_bonus = torch.stack(entropy_tensors).sum()
+            entropy_bonus = reduce(torch.stack(entropy_tensors))
 
     loss = policy_loss - entropy_coeff * entropy_bonus
 
     optimizer.zero_grad()
     loss.backward()  # type: ignore[no-untyped-call]
+
+    # ── Gradient clipping ────────────────────────────────────────
+    #
+    # Clip the total gradient norm before the optimizer step to
+    # prevent outlier episodes from destabilising training.  This
+    # is especially important with sum-reduction, where long
+    # episodes can produce very large gradients.
+    #
+    if max_grad_norm is not None:
+        all_params = [p for group in optimizer.param_groups for p in group["params"]]
+        torch.nn.utils.clip_grad_norm_(all_params, max_grad_norm)
+
     optimizer.step()
 
     return float(loss.item())
