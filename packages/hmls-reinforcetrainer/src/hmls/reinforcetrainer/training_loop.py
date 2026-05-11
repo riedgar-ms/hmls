@@ -146,6 +146,16 @@ def train(config: TrainerConfig) -> None:
     # Load model configs and validate compatibility
     model_config_a = load_model_config(config.model_a.dir)
     model_config_b = load_model_config(config.model_b.dir)
+    logger.info(
+        "Model A config: package=%s, dir=%s",
+        model_config_a.model_package,
+        config.model_a.dir,
+    )
+    logger.info(
+        "Model B config: package=%s, dir=%s",
+        model_config_b.model_package,
+        config.model_b.dir,
+    )
     _validate_model_configs(model_config_a, model_config_b)
     _validate_game_patch_size(config.game.patch_size, model_config_a, model_config_b)
 
@@ -159,6 +169,11 @@ def train(config: TrainerConfig) -> None:
     # Load or create models
     model_a = load_or_create_model(config.model_a.dir)
     model_b = load_or_create_model(config.model_b.dir)
+
+    params_a = sum(p.numel() for p in model_a.parameters())
+    params_b = sum(p.numel() for p in model_b.parameters())
+    logger.info("Model A trainable weights: %d", params_a)
+    logger.info("Model B trainable weights: %d", params_b)
 
     # NOTE (REINFORCE_AUDIT item C): If future models use dropout or
     # batch normalisation, call model_a.train() / model_b.train() for
