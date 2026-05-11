@@ -172,6 +172,12 @@ def train(config: TrainerConfig) -> None:
     model_a = load_or_create_model(config.model_a.dir)
     model_b = load_or_create_model(config.model_b.dir)
 
+    # NOTE (REINFORCE_AUDIT item C): If future models use dropout or
+    # batch normalisation, call model_a.train() / model_b.train() for
+    # trainable models and model_a.eval() / model_b.eval() for frozen
+    # ones here (and in game_runner.py where players are created).
+    # Currently unnecessary because no model uses these layers.
+
     # Set up optimizers for models that are training
     optimizer_a = (
         torch.optim.Adam(model_a.parameters(), lr=config.hyperparameters.learning_rate)
@@ -283,6 +289,8 @@ def train(config: TrainerConfig) -> None:
                     entropy_tensors=outcome.player_a.entropy_tensors,
                     entropy_coeff=config.hyperparameters.entropy_coeff,
                     baseline=baseline_a,
+                    reduction=config.hyperparameters.loss_reduction,
+                    max_grad_norm=config.hyperparameters.max_grad_norm,
                 )
                 total_loss_a += loss_a
 
@@ -295,6 +303,8 @@ def train(config: TrainerConfig) -> None:
                     entropy_tensors=outcome.player_b.entropy_tensors,
                     entropy_coeff=config.hyperparameters.entropy_coeff,
                     baseline=baseline_b,
+                    reduction=config.hyperparameters.loss_reduction,
+                    max_grad_norm=config.hyperparameters.max_grad_norm,
                 )
                 total_loss_b += loss_b
 

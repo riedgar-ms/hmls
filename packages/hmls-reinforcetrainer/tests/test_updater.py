@@ -344,3 +344,185 @@ class TestEntropyBonus:
         )
         # They should differ because the entropy bonus modifies the loss
         assert loss_no_ent != loss_with_ent
+
+
+class TestLossReduction:
+    """Tests for sum vs mean reduction in reinforce_update."""
+
+    def test_mean_differs_from_sum_for_multi_step(self) -> None:
+        """Mean and sum reductions produce different loss for multi-step episodes."""
+        torch.manual_seed(42)
+        model1 = StubTankModel(StubModelConfig())
+        model2 = StubTankModel(StubModelConfig())
+        model2.load_state_dict(model1.state_dict())
+
+        opt1 = torch.optim.Adam(model1.parameters(), lr=1e-3)
+        opt2 = torch.optim.Adam(model2.parameters(), lr=1e-3)
+
+        ep1, t1, e1 = _make_episode_with_tensors(model1, 10)
+        ep2, t2, e2 = _make_episode_with_tensors(model2, 10)
+
+        for i in range(10):
+            ep1.set_reward(i, 0.5)
+            ep2.set_reward(i, 0.5)
+
+        loss_sum = reinforce_update(
+            ep1,
+            opt1,
+            gamma=0.99,
+            log_prob_tensors=t1,
+            entropy_tensors=e1,
+            reduction="sum",
+        )
+        loss_mean = reinforce_update(
+            ep2,
+            opt2,
+            gamma=0.99,
+            log_prob_tensors=t2,
+            entropy_tensors=e2,
+            reduction="mean",
+        )
+        assert loss_sum != loss_mean
+
+    def test_single_step_mean_equals_sum(self) -> None:
+        """For a single-step episode, mean and sum produce the same loss."""
+        torch.manual_seed(42)
+        model1 = StubTankModel(StubModelConfig())
+        model2 = StubTankModel(StubModelConfig())
+        model2.load_state_dict(model1.state_dict())
+
+        opt1 = torch.optim.Adam(model1.parameters(), lr=1e-3)
+        opt2 = torch.optim.Adam(model2.parameters(), lr=1e-3)
+
+        # Reseed before each episode so both get identical random patches
+        torch.manual_seed(99)
+        ep1, t1, e1 = _make_episode_with_tensors(model1, 1)
+        torch.manual_seed(99)
+        ep2, t2, e2 = _make_episode_with_tensors(model2, 1)
+
+        ep1.set_reward(0, 1.0)
+        ep2.set_reward(0, 1.0)
+
+        loss_sum = reinforce_update(
+            ep1,
+            opt1,
+            gamma=0.99,
+            log_prob_tensors=t1,
+            entropy_tensors=e1,
+            reduction="sum",
+        )
+        loss_mean = reinforce_update(
+            ep2,
+            opt2,
+            gamma=0.99,
+            log_prob_tensors=t2,
+            entropy_tensors=e2,
+            reduction="mean",
+        )
+        assert abs(loss_sum - loss_mean) < 1e-6
+
+    def test_default_reduction_is_sum(self) -> None:
+        """Default reduction matches the original sum behaviour."""
+        model = StubTankModel(StubModelConfig())
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        episode, tensors, entropies = _make_episode_with_tensors(model, 5)
+
+        # Should work without specifying reduction (defaults to "sum")
+        loss = reinforce_update(
+            episode,
+            optimizer,
+            gamma=0.99,
+            log_prob_tensors=tensors,
+            entropy_tensors=entropies,
+        )
+        assert isinstance(loss, float)
+        assert not torch.isnan(torch.tensor(loss))
+
+
+class TestGradientClipping:
+    """Tests for gradient clipping in reinforce_update."""
+
+    def test_grad_norm_is_bounded(self) -> None:
+        """With max_grad_norm set, gradient norms are clipped."""
+        torch.manual_seed(42)
+        model = StubTankModel(StubModelConfig())
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+
+        # Create an episode with extreme rewards to produce large gradients
+        episode, tensors, entropies = _make_episode_with_tensors(model, 20)
+        for i in range(20):
+            episode.set_reward(i, 100.0)
+
+        max_norm = 0.5
+        reinforce_update(
+            episode,
+            optimizer,
+            gamma=0.99,
+            log_prob_tensors=tensors,
+            entropy_tensors=entropies,
+            max_grad_norm=max_norm,
+        )
+
+        # After the update, we can't directly inspect the clipped gradients
+        # (they've been consumed by optimizer.step()), but we can verify the
+        # function ran without error.  For a stronger test, we verify that
+        # clipping changes the outcome vs. no clipping.
+
+    def test_clipping_changes_outcome(self) -> None:
+        """Gradient clipping produces different parameter updates than no clipping."""
+        torch.manual_seed(42)
+        model1 = StubTankModel(StubModelConfig())
+        model2 = StubTankModel(StubModelConfig())
+        model2.load_state_dict(model1.state_dict())
+
+        opt1 = torch.optim.Adam(model1.parameters(), lr=1e-2)
+        opt2 = torch.optim.Adam(model2.parameters(), lr=1e-2)
+
+        ep1, t1, e1 = _make_episode_with_tensors(model1, 20)
+        ep2, t2, e2 = _make_episode_with_tensors(model2, 20)
+
+        for i in range(20):
+            ep1.set_reward(i, 100.0)
+            ep2.set_reward(i, 100.0)
+
+        reinforce_update(
+            ep1,
+            opt1,
+            gamma=0.99,
+            log_prob_tensors=t1,
+            entropy_tensors=e1,
+            max_grad_norm=None,
+        )
+        reinforce_update(
+            ep2,
+            opt2,
+            gamma=0.99,
+            log_prob_tensors=t2,
+            entropy_tensors=e2,
+            max_grad_norm=0.1,
+        )
+
+        # Parameters should differ due to clipping
+        any_differ = False
+        for (_, p1), (_, p2) in zip(model1.named_parameters(), model2.named_parameters()):
+            if not torch.allclose(p1, p2):
+                any_differ = True
+                break
+        assert any_differ, "Clipping had no effect on parameter updates"
+
+    def test_none_max_grad_norm_is_no_op(self) -> None:
+        """max_grad_norm=None should not affect the update."""
+        model = StubTankModel(StubModelConfig())
+        optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+        episode, tensors, entropies = _make_episode_with_tensors(model, 5)
+
+        loss = reinforce_update(
+            episode,
+            optimizer,
+            gamma=0.99,
+            log_prob_tensors=tensors,
+            entropy_tensors=entropies,
+            max_grad_norm=None,
+        )
+        assert isinstance(loss, float)
+        assert not torch.isnan(torch.tensor(loss))

@@ -132,6 +132,18 @@ class HyperparameterConfig(BaseModel, frozen=True, extra="forbid"):
             exploration across all actions, preventing collapse onto a
             narrow subset (e.g. always turning).  ``0.0`` disables the
             bonus; ``0.01`` is a reasonable starting point.
+        loss_reduction: How to aggregate the per-step policy gradient
+            loss across time steps.  ``"sum"`` matches the original
+            Williams (1992) REINFORCE derivation but causes longer
+            episodes to produce proportionally larger gradients.
+            ``"mean"`` provides more stable per-step gradient magnitudes
+            when episode lengths vary significantly.
+        max_grad_norm: Maximum gradient norm for gradient clipping via
+            ``torch.nn.utils.clip_grad_norm_``.  Applied after
+            ``loss.backward()`` and before ``optimizer.step()``.
+            ``None`` (the default) disables clipping.  Gradient clipping
+            is especially important when using ``loss_reduction="sum"``,
+            as outlier episodes can produce very large gradients.
     """
 
     learning_rate: float = Field(default=1e-3, gt=0.0)
@@ -139,6 +151,8 @@ class HyperparameterConfig(BaseModel, frozen=True, extra="forbid"):
     seed: int | None = None
     baseline_alpha: float = Field(default=0.99, gt=0.0, lt=1.0)
     entropy_coeff: float = Field(default=0.01, ge=0.0)
+    loss_reduction: Literal["sum", "mean"] = "sum"
+    max_grad_norm: float | None = Field(default=None, gt=0.0)
 
 
 class TrainerConfig(BaseModel, frozen=True, extra="forbid"):
