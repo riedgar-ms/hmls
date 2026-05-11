@@ -1,0 +1,46 @@
+{
+  "model_a": {
+    "dir": "weights/model_a",
+    "train": true,
+    "reward": {
+      "reward_type": "basic"
+    }
+  },
+  "model_b": {
+    "dir": "weights/model_b",
+    "train": true,
+    "reward": {
+      "reward_type": "basic"
+    }
+  },
+  "map": {
+    "min_size": 15,
+    "max_size": 25,
+    "impassable_fraction": 0.3,
+    "strategy": "Blob & Line"
+  },
+  "game": {
+    "games_per_map": 10,
+    "total_maps": 100,
+    "max_turns": 200,
+    "patch_size": 9
+  },
+  "output": {
+    "sample_game_dir": "output/sample_games",
+    "sample_game_interval": 50,
+    "save_weights_interval": 100
+  },
+  "hyperparameters": {
+    "learning_rate": 0.001,
+    "gamma": 0.99,
+    "seed": 42,
+    "baseline_alpha": 0.99,
+    "entropy_coeff": 0.01,
+    "loss_reduction": "sum",
+    "max_grad_norm": 1.0
+  },
+  "lethargy": {
+    "policy": "consecutive_turn_limit",
+    "max_consecutive_turns": 5
+  }
+}
