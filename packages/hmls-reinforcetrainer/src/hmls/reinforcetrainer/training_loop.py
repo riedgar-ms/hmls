@@ -6,6 +6,7 @@ periodic saving of weights and sample replays.
 
 from __future__ import annotations
 
+import logging
 import random
 from pathlib import Path
 
@@ -31,6 +32,8 @@ from hmls.reinforcetrainer.lethargy import (
     NoLethargyCheck,
 )
 from hmls.reinforcetrainer.updater import ReturnBaseline, reinforce_update
+
+logger = logging.getLogger(__name__)
 
 
 def _create_lethargy_policy(config: LethargyConfig) -> LethargyPolicy:
@@ -205,20 +208,25 @@ def train(config: TrainerConfig) -> None:
     total_loss_b = 0.0
 
     total_games_planned = config.game.total_maps * config.game.games_per_map
-    print(
-        f"Starting training: {config.game.total_maps} maps × "
-        f"{config.game.games_per_map} games/map = {total_games_planned} total games"
+    logger.info(
+        "Starting training: %d maps × %d games/map = %d total games",
+        config.game.total_maps,
+        config.game.games_per_map,
+        total_games_planned,
     )
-    print(f"  Train A: {config.model_a.train}, Train B: {config.model_b.train}")
-    print(
-        f"  Map size: {config.map.min_size}–{config.map.max_size} (random), "
-        f"impassable: {config.map.impassable_fraction:.0%}"
+    logger.info("  Train A: %s, Train B: %s", config.model_a.train, config.model_b.train)
+    logger.info(
+        "  Map size: %d–%d (random), impassable: %.0f%%",
+        config.map.min_size,
+        config.map.max_size,
+        config.map.impassable_fraction * 100,
     )
-    print(
-        f"  Max turns/game: {config.game.max_turns}, "
-        f"γ={config.hyperparameters.gamma}, lr={config.hyperparameters.learning_rate}"
+    logger.info(
+        "  Max turns/game: %d, γ=%s, lr=%s",
+        config.game.max_turns,
+        config.hyperparameters.gamma,
+        config.hyperparameters.learning_rate,
     )
-    print()
 
     for map_idx in range(config.game.total_maps):
         # Generate a new map
@@ -231,6 +239,15 @@ def train(config: TrainerConfig) -> None:
             config.map.impassable_fraction,
             config.map.strategy,
             seed=map_seed,
+        )
+        logger.debug(
+            "Map %d/%d: %dx%d, seed=%d, strategy=%s",
+            map_idx + 1,
+            config.game.total_maps,
+            map_width,
+            map_height,
+            map_seed,
+            config.map.strategy,
         )
 
         for game_idx in range(config.game.games_per_map):
@@ -264,6 +281,14 @@ def train(config: TrainerConfig) -> None:
             else:
                 draws += 1
 
+            logger.debug(
+                "Game %d: winner=%s, turns=%d, lethargy=%s",
+                total_games,
+                winner or "draw",
+                outcome.result.turns_played,
+                outcome.lethargy_loser or "none",
+            )
+
             # Policy gradient updates
             if config.model_a.train and optimizer_a is not None:
                 loss_a = reinforce_update(
@@ -278,6 +303,7 @@ def train(config: TrainerConfig) -> None:
                     max_grad_norm=config.hyperparameters.max_grad_norm,
                 )
                 total_loss_a += loss_a
+                logger.debug("Game %d: loss_a=%.6f", total_games, loss_a)
 
             if config.model_b.train and optimizer_b is not None:
                 loss_b = reinforce_update(
@@ -292,6 +318,7 @@ def train(config: TrainerConfig) -> None:
                     max_grad_norm=config.hyperparameters.max_grad_norm,
                 )
                 total_loss_b += loss_b
+                logger.debug("Game %d: loss_b=%.6f", total_games, loss_b)
 
             # Save sample game
             if total_games % config.output.sample_game_interval == 0:
@@ -300,13 +327,20 @@ def train(config: TrainerConfig) -> None:
                     config.output.sample_game_dir,
                     total_games,
                 )
+                logger.debug(
+                    "Saved sample game %d to %s",
+                    total_games,
+                    config.output.sample_game_dir,
+                )
 
             # Save weights periodically
             if total_games % config.output.save_weights_interval == 0:
                 if config.model_a.train:
                     _save_weights(model_a, config.model_a.dir, total_games)
+                    logger.info("Saved model A weights at game %d", total_games)
                 if config.model_b.train:
                     _save_weights(model_b, config.model_b.dir, total_games)
+                    logger.info("Saved model B weights at game %d", total_games)
 
             # Progress logging
             if total_games % config.game.games_per_map == 0:
@@ -331,10 +365,14 @@ def train(config: TrainerConfig) -> None:
     if config.model_b.train:
         _save_weights(model_b, config.model_b.dir, total_games)
 
-    print(f"\nTraining complete. {total_games} games played.")
-    print(
-        f"  Final record: A wins={wins_a}, B wins={wins_b}, draws={draws}, "
-        f"lethargy_a={lethargy_a}, lethargy_b={lethargy_b}"
+    logger.info("Training complete. %d games played.", total_games)
+    logger.info(
+        "  Final record: A wins=%d, B wins=%d, draws=%d, lethargy_a=%d, lethargy_b=%d",
+        wins_a,
+        wins_b,
+        draws,
+        lethargy_a,
+        lethargy_b,
     )
 
 
@@ -352,7 +390,7 @@ def _log_progress(
     train_a: bool,
     train_b: bool,
 ) -> None:
-    """Print a progress line to stdout.
+    """Log a progress line at INFO level.
 
     Args:
         total_games: Games completed so far.
@@ -388,4 +426,4 @@ def _log_progress(
     if train_b:
         parts.append(f"loss_b={avg_loss_b:.4f}")
 
-    print("  ".join(parts), flush=True)
+    logger.info("  ".join(parts))
