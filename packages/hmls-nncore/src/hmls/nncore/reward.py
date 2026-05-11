@@ -22,6 +22,7 @@ New reward types are added by:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections import deque
 from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, Discriminator, Tag
@@ -412,10 +413,161 @@ class BasicReward(RewardFunction):
             return 0.0
 
 
+# ── Focused reward ────────────────────────────────────────────────────
+
+
+class FocusedRewardConfig(BaseModel, frozen=True, extra="forbid"):
+    """Configuration for :class:`FocusedReward`.
+
+    A streamlined reward that keeps core combat and validity signals,
+    uses movement-based exploration (only cells the tank physically
+    moves onto count), and adds a liveliness reward based on position
+    diversity in a sliding window of recent steps.
+
+    Attributes:
+        reward_type: Discriminator tag — always ``"focused"``.
+        fire_hit_reward: Reward for hitting an enemy tank.
+        death_reward: Reward (negative) when the player's tank dies.
+        win_reward: Reward for winning the game.
+        loss_reward: Reward (negative) for losing the game.
+        step_reward: Per-step reward (negative to encourage faster play).
+        invalid_move_reward: Reward (negative) for attempting an invalid
+            action (applied in addition to the step reward).
+        fire_miss_reward: Reward (negative) for firing and missing.
+        fire_neglect_reward: Reward (negative) for not firing when an
+            alive enemy tank is directly ahead and could have been hit.
+        exploration_reward: Reward per newly visited cell.  Only cells
+            the tank actually moves onto count (not merely seen cells).
+        liveliness_window: Number of recent steps over which to measure
+            position diversity.
+        liveliness_target: Target number of unique positions within the
+            liveliness window.
+        liveliness_reward: Scaling factor for the liveliness signal.
+            The per-step liveliness reward is
+            ``liveliness_reward × (unique_positions - liveliness_target)``,
+            which is positive when the tank exceeds the target and
+            negative when it falls short.
+    """
+
+    reward_type: Literal["focused"] = "focused"
+    fire_hit_reward: float = 0.5
+    death_reward: float = -1.0
+    win_reward: float = 1.0
+    loss_reward: float = -1.0
+    step_reward: float = -0.01
+    invalid_move_reward: float = -0.05
+    fire_miss_reward: float = -0.1
+    fire_neglect_reward: float = -0.7
+    exploration_reward: float = 0.05
+    liveliness_window: int = 10
+    liveliness_target: int = 5
+    liveliness_reward: float = 0.1
+
+
+class FocusedReward(RewardFunction):
+    """Streamlined reward with movement-based exploration and liveliness.
+
+    Compared to :class:`BasicReward`, this removes per-action rewards
+    (pass, turn, move-forward, enemy-in-cone, consecutive-turn-penalty)
+    and changes exploration to only count cells physically visited by
+    the tank.  It adds a *liveliness* signal that encourages positional
+    diversity over a sliding window of recent steps.
+
+    Args:
+        config: A :class:`FocusedRewardConfig` instance.
+    """
+
+    def __init__(self, config: FocusedRewardConfig | None = None) -> None:
+        self.config: FocusedRewardConfig = config or FocusedRewardConfig()
+        self._explored_positions: set[Position] = set()
+        self._last_new_positions: int = 0
+        self._position_window: deque[Position] = deque(maxlen=self.config.liveliness_window)
+
+    def reset(self) -> None:
+        """Reset internal state for a new episode."""
+        self._explored_positions = set()
+        self._last_new_positions = 0
+        self._position_window = deque(maxlen=self.config.liveliness_window)
+
+    def observe_patch(self, patch: TankPatch) -> None:
+        """Record the tank's position for exploration and liveliness.
+
+        Exploration credit is given only when the tank's current
+        position (from the patch) is new.  The position is also
+        appended to the liveliness sliding window every step.
+
+        Args:
+            patch: The egocentric visibility patch.
+        """
+        pos = patch.position
+        self._position_window.append(pos)
+
+        if pos not in self._explored_positions:
+            self._explored_positions.add(pos)
+            self._last_new_positions = 1
+        else:
+            self._last_new_positions = 0
+
+    def compute_step_reward(
+        self,
+        entry: HistoryEntry,
+        patch: TankPatch,
+        team: str,
+    ) -> float:
+        """Compute the focused step reward.
+
+        Components (all added to the total):
+
+        - ``step_reward``: per-step time cost
+        - ``fire_hit_reward``: for hitting an enemy
+        - ``fire_miss_reward``: for firing and missing
+        - ``fire_neglect_reward``: when enemy directly ahead but action
+          was not fire
+        - ``invalid_move_reward``: for an invalid action
+        - ``exploration_reward``: per newly visited cell (movement only)
+        - liveliness reward once the window is full
+        """
+        reward = self.config.step_reward
+
+        # Fire outcome
+        if entry.hit is True:
+            reward += self.config.fire_hit_reward
+        elif entry.hit is False:
+            reward += self.config.fire_miss_reward
+        elif _enemy_directly_ahead(patch, team):
+            reward += self.config.fire_neglect_reward
+
+        # Invalid action
+        if not entry.valid:
+            reward += self.config.invalid_move_reward
+
+        # Exploration bonus (movement-only)
+        reward += self.config.exploration_reward * self._last_new_positions
+
+        # Liveliness reward (only once window is full)
+        if len(self._position_window) == self._position_window.maxlen:
+            unique = len(set(self._position_window))
+            reward += self.config.liveliness_reward * (unique - self.config.liveliness_target)
+
+        return reward
+
+    def compute_episode_end_reward(self, won: bool | None) -> float:
+        """Compute terminal reward based on game outcome."""
+        if won is True:
+            return self.config.win_reward
+        elif won is False:
+            return self.config.loss_reward
+        else:
+            return 0.0
+
+
 # ── Discriminated union & factory ─────────────────────────────────────
 
 RewardConfig = Annotated[
-    Union[Annotated[BasicRewardConfig, Tag("basic")]],
+    Union[
+        Annotated[BasicRewardConfig, Tag("basic")],
+        Annotated[FocusedRewardConfig, Tag("focused")],
+    ],
     Discriminator("reward_type"),
 ]
 """Discriminated union of all reward config types.
@@ -443,6 +595,8 @@ def create_reward(config: RewardConfig) -> RewardFunction:
     """
     if isinstance(config, BasicRewardConfig):
         return BasicReward(config)
+    if isinstance(config, FocusedRewardConfig):
+        return FocusedReward(config)
     raise TypeError(f"Unknown reward config type: {type(config).__name__}")
 
 

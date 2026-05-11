@@ -8,7 +8,7 @@ from hmls.core.map import CellType
 from hmls.core.tank import Tank
 from hmls.core.types import Action, Direction, Position
 from hmls.core.visibility import FogCell, TankPatch, VisibleCell
-from hmls.nncore.reward import BasicReward, BasicRewardConfig
+from hmls.nncore.reward import BasicReward, BasicRewardConfig, FocusedReward, FocusedRewardConfig
 
 
 def _make_entry(
@@ -705,3 +705,280 @@ def test_basic_reward_config_includes_reward_type_in_json() -> None:
     config = BasicRewardConfig(fire_hit_reward=0.5)
     data = json.loads(config.model_dump_json())
     assert data["reward_type"] == "basic"
+
+
+# ── FocusedReward tests ──────────────────────────────────────────────
+
+
+def _make_patch_at(pos: Position, size: int = 9) -> TankPatch:
+    """Create an empty patch centred on *pos*."""
+    grid: list[list[VisibleCell | FogCell]] = []
+    for _row in range(size):
+        row_cells: list[VisibleCell | FogCell] = []
+        for _col in range(size):
+            row_cells.append(VisibleCell(cell_type=CellType.PASSABLE))
+        grid.append(row_cells)
+    return TankPatch(
+        tank_id="t1",
+        position=pos,
+        direction=Direction.NORTH,
+        grid=grid,
+    )
+
+
+def test_focused_step_reward_basic() -> None:
+    """A plain valid move incurs step reward only (no action-specific bonuses)."""
+    rf = FocusedReward(FocusedRewardConfig(liveliness_window=100))
+    patch = _make_patch_at(Position(0, 0))
+    rf.observe_patch(patch)
+    entry = _make_entry(action=Action.MOVE_FORWARD)
+    # First step: exploration bonus for new cell, window not full
+    reward = rf.compute_step_reward(entry, patch, "alpha")
+    expected = -0.01 + 0.05  # step + exploration
+    assert abs(reward - expected) < 1e-7
+
+
+def test_focused_no_exploration_on_revisit() -> None:
+    """Revisiting a cell gives no exploration bonus."""
+    rf = FocusedReward(FocusedRewardConfig(liveliness_window=100))
+    pos = Position(3, 3)
+    patch = _make_patch_at(pos)
+    entry = _make_entry(action=Action.MOVE_FORWARD)
+
+    rf.observe_patch(patch)
+    rf.compute_step_reward(entry, patch, "alpha")
+
+    # Second visit to same position
+    rf.observe_patch(patch)
+    reward = rf.compute_step_reward(entry, patch, "alpha")
+    expected = -0.01  # step only, no exploration
+    assert abs(reward - expected) < 1e-7
+
+
+def test_focused_exploration_only_on_tank_position() -> None:
+    """Exploration only counts the tank's position, not all visible cells."""
+    rf = FocusedReward(FocusedRewardConfig(liveliness_window=100))
+    # Large patch sees many cells but tank is at (5,5)
+    patch = _make_patch_at(Position(5, 5))
+    rf.observe_patch(patch)
+    # Only 1 new position (the tank's), not the whole grid
+    assert rf._last_new_positions == 1
+    assert rf._explored_positions == {Position(5, 5)}
+
+
+def test_focused_fire_hit() -> None:
+    """Hitting an enemy gives the fire hit reward."""
+    rf = FocusedReward(FocusedRewardConfig(liveliness_window=100))
+    patch = _make_patch_at(Position(0, 0))
+    rf.observe_patch(patch)
+    entry = _make_entry(action=Action.FIRE, hit=True)
+    reward = rf.compute_step_reward(entry, patch, "alpha")
+    expected = -0.01 + 0.05 + 0.5  # step + exploration + hit
+    assert abs(reward - expected) < 1e-7
+
+
+def test_focused_fire_miss() -> None:
+    """Missing a fire gives the fire miss penalty."""
+    rf = FocusedReward(FocusedRewardConfig(liveliness_window=100))
+    patch = _make_patch_at(Position(0, 0))
+    rf.observe_patch(patch)
+    entry = _make_entry(action=Action.FIRE, hit=False)
+    reward = rf.compute_step_reward(entry, patch, "alpha")
+    expected = -0.01 + 0.05 + (-0.1)  # step + exploration + miss
+    assert abs(reward - expected) < 1e-7
+
+
+def test_focused_fire_neglect() -> None:
+    """Not firing when enemy is directly ahead gives neglect penalty."""
+    rf = FocusedReward(FocusedRewardConfig(liveliness_window=100))
+    patch = _make_patch_with_enemy_ahead()
+    rf.observe_patch(patch)
+    entry = _make_entry(action=Action.MOVE_FORWARD)
+    reward = rf.compute_step_reward(entry, patch, "alpha")
+    expected = -0.01 + 0.05 + (-0.7)  # step + exploration + neglect
+    assert abs(reward - expected) < 1e-7
+
+
+def test_focused_invalid_move() -> None:
+    """An invalid action gives the invalid move penalty."""
+    rf = FocusedReward(FocusedRewardConfig(liveliness_window=100))
+    patch = _make_patch_at(Position(0, 0))
+    rf.observe_patch(patch)
+    entry = _make_entry(action=Action.MOVE_FORWARD, valid=False)
+    reward = rf.compute_step_reward(entry, patch, "alpha")
+    expected = -0.01 + 0.05 + (-0.05)  # step + exploration + invalid
+    assert abs(reward - expected) < 1e-7
+
+
+def test_focused_no_action_specific_rewards() -> None:
+    """Turning and passing do not produce action-specific rewards."""
+    rf = FocusedReward(
+        FocusedRewardConfig(
+            liveliness_window=100,
+            exploration_reward=0.0,
+        )
+    )
+    for action in [Action.TURN_LEFT, Action.TURN_RIGHT, Action.PASS]:
+        patch = _make_patch_at(Position(0, 0))
+        rf.observe_patch(patch)
+        entry = _make_entry(action=action)
+        reward = rf.compute_step_reward(entry, patch, "alpha")
+        assert abs(reward - (-0.01)) < 1e-7, f"Unexpected reward for {action}"
+
+
+def test_focused_liveliness_diverse() -> None:
+    """Liveliness reward is positive when unique positions exceed target."""
+    cfg = FocusedRewardConfig(
+        liveliness_window=5,
+        liveliness_target=3,
+        liveliness_reward=0.1,
+        exploration_reward=0.0,
+    )
+    rf = FocusedReward(cfg)
+    entry = _make_entry(action=Action.MOVE_FORWARD)
+
+    # Fill window with 5 distinct positions
+    for i in range(5):
+        patch = _make_patch_at(Position(i, 0))
+        rf.observe_patch(patch)
+
+    patch = _make_patch_at(Position(4, 0))
+    reward = rf.compute_step_reward(entry, patch, "alpha")
+    # 5 unique in window, target 3 → liveliness = 0.1 * (5 - 3) = 0.2
+    expected = -0.01 + 0.2
+    assert abs(reward - expected) < 1e-7
+
+
+def test_focused_liveliness_stuck() -> None:
+    """Liveliness reward is negative when stuck in one place."""
+    cfg = FocusedRewardConfig(
+        liveliness_window=5,
+        liveliness_target=3,
+        liveliness_reward=0.1,
+        exploration_reward=0.0,
+    )
+    rf = FocusedReward(cfg)
+    entry = _make_entry(action=Action.TURN_LEFT)
+
+    # Fill window with same position
+    for _ in range(5):
+        patch = _make_patch_at(Position(2, 2))
+        rf.observe_patch(patch)
+
+    patch = _make_patch_at(Position(2, 2))
+    reward = rf.compute_step_reward(entry, patch, "alpha")
+    # 1 unique in window, target 3 → liveliness = 0.1 * (1 - 3) = -0.2
+    expected = -0.01 + (-0.2)
+    assert abs(reward - expected) < 1e-7
+
+
+def test_focused_liveliness_at_target() -> None:
+    """Liveliness reward is zero when unique positions equal target."""
+    cfg = FocusedRewardConfig(
+        liveliness_window=5,
+        liveliness_target=3,
+        liveliness_reward=0.1,
+        exploration_reward=0.0,
+    )
+    rf = FocusedReward(cfg)
+    entry = _make_entry(action=Action.MOVE_FORWARD)
+
+    # 3 unique positions in 5 steps
+    positions = [Position(0, 0), Position(1, 0), Position(2, 0), Position(2, 0), Position(2, 0)]
+    for pos in positions:
+        rf.observe_patch(_make_patch_at(pos))
+
+    patch = _make_patch_at(Position(2, 0))
+    reward = rf.compute_step_reward(entry, patch, "alpha")
+    # 3 unique, target 3 → liveliness = 0.0
+    expected = -0.01
+    assert abs(reward - expected) < 1e-7
+
+
+def test_focused_liveliness_not_applied_before_window_full() -> None:
+    """Liveliness reward is not applied until the window is full."""
+    cfg = FocusedRewardConfig(
+        liveliness_window=5,
+        liveliness_target=3,
+        liveliness_reward=0.1,
+        exploration_reward=0.0,
+    )
+    rf = FocusedReward(cfg)
+    entry = _make_entry(action=Action.TURN_LEFT)
+
+    # Only 3 steps — window not full
+    for _ in range(3):
+        rf.observe_patch(_make_patch_at(Position(0, 0)))
+
+    patch = _make_patch_at(Position(0, 0))
+    reward = rf.compute_step_reward(entry, patch, "alpha")
+    # No liveliness component
+    expected = -0.01
+    assert abs(reward - expected) < 1e-7
+
+
+def test_focused_liveliness_window_slides() -> None:
+    """The liveliness window drops old positions as new ones are added."""
+    cfg = FocusedRewardConfig(
+        liveliness_window=3,
+        liveliness_target=2,
+        liveliness_reward=0.1,
+        exploration_reward=0.0,
+    )
+    rf = FocusedReward(cfg)
+    entry = _make_entry(action=Action.MOVE_FORWARD)
+
+    # Fill with 3 distinct positions
+    for i in range(3):
+        rf.observe_patch(_make_patch_at(Position(i, 0)))
+
+    # Now add a duplicate — oldest (Position(0,0)) falls off
+    rf.observe_patch(_make_patch_at(Position(1, 0)))
+    # Window is [Pos(1,0), Pos(2,0), Pos(1,0)] → 2 unique
+    patch = _make_patch_at(Position(1, 0))
+    reward = rf.compute_step_reward(entry, patch, "alpha")
+    # 2 unique, target 2 → liveliness = 0.0
+    expected = -0.01
+    assert abs(reward - expected) < 1e-7
+
+
+def test_focused_episode_end_win() -> None:
+    """Win gives positive terminal reward."""
+    rf = FocusedReward()
+    assert abs(rf.compute_episode_end_reward(True) - 1.0) < 1e-7
+
+
+def test_focused_episode_end_loss() -> None:
+    """Loss gives negative terminal reward."""
+    rf = FocusedReward()
+    assert abs(rf.compute_episode_end_reward(False) - (-1.0)) < 1e-7
+
+
+def test_focused_episode_end_draw() -> None:
+    """Draw gives zero terminal reward."""
+    rf = FocusedReward()
+    assert abs(rf.compute_episode_end_reward(None)) < 1e-7
+
+
+def test_focused_reset_clears_state() -> None:
+    """Reset clears exploration and liveliness state."""
+    rf = FocusedReward(FocusedRewardConfig(liveliness_window=3))
+    for i in range(3):
+        rf.observe_patch(_make_patch_at(Position(i, 0)))
+    assert len(rf._explored_positions) == 3
+    assert len(rf._position_window) == 3
+
+    rf.reset()
+    assert len(rf._explored_positions) == 0
+    assert len(rf._position_window) == 0
+
+
+def test_focused_config_serialisation() -> None:
+    """FocusedRewardConfig round-trips through JSON."""
+    import json
+
+    config = FocusedRewardConfig(fire_hit_reward=0.7, liveliness_target=8)
+    data = json.loads(config.model_dump_json())
+    assert data["reward_type"] == "focused"
+    assert data["fire_hit_reward"] == 0.7
+    assert data["liveliness_target"] == 8
