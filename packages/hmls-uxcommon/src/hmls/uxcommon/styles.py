@@ -13,8 +13,21 @@ TEAM_B_STYLE = "bold magenta"
 DEAD_STYLE = "dim red"
 """Rich style for destroyed tanks (wreckage)."""
 
-ACTIVE_HIGHLIGHT_STYLE = "bold yellow on dark_green"
-"""Rich style for the cell of the currently active tank."""
+ACTIVE_HIGHLIGHT_BG = "on dark_green"
+"""Background portion of the active-tank highlight."""
+
+ACTIVE_TEAM_STYLES: dict[str, str] = {
+    "A": f"bold cyan {ACTIVE_HIGHLIGHT_BG}",
+    "B": f"bold magenta {ACTIVE_HIGHLIGHT_BG}",
+}
+"""Per-team Rich styles for the active tank (team foreground + highlight background)."""
+
+ACTIVE_DEAD_STYLE = f"dim red {ACTIVE_HIGHLIGHT_BG}"
+"""Rich style for a destroyed but currently-active tank."""
+
+# Kept for backward compatibility; prefer ACTIVE_TEAM_STYLES for new code.
+ACTIVE_HIGHLIGHT_STYLE = f"bold yellow {ACTIVE_HIGHLIGHT_BG}"
+"""Rich style for the cell of the currently active tank (legacy)."""
 
 # ── Terrain ───────────────────────────────────────────────────────────
 
@@ -50,3 +63,11 @@ DIRECTION_ARROWS: dict[int, str] = {
 
 DEAD_MARKER = "✕ "
 """2-char marker for destroyed tanks."""
+
+# ── Team style mapping ────────────────────────────────────────────────
+
+TEAM_STYLES: dict[str, str] = {
+    "A": TEAM_A_STYLE,
+    "B": TEAM_B_STYLE,
+}
+"""Mapping of team ID → Rich style string for rendering team-coloured elements."""

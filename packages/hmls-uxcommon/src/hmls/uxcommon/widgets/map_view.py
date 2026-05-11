@@ -11,7 +11,8 @@ from hmls.core.map import CellType, GameMap
 from hmls.core.tank import TankId
 from hmls.core.types import Position
 from hmls.uxcommon.styles import (
-    ACTIVE_HIGHLIGHT_STYLE,
+    ACTIVE_DEAD_STYLE,
+    ACTIVE_TEAM_STYLES,
     CELL_CHARS,
     CELL_WIDTH,
     DEAD_MARKER,
@@ -20,13 +21,8 @@ from hmls.uxcommon.styles import (
     IMPASSABLE_STYLE,
     PASSABLE_STYLE,
     TEAM_A_STYLE,
-    TEAM_B_STYLE,
+    TEAM_STYLES,
 )
-
-_TEAM_STYLES: dict[str, str] = {
-    "A": TEAM_A_STYLE,
-    "B": TEAM_B_STYLE,
-}
 
 
 class MapView(Static):
@@ -91,14 +87,16 @@ class MapView(Static):
                     is_active = tank_id == self.active_tank_id
 
                     if not alive:
-                        style = ACTIVE_HIGHLIGHT_STYLE if is_active else DEAD_STYLE
+                        style = ACTIVE_DEAD_STYLE if is_active else DEAD_STYLE
                         text.append(DEAD_MARKER, style=style)
                     else:
                         arrow = DIRECTION_ARROWS.get(direction, "? ")
                         if is_active:
-                            style = ACTIVE_HIGHLIGHT_STYLE
+                            style = ACTIVE_TEAM_STYLES.get(
+                                team, TEAM_STYLES.get(team, TEAM_A_STYLE)
+                            )
                         else:
-                            style = _TEAM_STYLES.get(team, TEAM_A_STYLE)
+                            style = TEAM_STYLES.get(team, TEAM_A_STYLE)
                         text.append(arrow, style=style)
                 elif game_map[x, y] == CellType.PASSABLE:
                     text.append(CELL_CHARS, style=PASSABLE_STYLE)

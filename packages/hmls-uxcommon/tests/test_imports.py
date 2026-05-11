@@ -23,7 +23,10 @@ class TestStylesImport:
     def test_import_style_constants(self) -> None:
         """Every documented style constant is importable."""
         from hmls.uxcommon.styles import (  # noqa: F401
+            ACTIVE_DEAD_STYLE,
+            ACTIVE_HIGHLIGHT_BG,
             ACTIVE_HIGHLIGHT_STYLE,
+            ACTIVE_TEAM_STYLES,
             BOUNDARY_STYLE,
             CELL_CHARS,
             CELL_WIDTH,
@@ -35,6 +38,7 @@ class TestStylesImport:
             PASSABLE_STYLE,
             TEAM_A_STYLE,
             TEAM_B_STYLE,
+            TEAM_STYLES,
         )
 
 
@@ -62,3 +66,9 @@ class TestWidgetImports:
         from hmls.uxcommon.widgets import PlayerViewRegion
 
         assert issubclass(PlayerViewRegion, Widget)
+
+    def test_import_team_legend(self) -> None:
+        """TeamLegend is importable and is a Textual Widget subclass."""
+        from hmls.uxcommon.widgets import TeamLegend
+
+        assert issubclass(TeamLegend, Widget)

@@ -18,13 +18,8 @@ from hmls.uxcommon.styles import (
     IMPASSABLE_STYLE,
     PASSABLE_STYLE,
     TEAM_A_STYLE,
-    TEAM_B_STYLE,
+    TEAM_STYLES,
 )
-
-_TEAM_STYLES: dict[str, str] = {
-    "A": TEAM_A_STYLE,
-    "B": TEAM_B_STYLE,
-}
 
 _ACTIVE_BORDER_STYLE = "bold yellow"
 """Textual CSS border colour for the active tank's patch."""
@@ -106,7 +101,7 @@ class PatchView(Static):
                             # Rotate into egocentric space: subtract observer direction.
                             ego_dir = (int(tank.direction) - observer_dir) % 4
                             arrow = DIRECTION_ARROWS.get(ego_dir, "? ")
-                            style = _TEAM_STYLES.get(tank.team, TEAM_A_STYLE)
+                            style = TEAM_STYLES.get(tank.team, TEAM_A_STYLE)
                             text.append(arrow, style=style)
                     elif cell.cell_type.value == 1:  # PASSABLE
                         text.append(CELL_CHARS, style=PASSABLE_STYLE)
