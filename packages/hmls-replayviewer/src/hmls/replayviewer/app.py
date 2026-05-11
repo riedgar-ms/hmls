@@ -3,21 +3,28 @@
 Lets the user step through a recorded game history, watching the map
 and fog-of-war patches update at each turn.  Supports both manual
 stepping (arrow keys) and automatic playback with adjustable speed.
+
+Action logs are displayed per-tank in a two-column grid (one column
+per team), so the user can see each tank's recent actions at a glance.
 """
 
 from __future__ import annotations
 
+from collections import defaultdict
+
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import ScrollableContainer
+from textual.containers import Horizontal, ScrollableContainer, Vertical
 from textual.timer import Timer
 from textual.widgets import Footer, Header, RichLog, Static
 
 from hmls.core.engine import GameResult, HistoryEntry
 from hmls.core.game_state import GameState
 from hmls.core.map import GameMap
+from hmls.core.tank import TankId
 from hmls.replayviewer.cli import build_state_timeline, load_game_result, parse_args
 from hmls.uxcommon import LogStatusMixin
+from hmls.uxcommon.mixins import format_turn_status
 from hmls.uxcommon.styles import TEAM_STYLES
 from hmls.uxcommon.widgets.map_view import MapView
 from hmls.uxcommon.widgets.team_legend import TeamLegend
@@ -35,6 +42,33 @@ _DEFAULT_DELAY: float = 0.5
 
 _DELAY_STEP: float = 0.1
 """Amount to change delay per key press."""
+
+_MAX_LOG_LINES: int = 10
+"""Maximum number of recent entries shown per tank log."""
+
+
+def _tank_log_id(tank_id: TankId) -> str:
+    """Return the DOM id for a tank's per-tank ``RichLog`` widget.
+
+    Args:
+        tank_id: The tank identifier (e.g. ``"A1"``).
+
+    Returns:
+        A CSS-safe DOM id string (e.g. ``"log-tank-A1"``).
+    """
+    return f"log-tank-{tank_id}"
+
+
+def _tank_panel_id(tank_id: TankId) -> str:
+    """Return the DOM id for a tank's surrounding panel container.
+
+    Args:
+        tank_id: The tank identifier.
+
+    Returns:
+        A CSS-safe DOM id string (e.g. ``"panel-tank-A1"``).
+    """
+    return f"panel-tank-{tank_id}"
 
 
 class ReplayViewerApp(LogStatusMixin, App[None]):
@@ -56,10 +90,37 @@ class ReplayViewerApp(LogStatusMixin, App[None]):
         height: 1fr;
         min-height: 10;
     }
-    #log-panel {
+    #log-scroll {
         height: auto;
-        max-height: 5;
+        max-height: 12;
         border-top: solid $primary;
+    }
+    #log-grid {
+        height: auto;
+    }
+    .team-col {
+        width: 1fr;
+        height: auto;
+    }
+    .tank-panel {
+        height: auto;
+        border: solid $secondary;
+        padding: 0 1;
+        margin: 0 1 0 0;
+    }
+    .tank-panel.active-tank {
+        border: solid $success;
+    }
+    .tank-label {
+        height: 1;
+        padding: 0;
+    }
+    .tank-log {
+        height: auto;
+        max-height: 6;
+    }
+    #log-panel {
+        display: none;
     }
     #status-bar {
         dock: bottom;
@@ -92,6 +153,13 @@ class ReplayViewerApp(LogStatusMixin, App[None]):
         self._states: list[GameState] = build_state_timeline(result)
         self._history: list[HistoryEntry] = list(result.history)
 
+        # Build an ordered mapping of team → list of tank IDs.
+        teams: dict[str, list[TankId]] = defaultdict(list)
+        for tank in result.initial_state.tanks:
+            teams[tank.team].append(tank.id)
+        self._teams: dict[str, list[TankId]] = dict(sorted(teams.items()))
+        self._all_tank_ids: list[TankId] = [tid for tids in self._teams.values() for tid in tids]
+
         self._current_step: int = 0
         self._playing: bool = False
         self._delay: float = _DEFAULT_DELAY
@@ -111,7 +179,28 @@ class ReplayViewerApp(LogStatusMixin, App[None]):
                 id="map-view",
             )
 
-        yield RichLog(id="log-panel", highlight=True, markup=True, max_lines=200)
+        # Per-tank log grid: one column per team, one panel per tank.
+        with ScrollableContainer(id="log-scroll"):
+            with Horizontal(id="log-grid"):
+                for team, tank_ids in self._teams.items():
+                    style = TEAM_STYLES.get(team, "")
+                    with Vertical(classes="team-col"):
+                        for tid in tank_ids:
+                            with Vertical(id=_tank_panel_id(tid), classes="tank-panel"):
+                                yield Static(
+                                    f"[{style}]{tid}[/{style}]",
+                                    classes="tank-label",
+                                )
+                                yield RichLog(
+                                    id=_tank_log_id(tid),
+                                    highlight=True,
+                                    markup=True,
+                                    max_lines=_MAX_LOG_LINES,
+                                    classes="tank-log",
+                                )
+
+        # Hidden RichLog keeps LogStatusMixin._write_log working.
+        yield RichLog(id="log-panel")
         yield Static(self._build_status_text(), id="status-bar")
         yield Footer()
 
@@ -171,20 +260,36 @@ class ReplayViewerApp(LogStatusMixin, App[None]):
     # ── Status bar ────────────────────────────────────────────────
 
     def _rebuild_log(self) -> None:
-        """Clear and rebuild the log panel with entries up to the current step."""
-        try:
-            log_panel = self.query_one("#log-panel", RichLog)
-        except Exception:
-            return
-        log_panel.clear()
+        """Clear and rebuild per-tank log panels with entries up to the current step."""
+        # Bucket history entries by tank.
+        per_tank: dict[TankId, list[HistoryEntry]] = defaultdict(list)
         for entry in self._history[: self._current_step]:
-            self._log_turn_result(
-                entry.tank_id,
-                entry.applied_action.value,
-                entry.valid,
-                entry.reason,
-                entry.hit,
-            )
+            per_tank[entry.tank_id].append(entry)
+
+        active_id = self._active_tank_id()
+
+        for tid in self._all_tank_ids:
+            try:
+                log_widget = self.query_one(f"#{_tank_log_id(tid)}", RichLog)
+            except Exception:
+                continue
+
+            log_widget.clear()
+            entries = per_tank.get(tid, [])
+            # Show only the most recent entries to keep the display compact.
+            for entry in entries[-_MAX_LOG_LINES:]:
+                status = format_turn_status(entry.valid, entry.reason, entry.hit)
+                log_widget.write(f"  {entry.applied_action.value} — {status}")
+
+            # Highlight the panel of the tank that just acted.
+            try:
+                panel = self.query_one(f"#{_tank_panel_id(tid)}")
+            except Exception:
+                continue
+            if tid == active_id:
+                panel.add_class("active-tank")
+            else:
+                panel.remove_class("active-tank")
 
     def _build_status_text(self) -> str:
         """Build the status bar text showing current position and controls."""
