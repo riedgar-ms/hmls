@@ -4,7 +4,7 @@
     "train": true,
     "reward": {
       "actions": {
-        "move_forward": 0.01,
+        "move_forward": 0.03,
         "turn_left": -0.01,
         "turn_right": -0.01,
         "fire": 0.0,
@@ -14,7 +14,7 @@
       "firing": {
         "hit": 0.5,
         "miss": -0.05,
-        "neglect": -0.1
+        "neglect": -0.3
       },
       "game_state": {
         "win": 1.0,
@@ -24,8 +24,8 @@
         "death": -1.0
       },
       "exploration": {
-        "see_cell": 0.02,
-        "occupy_cell": 0.0
+        "see_cell": 0.001,
+        "occupy_cell": 0.01
       },
       "situational": {
         "enemy_in_cone": 0.1
@@ -37,7 +37,7 @@
     "train": true,
     "reward": {
       "actions": {
-        "move_forward": 0.01,
+        "move_forward": 0.03,
         "turn_left": -0.01,
         "turn_right": -0.01,
         "fire": 0.0,
@@ -47,18 +47,18 @@
       "firing": {
         "hit": 0.5,
         "miss": -0.05,
-        "neglect": -0.1
+        "neglect": -0.4
       },
       "game_state": {
         "win": 1.0,
         "loss": -1.0,
-        "invalid_move": -0.1,
+        "invalid_move": -0.2,
         "step": -0.01,
         "death": -1.0
       },
       "exploration": {
         "see_cell": 0.02,
-        "occupy_cell": 0.0
+        "occupy_cell": 0.01
       },
       "situational": {
         "enemy_in_cone": 0.1
@@ -68,7 +68,7 @@
   "map": {
     "min_size": 10,
     "max_size": 15,
-    "impassable_fraction": 0.2,
+    "impassable_fraction": 0.1,
     "strategy": "Blob & Line"
   },
   "game": {
