@@ -54,55 +54,6 @@ def persistence() -> NNPlayerModelPersistence[_StubConfig, _StubModel]:
     return NNPlayerModelPersistence(_StubConfig, _StubModel)
 
 
-# ── Tests: reward config persistence ──────────────────────────────────
-
-
-class TestRewardConfig:
-    """Tests for NNPlayerModelPersistence reward config methods."""
-
-    def test_roundtrip(
-        self,
-        tmp_path: Path,
-        persistence: NNPlayerModelPersistence[_StubConfig, _StubModel],
-    ) -> None:
-        """BasicRewardConfig can be saved and loaded from JSON."""
-        config = BasicRewardConfig(fire_hit_reward=1.0, death_reward=-2.0)
-        persistence.save_reward_config(config, tmp_path)
-        loaded = persistence.load_reward_config(tmp_path)
-        assert loaded.fire_hit_reward == 1.0
-        assert loaded.death_reward == -2.0
-
-    def test_default_roundtrip(
-        self,
-        tmp_path: Path,
-        persistence: NNPlayerModelPersistence[_StubConfig, _StubModel],
-    ) -> None:
-        """Default config round-trips correctly."""
-        config = BasicRewardConfig()
-        persistence.save_reward_config(config, tmp_path)
-        loaded = persistence.load_reward_config(tmp_path)
-        assert loaded == config
-
-    def test_load_missing_raises(
-        self,
-        tmp_path: Path,
-        persistence: NNPlayerModelPersistence[_StubConfig, _StubModel],
-    ) -> None:
-        """Loading from a directory without reward_config.json raises."""
-        with pytest.raises(FileNotFoundError, match="reward_config.json"):
-            persistence.load_reward_config(tmp_path)
-
-    def test_save_creates_directory(
-        self,
-        tmp_path: Path,
-        persistence: NNPlayerModelPersistence[_StubConfig, _StubModel],
-    ) -> None:
-        """save_reward_config creates the directory if needed."""
-        deep_dir = tmp_path / "a" / "b"
-        persistence.save_reward_config(BasicRewardConfig(), deep_dir)
-        assert (deep_dir / "reward_config.json").exists()
-
-
 # ── Tests: model data persistence ─────────────────────────────────────
 
 

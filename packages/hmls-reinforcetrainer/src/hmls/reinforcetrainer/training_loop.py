@@ -33,21 +33,6 @@ from hmls.reinforcetrainer.lethargy import (
 from hmls.reinforcetrainer.updater import ReturnBaseline, reinforce_update
 
 
-def _load_reward_config(model_dir: Path) -> RewardFunction:
-    """Load the reward config from a model directory via dynamic dispatch.
-
-    Args:
-        model_dir: Directory containing ``reward_config.json``.
-
-    Returns:
-        A RewardFunction instance matching the config's reward_type.
-    """
-    from hmls.nncore.persistence import load_reward_config_for_package
-
-    reward_config = load_reward_config_for_package(model_dir)
-    return create_reward(reward_config)
-
-
 def _create_lethargy_policy(config: LethargyConfig) -> LethargyPolicy:
     """Instantiate a lethargy policy from configuration.
 
@@ -161,9 +146,9 @@ def train(config: TrainerConfig) -> None:
     _validate_model_configs(model_config_a, model_config_b)
     _validate_game_patch_size(config.game.patch_size, model_config_a, model_config_b)
 
-    # Load reward configs via dynamic dispatch
-    reward_fn_a: RewardFunction = _load_reward_config(config.model_a.dir)
-    reward_fn_b: RewardFunction = _load_reward_config(config.model_b.dir)
+    # Create reward functions from training config
+    reward_fn_a: RewardFunction = create_reward(config.model_a.reward)
+    reward_fn_b: RewardFunction = create_reward(config.model_b.reward)
 
     # Instantiate lethargy policy
     lethargy_policy = _create_lethargy_policy(config.lethargy)

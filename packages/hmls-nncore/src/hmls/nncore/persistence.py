@@ -36,7 +36,6 @@ from hmls.nncore.model import TankModelBase, TankModelConfig
 from hmls.nncore.reward import BasicRewardConfig, RewardConfig
 
 MODEL_CONFIG_FILENAME = "model_config.json"
-REWARD_CONFIG_FILENAME = "reward_config.json"
 
 ModelT = TypeVar("ModelT", bound=TankModelBase)
 ConfigT = TypeVar("ConfigT", bound=TankModelConfig)
@@ -120,31 +119,6 @@ class ModelPersistence(ABC, Generic[ConfigT, ModelT]):
         ...
 
     @abstractmethod
-    def save_reward_config(self, config: RewardConfig, directory: Path) -> None:
-        """Save a reward configuration to a directory.
-
-        Args:
-            config: The reward configuration to save.
-            directory: Target directory (created if it does not exist).
-        """
-        ...
-
-    @abstractmethod
-    def load_reward_config(self, directory: Path) -> RewardConfig:
-        """Load a reward configuration from a directory.
-
-        Args:
-            directory: Directory containing the reward config file.
-
-        Returns:
-            The loaded reward configuration.
-
-        Raises:
-            FileNotFoundError: If the config file is missing.
-        """
-        ...
-
-    @abstractmethod
     def create_model(self, config: ConfigT) -> ModelT:
         """Create a new model instance from configuration.
 
@@ -188,7 +162,6 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
 
     - ``model.pt`` (torch checkpoint with state_dict + config dict)
     - ``model_config.json`` (Pydantic model config as JSON)
-    - ``reward_config.json`` (:class:`RewardConfig` as JSON)
     - :class:`~hmls.nncore.player.NNPlayer` for game play
 
     To use, simply instantiate with the concrete config and model
@@ -294,26 +267,6 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
                 f"'{MODEL_CONFIG_FILENAME}'."
             )
         return self._config_cls.model_validate_json(path.read_text())
-
-    def save_reward_config(self, config: RewardConfig, directory: Path) -> None:
-        """Save a :class:`RewardConfig` as ``reward_config.json``."""
-        directory.mkdir(parents=True, exist_ok=True)
-        path = directory / REWARD_CONFIG_FILENAME
-        path.write_text(config.model_dump_json(indent=2))
-
-    def load_reward_config(self, directory: Path) -> RewardConfig:
-        """Load a :class:`RewardConfig` from ``reward_config.json``."""
-        path = directory / REWARD_CONFIG_FILENAME
-        if not path.exists():
-            raise FileNotFoundError(
-                f"Reward configuration file not found: {path}. "
-                f"Each model directory must contain a "
-                f"'{REWARD_CONFIG_FILENAME}'."
-            )
-        from pydantic import TypeAdapter
-
-        adapter: TypeAdapter[RewardConfig] = TypeAdapter(RewardConfig)
-        return adapter.validate_json(path.read_text())
 
     # ── Factory methods ───────────────────────────────────────────────
 
@@ -511,21 +464,3 @@ def create_player(
     """
     persistence = _get_persistence(model_package)
     return persistence.create_player(team=team, model=model, mode=mode)
-
-
-def load_reward_config_for_package(directory: Path) -> RewardConfig:
-    """Load reward config using dynamic package dispatch.
-
-    Reads ``model_config.json`` to discover the ``model_package``,
-    then delegates to the package's persistence instance.
-
-    Args:
-        directory: Directory containing ``model_config.json`` and
-            ``reward_config.json``.
-
-    Returns:
-        The loaded :class:`RewardConfig`.
-    """
-    model_package = read_model_package(directory)
-    persistence = _get_persistence(model_package)
-    return persistence.load_reward_config(directory)

@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 import torch
 
-from hmls.nncore.reward import BasicRewardConfig
 from hmls.singlemki.model import MkIModelConfig, MkITankPolicyNetwork
 from hmls.singlemki.persistence import PERSISTENCE
 
@@ -98,40 +97,3 @@ class TestModelConfigJson:
         deep_dir = tmp_path / "a" / "b" / "c"
         PERSISTENCE.save_model_config(MkIModelConfig(), deep_dir)
         assert (deep_dir / "model_config.json").exists()
-
-
-class TestRewardConfigJson:
-    """Tests for reward_config.json save/load utilities."""
-
-    def test_save_and_load_roundtrip(self, tmp_path: Path) -> None:
-        """BasicRewardConfig can be saved and loaded from JSON."""
-        config = BasicRewardConfig(
-            fire_hit_reward=1.0,
-            death_reward=-2.0,
-            exploration_reward=0.05,
-        )
-        PERSISTENCE.save_reward_config(config, tmp_path)
-
-        loaded = PERSISTENCE.load_reward_config(tmp_path)
-        assert loaded.fire_hit_reward == 1.0
-        assert loaded.death_reward == -2.0
-        assert loaded.exploration_reward == 0.05
-
-    def test_default_config_roundtrip(self, tmp_path: Path) -> None:
-        """Default BasicRewardConfig round-trips correctly."""
-        config = BasicRewardConfig()
-        PERSISTENCE.save_reward_config(config, tmp_path)
-
-        loaded = PERSISTENCE.load_reward_config(tmp_path)
-        assert loaded == config
-
-    def test_load_missing_raises(self, tmp_path: Path) -> None:
-        """Loading from a directory without reward_config.json raises."""
-        with pytest.raises(FileNotFoundError, match="reward_config.json"):
-            PERSISTENCE.load_reward_config(tmp_path)
-
-    def test_save_creates_directory(self, tmp_path: Path) -> None:
-        """save_reward_config creates the directory if needed."""
-        deep_dir = tmp_path / "a" / "b" / "c"
-        PERSISTENCE.save_reward_config(BasicRewardConfig(), deep_dir)
-        assert (deep_dir / "reward_config.json").exists()
