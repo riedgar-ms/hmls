@@ -14,6 +14,7 @@ members = [
     "hmls-nncore",
     "hmls-observer",
     "hmls-protocol",
+    "hmls-randomtank",
     "hmls-reinforcetrainer",
     "hmls-replayviewer",
     "hmls-server",
@@ -295,6 +296,25 @@ requires-dist = [
 ]
 
 [[package]]
+name = "hmls-randomtank"
+version = "0.1.0"
+source = { editable = "packages/hmls-randomtank" }
+dependencies = [
+    { name = "hmls-core" },
+    { name = "hmls-nncore" },
+    { name = "pydantic" },
+    { name = "torch" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "hmls-core", editable = "packages/hmls-core" },
+    { name = "hmls-nncore", editable = "packages/hmls-nncore" },
+    { name = "pydantic", specifier = ">=2.0" },
+    { name = "torch", specifier = ">=2.0" },
+]
+
+[[package]]
 name = "hmls-reinforcetrainer"
 version = "0.1.0"
 source = { editable = "packages/hmls-reinforcetrainer" }
@@ -434,6 +454,7 @@ dev = [
     { name = "hmls-nncore" },
     { name = "hmls-observer" },
     { name = "hmls-protocol" },
+    { name = "hmls-randomtank" },
     { name = "hmls-reinforcetrainer" },
     { name = "hmls-replayviewer" },
     { name = "hmls-server" },
@@ -457,6 +478,7 @@ dev = [
     { name = "hmls-nncore", editable = "packages/hmls-nncore" },
     { name = "hmls-observer", editable = "packages/hmls-observer" },
     { name = "hmls-protocol", editable = "packages/hmls-protocol" },
+    { name = "hmls-randomtank", editable = "packages/hmls-randomtank" },
     { name = "hmls-reinforcetrainer", editable = "packages/hmls-reinforcetrainer" },
     { name = "hmls-replayviewer", editable = "packages/hmls-replayviewer" },
     { name = "hmls-server", editable = "packages/hmls-server" },
