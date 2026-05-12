@@ -6,7 +6,7 @@ situational rewards, and :class:`RewardFunction`, the single concrete
 reward implementation that uses it.
 
 The :class:`RewardFunction` tracks per-episode state (explored cells,
-consecutive turn streaks) via :meth:`~RewardFunction.reset` and
+consecutive turn/pass/miss streaks) via :meth:`~RewardFunction.reset` and
 :meth:`~RewardFunction.observe_patch` lifecycle hooks.
 """
 
@@ -44,6 +44,26 @@ class ActionsRewardConfig(BaseModel, frozen=True, extra="forbid"):
             escalating penalty.
 
             Set to ``0.0`` (the default) to disable.
+        consecutive_pass: Escalating reward multiplier for consecutive
+            valid pass actions (typically negative).  When a tank takes
+            N consecutive deliberate passes, the Nth pass incurs an
+            additional reward of ``consecutive_pass × N``.
+
+            The streak resets to 0 on a fire that hits or a valid move
+            forward.  Other actions leave the streak unchanged but do
+            not incur the escalating penalty.
+
+            Set to ``0.0`` (the default) to disable.
+        consecutive_miss: Escalating reward multiplier for consecutive
+            fire misses (typically negative).  When a tank fires and
+            misses N consecutive times, the Nth miss incurs an
+            additional reward of ``consecutive_miss × N``.
+
+            The streak resets to 0 on a fire that hits or a valid move
+            forward.  Other actions leave the streak unchanged but do
+            not incur the escalating penalty.
+
+            Set to ``0.0`` (the default) to disable.
     """
 
     move_forward: float = 0.0
@@ -52,6 +72,8 @@ class ActionsRewardConfig(BaseModel, frozen=True, extra="forbid"):
     fire: float = 0.0
     pass_action: float = -0.02
     consecutive_turn: float = 0.0
+    consecutive_pass: float = 0.0
+    consecutive_miss: float = 0.0
 
 
 class FiringRewardConfig(BaseModel, frozen=True, extra="forbid"):
@@ -153,7 +175,7 @@ class RewardFunction:
     :class:`RewardConfig`.  Internally tracks which grid cells have
     been seen (for ``see_cell`` rewards) and which have been physically
     occupied (for ``occupy_cell`` rewards), as well as consecutive
-    turn streaks for escalating penalties.
+    turn, pass, and miss streaks for escalating penalties.
 
     Args:
         config: A :class:`RewardConfig` instance.  Uses defaults if
@@ -167,6 +189,8 @@ class RewardFunction:
         self._last_new_seen: int = 0
         self._last_new_occupied: int = 0
         self._turn_streaks: dict[str, int] = {}
+        self._pass_streaks: dict[str, int] = {}
+        self._miss_streaks: dict[str, int] = {}
 
     def reset(self) -> None:
         """Reset internal state for a new episode."""
@@ -175,6 +199,8 @@ class RewardFunction:
         self._last_new_seen = 0
         self._last_new_occupied = 0
         self._turn_streaks = {}
+        self._pass_streaks = {}
+        self._miss_streaks = {}
 
     def observe_patch(self, patch: TankPatch) -> None:
         """Update exploration state from the observed visibility patch.
@@ -232,6 +258,8 @@ class RewardFunction:
         - ``actions.turn_left / turn_right / move_forward / fire``:
           per-action rewards
         - ``actions.consecutive_turn``: escalating streak penalty
+        - ``actions.consecutive_pass``: escalating pass streak penalty
+        - ``actions.consecutive_miss``: escalating miss streak penalty
         - ``exploration.see_cell``: per newly seen cell
         - ``exploration.occupy_cell``: per newly occupied cell
         - ``situational.enemy_in_cone``: per visible enemy in cone
@@ -272,12 +300,31 @@ class RewardFunction:
         # Escalating consecutive-turn reward
         _TURN_ACTIONS = frozenset({Action.TURN_LEFT, Action.TURN_RIGHT})
         tank_id = entry.tank_id
+        _is_meaningful_reset = entry.hit is True or (
+            entry.requested_action == Action.MOVE_FORWARD and entry.valid
+        )
         if entry.requested_action in _TURN_ACTIONS and entry.valid:
             streak = self._turn_streaks.get(tank_id, 0) + 1
             self._turn_streaks[tank_id] = streak
             reward += cfg.actions.consecutive_turn * streak
-        elif entry.hit is True or (entry.requested_action == Action.MOVE_FORWARD and entry.valid):
+        elif _is_meaningful_reset:
             self._turn_streaks[tank_id] = 0
+
+        # Escalating consecutive-pass reward
+        if entry.requested_action == Action.PASS and entry.valid:
+            streak = self._pass_streaks.get(tank_id, 0) + 1
+            self._pass_streaks[tank_id] = streak
+            reward += cfg.actions.consecutive_pass * streak
+        elif _is_meaningful_reset:
+            self._pass_streaks[tank_id] = 0
+
+        # Escalating consecutive-miss reward
+        if entry.hit is False:
+            streak = self._miss_streaks.get(tank_id, 0) + 1
+            self._miss_streaks[tank_id] = streak
+            reward += cfg.actions.consecutive_miss * streak
+        elif _is_meaningful_reset:
+            self._miss_streaks[tank_id] = 0
 
         # Enemy in forward cone
         cone_score = _score_enemies_in_cone(

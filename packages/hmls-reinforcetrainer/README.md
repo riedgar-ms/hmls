@@ -166,6 +166,8 @@ Each model can have its own reward shaping parameters. The `reward_type` field s
 | `turn_right_reward` | float | `0.0` | Reward for choosing to turn right |
 | `move_forward_reward` | float | `0.0` | Reward for choosing to move forward |
 | `consecutive_turn_reward` | float | `0.0` | Escalating reward multiplier for consecutive turns (typically negative) |
+| `consecutive_pass_reward` | float | `0.0` | Escalating reward multiplier for consecutive passes (typically negative) |
+| `consecutive_miss_reward` | float | `0.0` | Escalating reward multiplier for consecutive fire misses (typically negative) |
 
 ### `map`
 
