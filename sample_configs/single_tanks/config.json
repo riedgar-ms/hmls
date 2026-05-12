@@ -9,12 +9,14 @@
         "turn_right": -0.01,
         "fire": 0.0,
         "pass_action": -0.02,
-        "consecutive_turn": -0.01
+        "consecutive_turn": -0.01,
+        "consecutive_pass": -0.01
       },
       "firing": {
         "hit": 0.5,
         "miss": -0.05,
-        "neglect": -0.3
+        "neglect": -0.3,
+        "consecutive_miss": -0.01
       },
       "game_state": {
         "win": 1.0,
@@ -43,12 +45,14 @@
         "turn_right": -0.01,
         "fire": 0.0,
         "pass_action": -0.02,
-        "consecutive_turn": -0.02
+        "consecutive_turn": -0.02,
+        "consecutive_pass": -0.02
       },
       "firing": {
         "hit": 0.5,
         "miss": -0.05,
-        "neglect": -0.4
+        "neglect": -0.4,
+        "consecutive_miss": -0.02
       },
       "game_state": {
         "win": 1.0,
@@ -68,7 +72,7 @@
     }
   },
   "map": {
-    "min_size": 10,
+    "min_size": 5,
     "max_size": 15,
     "impassable_fraction": 0.1,
     "strategy": "Blob & Line"
