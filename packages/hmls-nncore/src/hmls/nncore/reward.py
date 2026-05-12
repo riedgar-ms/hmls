@@ -54,6 +54,25 @@ class ActionsRewardConfig(BaseModel, frozen=True, extra="forbid"):
             not incur the escalating penalty.
 
             Set to ``0.0`` (the default) to disable.
+    """
+
+    move_forward: float = 0.0
+    turn_left: float = 0.0
+    turn_right: float = 0.0
+    fire: float = 0.0
+    pass_action: float = -0.02
+    consecutive_turn: float = 0.0
+    consecutive_pass: float = 0.0
+
+
+class FiringRewardConfig(BaseModel, frozen=True, extra="forbid"):
+    """Firing-outcome reward configuration.
+
+    Attributes:
+        hit: Reward for hitting an enemy tank.
+        miss: Reward (negative) for firing and missing.
+        neglect: Reward (negative) for not firing when an alive enemy
+            tank is directly ahead and could have been hit.
         consecutive_miss: Escalating reward multiplier for consecutive
             fire misses (typically negative).  When a tank fires and
             misses N consecutive times, the Nth miss incurs an
@@ -66,29 +85,10 @@ class ActionsRewardConfig(BaseModel, frozen=True, extra="forbid"):
             Set to ``0.0`` (the default) to disable.
     """
 
-    move_forward: float = 0.0
-    turn_left: float = 0.0
-    turn_right: float = 0.0
-    fire: float = 0.0
-    pass_action: float = -0.02
-    consecutive_turn: float = 0.0
-    consecutive_pass: float = 0.0
-    consecutive_miss: float = 0.0
-
-
-class FiringRewardConfig(BaseModel, frozen=True, extra="forbid"):
-    """Firing-outcome reward configuration.
-
-    Attributes:
-        hit: Reward for hitting an enemy tank.
-        miss: Reward (negative) for firing and missing.
-        neglect: Reward (negative) for not firing when an alive enemy
-            tank is directly ahead and could have been hit.
-    """
-
     hit: float = 0.5
     miss: float = -0.05
     neglect: float = -0.1
+    consecutive_miss: float = 0.0
 
 
 class GameStateRewardConfig(BaseModel, frozen=True, extra="forbid"):
@@ -259,7 +259,7 @@ class RewardFunction:
           per-action rewards
         - ``actions.consecutive_turn``: escalating streak penalty
         - ``actions.consecutive_pass``: escalating pass streak penalty
-        - ``actions.consecutive_miss``: escalating miss streak penalty
+        - ``firing.consecutive_miss``: escalating miss streak penalty
         - ``exploration.see_cell``: per newly seen cell
         - ``exploration.occupy_cell``: per newly occupied cell
         - ``situational.enemy_in_cone``: per visible enemy in cone
@@ -322,7 +322,7 @@ class RewardFunction:
         if entry.hit is False:
             streak = self._miss_streaks.get(tank_id, 0) + 1
             self._miss_streaks[tank_id] = streak
-            reward += cfg.actions.consecutive_miss * streak
+            reward += cfg.firing.consecutive_miss * streak
         elif _is_meaningful_reset:
             self._miss_streaks[tank_id] = 0
 

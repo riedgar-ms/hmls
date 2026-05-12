@@ -160,6 +160,7 @@ Each model can have its own reward shaping parameters. The `reward_type` field s
 | `invalid_move_reward` | float | `-0.1` | Reward (negative) for attempting an invalid action |
 | `fire_miss_reward` | float | `-0.05` | Reward (negative) for firing and missing |
 | `fire_neglect_reward` | float | `-0.1` | Reward (negative) for not firing when an enemy is directly ahead |
+| `consecutive_miss_reward` | float | `0.0` | Escalating reward multiplier for consecutive fire misses (typically negative) |
 | `pass_reward` | float | `-0.02` | Reward (negative) for deliberately choosing to pass |
 | `enemy_in_cone_reward` | float | `0.01` | Per-enemy reward for visible enemies in the forward cone |
 | `turn_left_reward` | float | `0.0` | Reward for choosing to turn left |
@@ -167,7 +168,6 @@ Each model can have its own reward shaping parameters. The `reward_type` field s
 | `move_forward_reward` | float | `0.0` | Reward for choosing to move forward |
 | `consecutive_turn_reward` | float | `0.0` | Escalating reward multiplier for consecutive turns (typically negative) |
 | `consecutive_pass_reward` | float | `0.0` | Escalating reward multiplier for consecutive passes (typically negative) |
-| `consecutive_miss_reward` | float | `0.0` | Escalating reward multiplier for consecutive fire misses (typically negative) |
 
 ### `map`
 

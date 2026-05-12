@@ -864,7 +864,7 @@ def test_consecutive_pass_config_round_trip() -> None:
 def test_consecutive_miss_reward_disabled_by_default() -> None:
     """Default config has consecutive_miss=0.0, so no extra penalty."""
     reward_fn = RewardFunction()
-    assert reward_fn.config.actions.consecutive_miss == 0.0
+    assert reward_fn.config.firing.consecutive_miss == 0.0
 
     reward_fn.reset()
     entry = _make_entry(action=Action.FIRE, hit=False)
@@ -877,8 +877,7 @@ def test_consecutive_miss_reward_disabled_by_default() -> None:
 def test_consecutive_miss_reward_escalates() -> None:
     """Consecutive misses incur escalating reward: reward × streak_count."""
     config = RewardConfig(
-        actions=ActionsRewardConfig(consecutive_miss=-0.02),
-        firing=FiringRewardConfig(miss=0.0),
+        firing=FiringRewardConfig(miss=0.0, consecutive_miss=-0.02),
         game_state=GameStateRewardConfig(step=0.0),
     )
     reward_fn = RewardFunction(config=config)
@@ -907,8 +906,7 @@ def test_consecutive_miss_reward_escalates() -> None:
 def test_consecutive_miss_reward_resets_on_valid_move_forward() -> None:
     """Valid move forward resets the miss streak to zero."""
     config = RewardConfig(
-        actions=ActionsRewardConfig(consecutive_miss=-0.02),
-        firing=FiringRewardConfig(miss=0.0),
+        firing=FiringRewardConfig(miss=0.0, consecutive_miss=-0.02),
         game_state=GameStateRewardConfig(step=0.0),
     )
     reward_fn = RewardFunction(config=config)
@@ -938,8 +936,7 @@ def test_consecutive_miss_reward_resets_on_valid_move_forward() -> None:
 def test_consecutive_miss_reward_resets_on_fire_hit() -> None:
     """Fire-and-hit resets the miss streak to zero."""
     config = RewardConfig(
-        actions=ActionsRewardConfig(consecutive_miss=-0.02),
-        firing=FiringRewardConfig(hit=0.0, miss=0.0),
+        firing=FiringRewardConfig(hit=0.0, miss=0.0, consecutive_miss=-0.02),
         game_state=GameStateRewardConfig(step=0.0),
     )
     reward_fn = RewardFunction(config=config)
@@ -969,8 +966,8 @@ def test_consecutive_miss_reward_resets_on_fire_hit() -> None:
 def test_consecutive_miss_reward_not_reset_by_pass() -> None:
     """Pass action does NOT reset the miss streak."""
     config = RewardConfig(
-        actions=ActionsRewardConfig(consecutive_miss=-0.02, pass_action=0.0),
-        firing=FiringRewardConfig(miss=0.0),
+        actions=ActionsRewardConfig(pass_action=0.0),
+        firing=FiringRewardConfig(miss=0.0, consecutive_miss=-0.02),
         game_state=GameStateRewardConfig(step=0.0),
     )
     reward_fn = RewardFunction(config=config)
@@ -998,8 +995,7 @@ def test_consecutive_miss_reward_not_reset_by_pass() -> None:
 def test_consecutive_miss_reward_not_reset_by_turn() -> None:
     """Turn action does NOT reset the miss streak."""
     config = RewardConfig(
-        actions=ActionsRewardConfig(consecutive_miss=-0.02),
-        firing=FiringRewardConfig(miss=0.0),
+        firing=FiringRewardConfig(miss=0.0, consecutive_miss=-0.02),
         game_state=GameStateRewardConfig(step=0.0),
     )
     reward_fn = RewardFunction(config=config)
@@ -1027,8 +1023,7 @@ def test_consecutive_miss_reward_not_reset_by_turn() -> None:
 def test_consecutive_miss_reward_not_reset_by_invalid_move() -> None:
     """Invalid move does NOT reset the miss streak."""
     config = RewardConfig(
-        actions=ActionsRewardConfig(consecutive_miss=-0.02),
-        firing=FiringRewardConfig(miss=0.0),
+        firing=FiringRewardConfig(miss=0.0, consecutive_miss=-0.02),
         game_state=GameStateRewardConfig(step=0.0, invalid_move=0.0),
     )
     reward_fn = RewardFunction(config=config)
@@ -1058,8 +1053,7 @@ def test_consecutive_miss_reward_not_reset_by_invalid_move() -> None:
 def test_consecutive_miss_reward_resets_on_episode() -> None:
     """reset() clears miss streak tracking between episodes."""
     config = RewardConfig(
-        actions=ActionsRewardConfig(consecutive_miss=-0.02),
-        firing=FiringRewardConfig(miss=0.0),
+        firing=FiringRewardConfig(miss=0.0, consecutive_miss=-0.02),
         game_state=GameStateRewardConfig(step=0.0),
     )
     reward_fn = RewardFunction(config=config)
@@ -1086,10 +1080,10 @@ def test_consecutive_miss_reward_resets_on_episode() -> None:
 
 def test_consecutive_miss_config_round_trip() -> None:
     """consecutive_miss survives config serialisation round-trip."""
-    config = RewardConfig(actions=ActionsRewardConfig(consecutive_miss=-0.03))
+    config = RewardConfig(firing=FiringRewardConfig(consecutive_miss=-0.03))
     dumped = config.model_dump()
     restored = RewardConfig.model_validate(dumped)
-    assert restored.actions.consecutive_miss == -0.03
+    assert restored.firing.consecutive_miss == -0.03
 
 
 # ── Reset / state tests ─────────────────────────────────────────────

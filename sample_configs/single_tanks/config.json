@@ -10,13 +10,13 @@
         "fire": 0.0,
         "pass_action": -0.02,
         "consecutive_turn": -0.01,
-        "consecutive_pass": -0.01,
-        "consecutive_miss": -0.01
+        "consecutive_pass": -0.01
       },
       "firing": {
         "hit": 0.5,
         "miss": -0.05,
-        "neglect": -0.3
+        "neglect": -0.3,
+        "consecutive_miss": -0.01
       },
       "game_state": {
         "win": 1.0,
@@ -46,13 +46,13 @@
         "fire": 0.0,
         "pass_action": -0.02,
         "consecutive_turn": -0.02,
-        "consecutive_pass": -0.02,
-        "consecutive_miss": -0.02
+        "consecutive_pass": -0.02
       },
       "firing": {
         "hit": 0.5,
         "miss": -0.05,
-        "neglect": -0.4
+        "neglect": -0.4,
+        "consecutive_miss": -0.02
       },
       "game_state": {
         "win": 1.0,
