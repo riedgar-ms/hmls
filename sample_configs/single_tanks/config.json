@@ -72,7 +72,7 @@
     }
   },
   "map": {
-    "min_size": 10,
+    "min_size": 5,
     "max_size": 15,
     "impassable_fraction": 0.1,
     "strategy": "Blob & Line"
