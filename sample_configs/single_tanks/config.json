@@ -36,8 +36,8 @@
     }
   },
   "model_b": {
-    "dir": "weights/model_b",
-    "train": true,
+    "dir": "weights/random_opponent",
+    "train": false,
     "reward": {
       "actions": {
         "move_forward": 0.03,
@@ -72,7 +72,7 @@
     }
   },
   "map": {
-    "min_size": 5,
+    "min_size": 10,
     "max_size": 15,
     "impassable_fraction": 0.1,
     "strategy": "Blob & Line"

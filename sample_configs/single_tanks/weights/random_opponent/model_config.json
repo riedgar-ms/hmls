@@ -3,5 +3,5 @@
   "patch_size": 9,
   "prob_forward_on_passable": 0.7,
   "prob_turn_left_on_passable": 0.05,
-  "prob_turn_left_on_blocked": 0.5
+  "prob_turn_left_on_blocked": 0.25
 }
