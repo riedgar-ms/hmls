@@ -20,6 +20,7 @@ members = [
     "hmls-server",
     "hmls-singlemki",
     "hmls-singlemkii",
+    "hmls-singlemkiii",
     "hmls-testharness",
     "hmls-uxcommon",
     "hmls-workspace",
@@ -410,6 +411,25 @@ requires-dist = [
 ]
 
 [[package]]
+name = "hmls-singlemkiii"
+version = "0.1.0"
+source = { editable = "packages/hmls-singlemkiii" }
+dependencies = [
+    { name = "hmls-core" },
+    { name = "hmls-nncore" },
+    { name = "pydantic" },
+    { name = "torch" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "hmls-core", editable = "packages/hmls-core" },
+    { name = "hmls-nncore", editable = "packages/hmls-nncore" },
+    { name = "pydantic", specifier = ">=2.0" },
+    { name = "torch", specifier = ">=2.0" },
+]
+
+[[package]]
 name = "hmls-testharness"
 version = "0.1.0"
 source = { editable = "packages/hmls-testharness" }
@@ -460,6 +480,7 @@ dev = [
     { name = "hmls-server" },
     { name = "hmls-singlemki" },
     { name = "hmls-singlemkii" },
+    { name = "hmls-singlemkiii" },
     { name = "hmls-testharness" },
     { name = "hmls-uxcommon" },
     { name = "httpx" },
@@ -484,6 +505,7 @@ dev = [
     { name = "hmls-server", editable = "packages/hmls-server" },
     { name = "hmls-singlemki", editable = "packages/hmls-singlemki" },
     { name = "hmls-singlemkii", editable = "packages/hmls-singlemkii" },
+    { name = "hmls-singlemkiii", editable = "packages/hmls-singlemkiii" },
     { name = "hmls-testharness", editable = "packages/hmls-testharness" },
     { name = "hmls-uxcommon", editable = "packages/hmls-uxcommon" },
     { name = "httpx", specifier = ">=0.27" },
