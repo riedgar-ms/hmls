@@ -450,6 +450,32 @@ def test_enemy_in_cone_friendly_not_counted() -> None:
     assert abs(reward - (-0.01)) < 1e-7
 
 
+def test_enemy_in_cone_distance_discount() -> None:
+    """Distance discount reduces contribution of far-away enemies."""
+    discount = 0.5
+    cfg = RewardConfig(
+        situational=SituationalRewardConfig(
+            enemy_in_cone=1.0,
+            enemy_in_cone_distance_discount=discount,
+        ),
+    )
+    reward_fn = RewardFunction(config=cfg)
+    entry = _make_entry(action=Action.MOVE_FORWARD)
+    patch = _make_empty_patch()
+    half = 9 // 2
+    # Enemy at (half-2, half+1): Manhattan distance = 2 + 1 = 3
+    enemy1 = Tank(id="e1", team="bravo", position=Position(0, 0), direction=Direction.SOUTH)
+    patch.grid[half - 2][half + 1] = VisibleCell(cell_type=CellType.PASSABLE, tank=enemy1)
+    # Enemy at (half-1, half): Manhattan distance = 1 + 0 = 1
+    enemy2 = Tank(id="e2", team="bravo", position=Position(2, 0), direction=Direction.SOUTH)
+    patch.grid[half - 1][half] = VisibleCell(cell_type=CellType.PASSABLE, tank=enemy2)
+    reward = reward_fn.compute_step_reward(entry, patch=patch, team="alpha")
+    # step + enemy_in_cone * (discount^3 + discount^1)
+    # Also neglect because enemy2 is directly ahead
+    expected = cfg.game_state.step + cfg.firing.neglect + 1.0 * (0.5**3 + 0.5**1)
+    assert abs(reward - expected) < 1e-7
+
+
 def test_missed_fire_friendly_ahead_no_penalty() -> None:
     """No missed fire reward when a friendly tank is directly ahead."""
     reward_fn = RewardFunction()
@@ -696,7 +722,9 @@ def test_reward_config_nested_json() -> None:
         firing=FiringRewardConfig(hit=0.7),
         game_state=GameStateRewardConfig(win=2.0),
         exploration=ExplorationRewardConfig(see_cell=0.05, occupy_cell=0.1),
-        situational=SituationalRewardConfig(enemy_in_cone=0.02),
+        situational=SituationalRewardConfig(
+            enemy_in_cone=0.02, enemy_in_cone_distance_discount=0.8
+        ),
     )
     data = json.loads(config.model_dump_json())
     assert data["actions"]["move_forward"] == 0.04
@@ -706,6 +734,7 @@ def test_reward_config_nested_json() -> None:
     assert data["exploration"]["see_cell"] == 0.05
     assert data["exploration"]["occupy_cell"] == 0.1
     assert data["situational"]["enemy_in_cone"] == 0.02
+    assert data["situational"]["enemy_in_cone_distance_discount"] == 0.8
 
     restored = RewardConfig.model_validate(data)
     assert restored == config

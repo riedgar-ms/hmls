@@ -107,9 +107,17 @@ class SituationalRewardConfig(BaseModel, frozen=True, extra="forbid"):
     Attributes:
         enemy_in_cone: Per-enemy reward for each alive enemy tank
             visible in the forward cone of the egocentric patch.
+        enemy_in_cone_distance_discount: Discount factor applied
+            per unit of Manhattan distance from the player to the
+            enemy in egocentric coordinates.  Each enemy's
+            contribution is ``enemy_in_cone *
+            enemy_in_cone_distance_discount ** manhattan_distance``.
+            A value of ``1.0`` (the default) disables discounting.
+            Values below ``1.0`` make distant enemies worth less.
     """
 
     enemy_in_cone: float = 0.01
+    enemy_in_cone_distance_discount: float = 1.0
 
 
 class RewardConfig(BaseModel, frozen=True, extra="forbid"):
@@ -272,8 +280,10 @@ class RewardFunction:
             self._turn_streaks[tank_id] = 0
 
         # Enemy in forward cone
-        cone_enemies = _count_enemies_in_cone(patch, team)
-        reward += cfg.situational.enemy_in_cone * cone_enemies
+        cone_score = _score_enemies_in_cone(
+            patch, team, cfg.situational.enemy_in_cone_distance_discount
+        )
+        reward += cfg.situational.enemy_in_cone * cone_score
 
         return reward
 
@@ -315,25 +325,37 @@ def _enemy_directly_ahead(patch: TankPatch, team: str) -> bool:
     return False
 
 
-def _count_enemies_in_cone(patch: TankPatch, team: str) -> int:
-    """Count alive enemy tanks visible in the forward cone.
+def _score_enemies_in_cone(
+    patch: TankPatch,
+    team: str,
+    distance_discount: float,
+) -> float:
+    """Score alive enemy tanks visible in the forward cone.
 
     The forward cone comprises all visible cells in rows above the
-    patch centre (``ego_row < half``).  Fog cells are naturally
-    excluded because they are :class:`FogCell`, not :class:`VisibleCell`.
+    patch centre (``ego_row < half``).  Each enemy's contribution is
+    ``distance_discount ** manhattan_distance``, where the Manhattan
+    distance is computed in egocentric grid coordinates from the
+    player's centre cell.
+
+    Fog cells are naturally excluded because they are :class:`FogCell`,
+    not :class:`VisibleCell`.
 
     Args:
         patch: The egocentric visibility patch.
         team: The observing player's team.
+        distance_discount: Per-unit-distance discount factor.
+            ``1.0`` gives a simple count (no discounting).
 
     Returns:
-        Number of alive enemy tanks visible in the forward cone.
+        Distance-discounted score of alive enemy tanks in the cone.
     """
     half = len(patch.grid) // 2
-    count = 0
+    score = 0.0
     for ego_row in range(half):
-        for cell in patch.grid[ego_row]:
+        for ego_col, cell in enumerate(patch.grid[ego_row]):
             if isinstance(cell, VisibleCell) and cell.tank is not None:
                 if cell.tank.alive and cell.tank.team != team:
-                    count += 1
-    return count
+                    manhattan = (half - ego_row) + abs(ego_col - half)
+                    score += distance_discount**manhattan
+    return score

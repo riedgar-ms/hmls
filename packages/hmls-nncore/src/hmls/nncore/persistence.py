@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import logging
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Generic, Literal, TypeVar
@@ -36,6 +37,8 @@ from hmls.nncore.model import TankModelBase, TankModelConfig
 from hmls.nncore.reward import RewardConfig
 
 MODEL_CONFIG_FILENAME = "model_config.json"
+
+logger = logging.getLogger(__name__)
 
 ModelT = TypeVar("ModelT", bound=TankModelBase)
 ConfigT = TypeVar("ConfigT", bound=TankModelConfig)
@@ -451,10 +454,20 @@ def load_or_create_model(model_dir: Path) -> TankModelBase:
     if model_path.exists():
         model: TankModelBase
         model, _metadata = persistence.load_model(model_path)
+        logger.info(
+            "Loaded existing model from %s (package: %s)",
+            model_dir,
+            model_package,
+        )
         return model
 
     config = persistence.load_model_config(model_dir)
     result: TankModelBase = persistence.create_model(config)
+    logger.info(
+        "Created new model from config in %s (package: %s)",
+        model_dir,
+        model_package,
+    )
     return result
 
 
