@@ -7,11 +7,7 @@ game map and event log in real-time, without fog-of-war restrictions.
 from __future__ import annotations
 
 import logging
-from typing import Any
 
-import websockets
-import websockets.asyncio.client
-from pydantic import TypeAdapter
 from textual.app import App, ComposeResult
 from textual.containers import ScrollableContainer
 from textual.widgets import Footer, Header, RichLog, Static, TabbedContent, TabPane
@@ -19,6 +15,7 @@ from textual.widgets import Footer, Header, RichLog, Static, TabbedContent, TabP
 from hmls.core.game_state import GameState
 from hmls.core.map import GameMap
 from hmls.core.tank import Tank
+from hmls.networking import GameWebSocketSession
 from hmls.observer.cli import parse_args
 from hmls.protocol import (
     ErrorMessage,
@@ -35,10 +32,6 @@ from hmls.uxcommon.mixins import LogStatusMixin
 from hmls.uxcommon.widgets.map_view import MapView
 
 logger = logging.getLogger("hmls.observer")
-
-# ── Type adapter for server messages ─────────────────────────────────
-
-_server_message_adapter: TypeAdapter[ServerMessage] = TypeAdapter(ServerMessage)
 
 
 # ── Observer TUI ──────────────────────────────────────────────────────
@@ -78,7 +71,6 @@ class ObserverApp(LogTabMixin, LogStatusMixin, App[None]):
         self._tanks: list[Tank] = []
         self._player_names: dict[str, str] = {}
         self._game_over: bool = False
-        self._ws: Any = None
 
     def compose(self) -> ComposeResult:
         """Compose the observer TUI layout."""
@@ -103,33 +95,22 @@ class ObserverApp(LogTabMixin, LogStatusMixin, App[None]):
     async def _connection_loop(self) -> None:
         """Manage the WebSocket connection and message handling."""
         try:
-            async with websockets.asyncio.client.connect(self._server_url) as ws:
-                self._ws = ws
-
-                # Send observe message to identify as an observer.
-                observe_msg = ObserveMessage(observer_name=self._observer_name)
-                await ws.send(observe_msg.model_dump_json())
+            identity = ObserveMessage(observer_name=self._observer_name)
+            async with GameWebSocketSession.connect(self._server_url, identity) as session:
                 self._write_log("Connected as observer.")
                 self._update_status("Connected — waiting for game to start...")
 
-                # Message handling loop.
-                async for raw in ws:
+                async for msg in session.receive_messages():
                     if self._game_over:
                         break
-                    await self._handle_message(str(raw))
+                    await self._handle_message(msg)
 
         except Exception as exc:
             self._write_log(f"[red]Connection error: {exc}[/red]")
             self._update_status("DISCONNECTED")
 
-    async def _handle_message(self, raw: str) -> None:
-        """Parse and dispatch a server message."""
-        try:
-            msg = _server_message_adapter.validate_json(raw)
-        except Exception as exc:
-            self._write_log(f"[red]Invalid message: {exc}[/red]")
-            return
-
+    async def _handle_message(self, msg: ServerMessage) -> None:
+        """Dispatch a parsed server message to the appropriate handler."""
         if isinstance(msg, GameStartMessage):
             await self._handle_game_start(msg)
         elif isinstance(msg, StateUpdateMessage):
