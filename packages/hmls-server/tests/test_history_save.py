@@ -2,17 +2,21 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 
 import pytest
 
-from hmls.core.engine import GameResult
+from hmls.core.engine import GameEngine, GameResult
 from hmls.core.map import GameMap
 from hmls.core.tank import Tank
 from hmls.core.types import Action, Direction, Position
-from hmls.server.app import GameSession
+from hmls.core.visibility import build_player_view
 from hmls.server.cli import parse_args
+from hmls.server.events import EventBus
+from hmls.server.orchestrator import GameOrchestrator
+from hmls.server.remote_player import RemotePlayer
 
 
 def _make_simple_map() -> GameMap:
@@ -28,11 +32,18 @@ def _make_tanks() -> list[Tank]:
     ]
 
 
-def _make_session(history_file: Path | None = None) -> GameSession:
-    """Create a GameSession for testing."""
-    return GameSession(
+def _make_orchestrator(history_file: Path | None = None) -> GameOrchestrator:
+    """Create a GameOrchestrator for testing."""
+    event_bus = EventBus()
+    players: dict[str, RemotePlayer] = {
+        "A": RemotePlayer("A"),
+        "B": RemotePlayer("B"),
+    }
+    return GameOrchestrator(
         game_map=_make_simple_map(),
         tanks=_make_tanks(),
+        players=players,
+        event_bus=event_bus,
         max_turns=4,
         patch_size=5,
         history_file=history_file,
@@ -67,69 +78,57 @@ class TestHistorySave:
     """Tests for automatic history saving after a game."""
 
     def test_history_saved_after_game(self, tmp_path: Path) -> None:
-        """GameSession should write a valid GameResult JSON when game ends."""
+        """GameOrchestrator should write a valid GameResult JSON when game ends."""
         history_file = tmp_path / "history.json"
-        session = _make_session(history_file=history_file)
+        orchestrator = _make_orchestrator(history_file=history_file)
 
         # Manually wire up the engine and simulate a short game.
-        from hmls.core.engine import GameEngine
         from hmls.core.player import Player
-        from hmls.core.visibility import build_player_view
 
         players: dict[str, Player] = {
-            "A": session.players["A"],
-            "B": session.players["B"],
+            "A": orchestrator.players["A"],
+            "B": orchestrator.players["B"],
         }
-        session.engine = GameEngine(
-            session.game_map,
-            session.tanks,
+        orchestrator.engine = GameEngine(
+            orchestrator.game_map,
+            orchestrator.tanks,
             players,
             max_turns=4,
             patch_size=5,
         )
 
-        # Use choose_action (synchronous) by pre-loading actions via
-        # request_action + submit_action, then calling step().
-        import asyncio
-
         loop = asyncio.new_event_loop()
         try:
             for _ in range(4):
-                tank_id = session.engine.current_tank_id
-                team = session.engine.current_team
-                player = session.players[team]
+                tank_id = orchestrator.engine.current_tank_id
+                team = orchestrator.engine.current_team
+                player = orchestrator.players[team]
 
-                view = build_player_view(session.engine.state, session.game_map, team, 5)
+                view = build_player_view(orchestrator.engine.state, orchestrator.game_map, team, 5)
                 player.request_action(tank_id, view, loop)
                 player.submit_action(Action.PASS)
                 loop.run_until_complete(player.wait_for_action())
-                session.engine.step()
+                orchestrator.engine.step()
         finally:
             loop.close()
 
-        # Now the engine should be at game_over (max_turns reached).
-        session._game_over = True
-        assert session.engine.game_over
+        assert orchestrator.engine.game_over
+        orchestrator.game_over = True
 
-        # Call the save logic (same as in run_game tail).
-        if session.history_file is not None and session.engine is not None:
-            result = session.engine.make_result()
-            session.history_file.write_text(result.model_dump_json(indent=2), encoding="utf-8")
+        # Call the save method directly.
+        orchestrator._save_history()
 
         assert history_file.exists()
         data = json.loads(history_file.read_text(encoding="utf-8"))
-        # Validate it parses as a GameResult.
         parsed = GameResult.model_validate(data)
         assert parsed.turns_played == 4
 
     def test_no_history_file_when_disabled(self, tmp_path: Path) -> None:
         """No file should be written when history_file is None."""
-        session = _make_session(history_file=None)
+        orchestrator = _make_orchestrator(history_file=None)
+        orchestrator.game_over = True
 
-        # Simulate game ending.
-        session._game_over = True
-
-        # The save path is None, so nothing should happen.
-        assert session.history_file is None
-        # Verify no stray files were created.
+        assert orchestrator.history_file is None
+        # The save method should be a no-op.
+        orchestrator._save_history()
         assert list(tmp_path.iterdir()) == []
