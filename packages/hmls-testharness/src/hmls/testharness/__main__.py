@@ -1,5 +1,6 @@
-"""Allow running the test harness via ``python -m hmls.testharness``."""
+"""Entry point for ``python -m hmls.testharness``."""
 
 from hmls.testharness.app import main
 
-main()
+if __name__ == "__main__":
+    main()
