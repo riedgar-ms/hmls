@@ -3,7 +3,7 @@
 from hmls.core.actions import ActionResult, ApplyResult, apply_action, validate_action
 from hmls.core.engine import GameEngine, GameResult, HistoryEntry
 from hmls.core.game_state import GameState
-from hmls.core.map import CellType, GameMap, load_map
+from hmls.core.map import CellType, GameMap, MapLoadError, load_map
 from hmls.core.placement import InsufficientPassableCellsError, place_tanks
 from hmls.core.player import PendingActionPlayer, Player
 from hmls.core.tank import Tank, TankId
@@ -35,6 +35,7 @@ __all__ = [
     "GameState",
     "HistoryEntry",
     "InsufficientPassableCellsError",
+    "MapLoadError",
     "PatchCell",
     "PendingActionPlayer",
     "Player",

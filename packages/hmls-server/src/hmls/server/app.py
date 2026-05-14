@@ -17,7 +17,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from pydantic import TypeAdapter
 
 from hmls.core.engine import GameEngine
-from hmls.core.map import GameMap, load_map
+from hmls.core.map import GameMap, MapLoadError, load_map
 from hmls.core.placement import InsufficientPassableCellsError, place_tanks
 from hmls.core.player import Player
 from hmls.core.tank import Tank
@@ -477,7 +477,11 @@ def main() -> None:
     )
 
     args = parse_args()
-    game_map = load_map(args.map_file)
+    try:
+        game_map = load_map(args.map_file)
+    except (FileNotFoundError, MapLoadError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
     tanks = _place_tanks_or_exit(game_map, args.tanks_per_player, seed=args.seed)
 
     session = GameSession(

@@ -138,8 +138,7 @@ def load_config(config_path: Path) -> TrainerConfig:
         pydantic.ValidationError: If the JSON content is invalid.
     """
     if not config_path.exists():
-        logger.error("Config file not found: %s", config_path)
-        raise SystemExit(1)
+        raise FileNotFoundError(f"Config file not found: {config_path}")
 
     json_bytes = config_path.read_bytes()
     config = TrainerConfig.model_validate_json(json_bytes)
@@ -154,8 +153,15 @@ def parse_args(argv: list[str] | None = None) -> CLIResult:
 
     Returns:
         A :class:`CLIResult` with the validated config and log level.
+
+    Raises:
+        SystemExit: If the config file cannot be loaded.
     """
     parser = build_parser()
     args = parser.parse_args(argv)
-    config = load_config(args.config_file)
+    try:
+        config = load_config(args.config_file)
+    except FileNotFoundError as exc:
+        logger.error("%s", exc)
+        raise SystemExit(1) from exc
     return CLIResult(config=config, log_level=args.log_level)

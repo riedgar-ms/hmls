@@ -58,16 +58,18 @@ class TestLoadMap:
         assert loaded.width == gm.width
         assert loaded.height == gm.height
 
-    def test_missing_file_exits(self, tmp_path: Path) -> None:
-        """A non-existent file should cause SystemExit."""
-        with pytest.raises(SystemExit):
+    def test_missing_file_raises(self, tmp_path: Path) -> None:
+        """A non-existent file should raise FileNotFoundError."""
+        with pytest.raises(FileNotFoundError):
             load_map(tmp_path / "no-such-file.json")
 
-    def test_malformed_json_exits(self, tmp_path: Path) -> None:
-        """Invalid JSON content should cause SystemExit."""
+    def test_malformed_json_raises(self, tmp_path: Path) -> None:
+        """Invalid JSON content should raise MapLoadError."""
+        from hmls.core.map import MapLoadError
+
         path = tmp_path / "bad.json"
         path.write_text("{not valid", encoding="utf-8")
-        with pytest.raises(SystemExit):
+        with pytest.raises(MapLoadError):
             load_map(path)
 
 
@@ -97,10 +99,12 @@ class TestPlaceTanks:
         positions = [t.position for t in tanks]
         assert len(positions) == len(set(positions))
 
-    def test_insufficient_cells_exits(self) -> None:
-        """A 1×1 map cannot hold 2 tanks → SystemExit."""
+    def test_insufficient_cells_raises(self) -> None:
+        """A 1×1 map cannot hold 2 tanks → InsufficientPassableCellsError."""
+        from hmls.core.placement import InsufficientPassableCellsError
+
         tiny = GameMap(width=1, height=1)
-        with pytest.raises(SystemExit):
+        with pytest.raises(InsufficientPassableCellsError):
             place_tanks(tiny, 1)
 
 
