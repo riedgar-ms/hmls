@@ -24,7 +24,6 @@ an instance of :class:`ModelPersistence`.
 
 from __future__ import annotations
 
-import importlib
 import json
 import logging
 from abc import ABC, abstractmethod
@@ -314,26 +313,25 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
 def _get_persistence(model_package: str) -> ModelPersistence[Any, Any]:
     """Look up the ``PERSISTENCE`` instance for a model package.
 
-    Imports ``{model_package}.persistence`` and returns its
-    ``PERSISTENCE`` attribute, which must be a :class:`ModelPersistence`
-    instance.
+    Uses the entry-point-based registry for validated lookup, with a
+    fallback to direct ``importlib.import_module()`` for backwards
+    compatibility with unregistered packages.
 
     Args:
-        model_package: Fully-qualified package name
+        model_package: Short entry-point name (e.g. ``"singlemki"``)
+            or fully-qualified package name
             (e.g. ``"hmls.singlemki"``).
 
     Returns:
         The model package's persistence instance.
 
     Raises:
-        ModuleNotFoundError: If the package or its ``persistence``
-            submodule cannot be imported.
-        AttributeError: If the module lacks a ``PERSISTENCE`` attribute.
+        ModelRegistryError: If the package cannot be resolved or does
+            not provide a valid ``ModelPersistence`` instance.
     """
-    module_name = f"{model_package}.persistence"
-    module = importlib.import_module(module_name)
-    persistence: ModelPersistence[Any, Any] = module.PERSISTENCE
-    return persistence
+    from hmls.nncore.registry import resolve_model_package
+
+    return resolve_model_package(model_package)
 
 
 def read_model_package(directory: Path) -> str:
