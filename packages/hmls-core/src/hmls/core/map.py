@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-import sys
 from collections.abc import Iterator
 from enum import IntEnum
 from pathlib import Path
 from typing import Self
 
 from pydantic import BaseModel, model_validator
+
+
+class MapLoadError(Exception):
+    """Raised when a map file exists but cannot be parsed or validated."""
 
 
 class CellType(IntEnum):
@@ -144,9 +147,6 @@ class GameMap(BaseModel, extra="forbid"):
 def load_map(path: Path) -> GameMap:
     """Load a :class:`GameMap` from a JSON file.
 
-    Prints an error message to *stderr* and exits with code 1 if the file
-    does not exist or cannot be parsed.
-
     Args:
         path: Path to the JSON map file.
 
@@ -154,14 +154,13 @@ def load_map(path: Path) -> GameMap:
         The deserialised game map.
 
     Raises:
-        SystemExit: If the file does not exist or cannot be parsed.
+        FileNotFoundError: If the map file does not exist.
+        MapLoadError: If the file cannot be parsed or validated.
     """
     if not path.exists():
-        print(f"Error: map file not found: {path}", file=sys.stderr)
-        sys.exit(1)
+        raise FileNotFoundError(f"Map file not found: {path}")
     try:
         text = path.read_text(encoding="utf-8")
         return GameMap.model_validate_json(text)
     except Exception as exc:
-        print(f"Error loading map: {exc}", file=sys.stderr)
-        sys.exit(1)
+        raise MapLoadError(f"Error loading map: {exc}") from exc

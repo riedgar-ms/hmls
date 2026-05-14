@@ -76,7 +76,7 @@ class TestParseArgs:
 class TestLoadConfig:
     """Tests for load_config error handling."""
 
-    def test_missing_config_file_exits(self, tmp_path: Path) -> None:
-        """load_config raises SystemExit for a missing file."""
-        with pytest.raises(SystemExit):
+    def test_missing_config_file_raises(self, tmp_path: Path) -> None:
+        """load_config raises FileNotFoundError for a missing file."""
+        with pytest.raises(FileNotFoundError):
             load_config(tmp_path / "nonexistent.json")

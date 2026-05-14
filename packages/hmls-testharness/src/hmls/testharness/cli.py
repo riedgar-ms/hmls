@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import argparse
-import sys
 
 from hmls.core.cli_args import add_game_setup_args
 from hmls.core.game_state import GameState
 from hmls.core.map import CellType, GameMap  # noqa: F401
 from hmls.core.map import load_map as load_map
-from hmls.core.placement import InsufficientPassableCellsError
 from hmls.core.placement import place_tanks as _place_tanks_core
 from hmls.core.tank import Tank
 
@@ -39,9 +37,7 @@ def place_tanks(
 ) -> list[Tank]:
     """Place tanks randomly on passable cells for two teams.
 
-    Thin wrapper around :func:`hmls.core.placement.place_tanks` that
-    exits the process with an error message if there are not enough
-    passable cells.
+    Thin wrapper around :func:`hmls.core.placement.place_tanks`.
 
     Args:
         game_map: The map to place tanks on.
@@ -52,13 +48,9 @@ def place_tanks(
         List of all tanks for both teams.
 
     Raises:
-        SystemExit: If there are not enough passable cells.
+        InsufficientPassableCellsError: If there are not enough passable cells.
     """
-    try:
-        return _place_tanks_core(game_map, tanks_per_player, seed=seed)
-    except InsufficientPassableCellsError as exc:
-        print(f"Error: {exc}", file=sys.stderr)
-        sys.exit(1)
+    return _place_tanks_core(game_map, tanks_per_player, seed=seed)
 
 
 def build_initial_state(tanks: list[Tank]) -> GameState:

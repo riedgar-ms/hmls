@@ -292,9 +292,22 @@ class TestHarnessApp(LogTabMixin, LogStatusMixin, App[None]):
 
 def main() -> None:
     """Entry point for the TUI application."""
+    import sys
+
+    from hmls.core.map import MapLoadError
+    from hmls.core.placement import InsufficientPassableCellsError
+
     args = parse_args()
-    game_map = load_map(args.map_file)
-    tanks = place_tanks(game_map, args.tanks_per_player, seed=args.seed)
+    try:
+        game_map = load_map(args.map_file)
+    except (FileNotFoundError, MapLoadError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        tanks = place_tanks(game_map, args.tanks_per_player, seed=args.seed)
+    except InsufficientPassableCellsError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
     initial_state = build_initial_state(tanks)
 
     players: dict[str, Player] = {
