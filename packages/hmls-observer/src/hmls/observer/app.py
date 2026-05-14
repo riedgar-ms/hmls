@@ -164,7 +164,7 @@ class ObserverApp(LogTabMixin, LogStatusMixin, App[None]):
         try:
             map_view = self.query_one("#map-view", MapView)
             map_view.update_state(msg.state)
-            map_view.active_tank_id = msg.current_tank_id
+            map_view.active_tank_id = msg.current_tank_id or ""
         except Exception:
             logger.debug("Failed to update map view during state update", exc_info=True)
 

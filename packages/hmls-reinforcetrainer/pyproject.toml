@@ -17,7 +17,7 @@ hmls-nncore = { workspace = true }
 hmls-mapgenerator = { workspace = true }
 
 [project.scripts]
-hmls-reinforcetrainer = "hmls.reinforcetrainer.__main__:main"
+hmls-reinforcetrainer = "hmls.reinforcetrainer.cli:main"
 
 [build-system]
 requires = ["hatchling"]

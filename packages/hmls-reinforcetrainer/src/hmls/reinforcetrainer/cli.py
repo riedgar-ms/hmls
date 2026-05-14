@@ -145,6 +145,18 @@ def load_config(config_path: Path) -> TrainerConfig:
     return _resolve_config_paths(config, config_path.parent)
 
 
+def main() -> None:
+    """Parse CLI arguments, configure logging, and run the training loop."""
+    from hmls.reinforcetrainer.training_loop import train
+
+    result = parse_args()
+    logging.basicConfig(
+        level=result.log_level,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+    train(result.config)
+
+
 def parse_args(argv: list[str] | None = None) -> CLIResult:
     """Parse command-line arguments and load the config file.
 

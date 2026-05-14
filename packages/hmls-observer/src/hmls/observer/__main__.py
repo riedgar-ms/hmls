@@ -1,5 +1,6 @@
-"""Allow running the observer with ``python -m hmls.observer``."""
+"""Entry point for ``python -m hmls.observer``."""
 
 from hmls.observer.app import main
 
-main()
+if __name__ == "__main__":
+    main()

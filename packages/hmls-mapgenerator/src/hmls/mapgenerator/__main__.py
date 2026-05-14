@@ -1,5 +1,6 @@
-"""Allow running the map generator TUI with ``python -m hmls.mapgenerator``."""
+"""Entry point for ``python -m hmls.mapgenerator``."""
 
 from hmls.mapgenerator.app import main
 
-main()
+if __name__ == "__main__":
+    main()

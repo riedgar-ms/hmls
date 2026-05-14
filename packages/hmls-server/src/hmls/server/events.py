@@ -51,7 +51,7 @@ class StateUpdatedEvent:
     """Emitted after each step to broadcast the new game state."""
 
     state: GameState
-    current_tank_id: TankId | str
+    current_tank_id: TankId | None
     turns_taken: int
 
 
