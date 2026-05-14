@@ -6,8 +6,9 @@ parameterised with :class:`RandomTankModelConfig` and
 :class:`RandomTankModel`, using :class:`RandomTankPlayer` as the
 player factory.
 
-The ``model_package`` for the random tank is ``"hmls.randomtank"``
-and this module is importable as ``hmls.randomtank.persistence``.
+This module is registered as the ``randomtank`` entry point under
+the ``hmls.models`` group.  It can also be discovered via the
+``model_id`` field in ``model_config.json``.
 """
 
 from hmls.nncore.persistence import NNPlayerModelPersistence

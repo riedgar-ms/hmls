@@ -147,13 +147,13 @@ def train(config: TrainerConfig) -> None:
     model_config_a = load_model_config(config.model_a.dir)
     model_config_b = load_model_config(config.model_b.dir)
     logger.info(
-        "Model A config: package=%s, dir=%s",
-        model_config_a.model_package,
+        "Model A config: model_id=%s, dir=%s",
+        model_config_a.model_id,
         config.model_a.dir,
     )
     logger.info(
-        "Model B config: package=%s, dir=%s",
-        model_config_b.model_package,
+        "Model B config: model_id=%s, dir=%s",
+        model_config_b.model_id,
         config.model_b.dir,
     )
     _validate_model_configs(model_config_a, model_config_b)

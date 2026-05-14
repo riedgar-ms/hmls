@@ -1,5 +1,5 @@
 {
-  "model_package": "hmls.singlemkiii",
+  "model_id": "singlemkiii",
   "patch_size": 9,
   "gru_hidden_size": 128
 }

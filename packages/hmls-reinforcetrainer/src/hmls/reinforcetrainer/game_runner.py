@@ -92,10 +92,10 @@ def run_game(
 ) -> GameOutcome:
     """Run a single game between two NN models.
 
-    Creates player instances via dynamic dispatch (each model's
-    ``model_package`` determines the concrete player type), places
-    tanks, runs the game engine, and computes step-by-step rewards
-    for learning players.
+    Creates player instances via the model package registry (each
+    model's ``model_id`` determines the concrete player type),
+    places tanks, runs the game engine, and computes step-by-step
+    rewards for learning players.
 
     Args:
         game_map: The map to play on.
@@ -126,13 +126,13 @@ def run_game(
     # frozen ones.  Currently unnecessary because no model uses these
     # layers, but this is the correct place for the calls.
     player_a = create_player(
-        model_package=model_a.config.model_package,
+        model_id=model_a.config.model_id,
         team="A",
         model=model_a,
         mode="learn" if train_a else "play",
     )
     player_b = create_player(
-        model_package=model_b.config.model_package,
+        model_id=model_b.config.model_id,
         team="B",
         model=model_b,
         mode="learn" if train_b else "play",

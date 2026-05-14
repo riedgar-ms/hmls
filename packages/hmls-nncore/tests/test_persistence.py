@@ -17,7 +17,7 @@ from hmls.nncore.reward import FiringRewardConfig, RewardConfig
 class _StubConfig(TankModelConfig, frozen=True, extra="forbid"):
     """Minimal config for the stub model."""
 
-    model_package: str = "test.stub"
+    model_id: str = "test.stub"
     hidden_size: int = 4
 
 
@@ -149,7 +149,7 @@ class TestModelConfig:
         loaded = persistence.load_model_config(tmp_path)
         assert loaded.patch_size == 7
         assert loaded.hidden_size == 16
-        assert loaded.model_package == "test.stub"
+        assert loaded.model_id == "test.stub"
 
     def test_load_missing_raises(
         self,

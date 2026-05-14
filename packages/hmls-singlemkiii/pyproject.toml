@@ -10,6 +10,9 @@ dependencies = [
     "torch>=2.0",
 ]
 
+[project.entry-points."hmls.models"]
+singlemkiii = "hmls.singlemkiii.persistence:PERSISTENCE"
+
 [tool.uv.sources]
 hmls-core = { workspace = true }
 hmls-nncore = { workspace = true }

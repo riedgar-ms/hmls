@@ -1,4 +1,4 @@
-"""Stub persistence module for dynamic dispatch.
+"""Stub persistence module for testing.
 
 Exposes a :data:`PERSISTENCE` instance of
 :class:`~hmls.nncore.persistence.NNPlayerModelPersistence`
@@ -10,9 +10,8 @@ This enables the reinforcetrainer tests to use
 :func:`~hmls.nncore.persistence.create_player` without depending
 on any concrete model package.
 
-The ``model_package`` for stubs is ``"hmls.reinforcetrainer._testing"``
-and this module is importable as
-``hmls.reinforcetrainer._testing.persistence``.
+This module is registered as the ``reinforcetrainer-testing`` entry
+point under the ``hmls.models`` group.
 """
 
 from hmls.nncore.persistence import NNPlayerModelPersistence

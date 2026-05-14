@@ -105,7 +105,7 @@ def test_independent_gru_sizes() -> None:
 def test_config_defaults() -> None:
     """Config fields have correct defaults."""
     config = MkIIModelConfig()
-    assert config.model_package == "hmls.singlemkii"
+    assert config.model_id == "hmls.singlemkii"
     assert config.gru1_hidden_size == 128
     assert config.gru2_hidden_size == 64
     assert config.conv_kernel_size == 3

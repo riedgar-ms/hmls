@@ -93,7 +93,7 @@ def test_input_size_matches_patch() -> None:
 def test_config_defaults() -> None:
     """Config fields have correct defaults."""
     config = MkIIIModelConfig()
-    assert config.model_package == "hmls.singlemkiii"
+    assert config.model_id == "hmls.singlemkiii"
     assert config.gru_hidden_size == 128
     assert config.patch_size == 9
 

@@ -78,7 +78,7 @@ class TestModelConfigJson:
         loaded = PERSISTENCE.load_model_config(tmp_path)
         assert loaded.patch_size == 7
         assert loaded.gru_hidden_size == 256
-        assert loaded.model_package == "hmls.singlemkiii"
+        assert loaded.model_id == "hmls.singlemkiii"
 
     def test_load_missing_raises(self, tmp_path: Path) -> None:
         """Loading from a directory without model_config.json raises."""

@@ -21,7 +21,7 @@ class MkIModelConfig(TankModelConfig, frozen=True, extra="forbid"):
 
     Attributes:
         patch_size: Side length of the input patch (must be odd, ≥ 3).
-        model_package: Python package defining this model.
+        model_id: Model identifier for the persistence registry.
         cnn_channels: Number of output channels for each conv layer.
         gru_hidden_size: Dimensionality of the GRU hidden state.
         conv_kernel_size: Kernel size for each Conv2d layer (must be odd so
@@ -30,7 +30,7 @@ class MkIModelConfig(TankModelConfig, frozen=True, extra="forbid"):
         pool_stride: Stride for each MaxPool2d layer.
     """
 
-    model_package: str = "hmls.singlemki"
+    model_id: str = "hmls.singlemki"
     cnn_channels: tuple[int, ...] = (32, 64)
     gru_hidden_size: int = 128
     conv_kernel_size: int = Field(default=3, ge=1)
