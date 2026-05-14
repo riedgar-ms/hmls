@@ -8,12 +8,8 @@ apps using ``TabbedContent``.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
 from textual.widgets import RichLog
-
-if TYPE_CHECKING:
-    pass
 
 
 class TextualLogHandler(logging.Handler):
