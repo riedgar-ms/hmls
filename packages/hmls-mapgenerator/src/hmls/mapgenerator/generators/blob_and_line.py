@@ -9,9 +9,10 @@ from __future__ import annotations
 import random
 
 from hmls.core import CellType, GameMap
-from hmls.mapgenerator.generators.base import STRATEGY_REGISTRY, MapStrategy, StrategyParam
+from hmls.mapgenerator.generators.base import MapStrategy, StrategyParam, register_strategy
 
 
+@register_strategy
 class BlobAndLineStrategy(MapStrategy):
     """Default obstacle placement using a mix of ellipses and line segments.
 
@@ -30,6 +31,8 @@ class BlobAndLineStrategy(MapStrategy):
         shape: Obstacle geometry blend.  0.0 = fully linear walls,
             1.0 = fully circular blobs, 0.5 = mixed.
     """
+
+    display_name = "Blob & Line"
 
     @classmethod
     def get_params(cls) -> list[StrategyParam]:
@@ -183,7 +186,3 @@ def _bresenham(x0: int, y0: int, x1: int, y1: int) -> list[tuple[int, int]]:
             y0 += sy
 
     return cells
-
-
-# Register this strategy so the TUI can discover it
-STRATEGY_REGISTRY["Blob & Line"] = BlobAndLineStrategy

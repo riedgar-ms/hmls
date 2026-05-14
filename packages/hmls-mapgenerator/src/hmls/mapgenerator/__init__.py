@@ -7,6 +7,7 @@ from hmls.mapgenerator.generators import (
     PerlinNoiseStrategy,
     StrategyParam,
     generate_map,
+    register_strategy,
 )
 
 __all__ = [
@@ -14,6 +15,7 @@ __all__ = [
     "MapStrategy",
     "StrategyParam",
     "STRATEGY_REGISTRY",
+    "register_strategy",
     "BlobAndLineStrategy",
     "PerlinNoiseStrategy",
 ]
