@@ -174,6 +174,62 @@ def compute_visibility_mask(n: int) -> list[list[bool]]:
     return mask
 
 
+# ── Coordinate conversion ─────────────────────────────────────────────
+
+
+def ego_to_world_position(patch: TankPatch, ego_row: int, ego_col: int) -> Position:
+    """Convert egocentric grid coordinates to a world position.
+
+    Given a :class:`TankPatch` and an (ego_row, ego_col) pair within its
+    grid, compute the corresponding world-space :class:`Position`.
+
+    The conversion uses the patch's direction to determine the forward
+    and right axes, then applies the standard ego→world transform::
+
+        fwd_steps = half - ego_row
+        rgt_steps = ego_col - half
+        world = patch.position + fwd_steps * forward + rgt_steps * right
+
+    Args:
+        patch: The egocentric visibility patch (provides position,
+            direction, and grid size).
+        ego_row: Row index in the egocentric grid (0 = furthest forward).
+        ego_col: Column index in the egocentric grid.
+
+    Returns:
+        The world-space :class:`Position` corresponding to (ego_row, ego_col).
+    """
+    half = len(patch.grid) // 2
+    return _ego_to_world(
+        origin=patch.position,
+        direction=patch.direction,
+        half=half,
+        ego_row=ego_row,
+        ego_col=ego_col,
+    )
+
+
+def _ego_to_world(
+    origin: Position,
+    direction: Direction,
+    half: int,
+    ego_row: int,
+    ego_col: int,
+) -> Position:
+    """Low-level ego→world conversion (shared by public API and patch builder)."""
+    forward = direction.forward_delta()
+    right = direction.turn_right().forward_delta()
+
+    fwd_steps = half - ego_row
+    rgt_steps = ego_col - half
+    fx, fy = forward
+    rx, ry = right
+
+    world_x = origin.x + fwd_steps * fx + rgt_steps * rx
+    world_y = origin.y + fwd_steps * fy + rgt_steps * ry
+    return Position(world_x, world_y)
+
+
 # ── Patch extraction ──────────────────────────────────────────────────
 
 
@@ -208,9 +264,6 @@ def extract_patch(
     mask = compute_visibility_mask(patch_size)
     half = patch_size // 2
 
-    forward = tank.direction.forward_delta()
-    right = tank.direction.turn_right().forward_delta()
-
     # Build a position→Tank lookup for the whole map.
     pos_to_tank: dict[Position, Tank] = {}
     for t in game_state.tanks:
@@ -227,27 +280,20 @@ def extract_patch(
                 row_cells.append(fog)
                 continue
 
-            # Map egocentric (row, col) back to world offset (ego→world).
-            # forward_steps = half - ego_row
-            # right_steps = ego_col - half
-            # (dx, dy) = forward_steps * forward + right_steps * right
-            fwd_steps = half - ego_row
-            rgt_steps = ego_col - half
-            fx, fy = forward
-            rx, ry = right
-            world_dx = fwd_steps * fx + rgt_steps * rx
-            world_dy = fwd_steps * fy + rgt_steps * ry
-
-            world_x = tank.position.x + world_dx
-            world_y = tank.position.y + world_dy
+            world_pos = _ego_to_world(
+                origin=tank.position,
+                direction=tank.direction,
+                half=half,
+                ego_row=ego_row,
+                ego_col=ego_col,
+            )
 
             # Out-of-bounds cells are boundary (definitively impassable).
-            if not game_map.in_bounds(world_x, world_y):
+            if not game_map.in_bounds(world_pos.x, world_pos.y):
                 row_cells.append(boundary)
                 continue
 
-            cell_type = game_map[world_x, world_y]
-            world_pos = Position(world_x, world_y)
+            cell_type = game_map[world_pos.x, world_pos.y]
             occupant = pos_to_tank.get(world_pos)
             row_cells.append(VisibleCell(cell_type=cell_type, tank=occupant))
 

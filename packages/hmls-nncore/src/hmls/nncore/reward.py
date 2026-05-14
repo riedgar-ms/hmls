@@ -2,11 +2,12 @@
 
 Defines :class:`RewardConfig`, a nested Pydantic configuration model
 with sections for actions, firing, game state, exploration, and
-situational rewards, and :class:`RewardFunction`, the single concrete
-reward implementation that uses it.
+situational rewards, and :class:`RewardFunction`, which orchestrates
+composable :class:`~hmls.nncore.reward_components.RewardComponent`
+instances.
 
-The :class:`RewardFunction` tracks per-episode state (explored cells,
-consecutive turn/pass/miss streaks) via :meth:`~RewardFunction.reset` and
+The :class:`RewardFunction` delegates per-episode state management to
+its components via :meth:`~RewardFunction.reset` and
 :meth:`~RewardFunction.observe_patch` lifecycle hooks.
 """
 
@@ -15,8 +16,8 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from hmls.core.engine import HistoryEntry
-from hmls.core.types import Action, Position
-from hmls.core.visibility import TankPatch, VisibleCell
+from hmls.core.types import Action
+from hmls.core.visibility import TankPatch
 
 # ── Nested reward config sections ────────────────────────────────────
 
@@ -169,13 +170,12 @@ class RewardConfig(BaseModel, frozen=True, extra="forbid"):
 
 
 class RewardFunction:
-    """Shaped reward function with exploration bonus and streak tracking.
+    """Shaped reward function composed of independent reward components.
 
-    Computes per-step and episode-end rewards based on a
-    :class:`RewardConfig`.  Internally tracks which grid cells have
-    been seen (for ``see_cell`` rewards) and which have been physically
-    occupied (for ``occupy_cell`` rewards), as well as consecutive
-    turn, pass, and miss streaks for escalating penalties.
+    Orchestrates :class:`~hmls.nncore.reward_components.RewardComponent`
+    instances, building a shared
+    :class:`~hmls.nncore.reward_components.RewardContext` for each step
+    and summing their contributions.
 
     Args:
         config: A :class:`RewardConfig` instance.  Uses defaults if
@@ -183,63 +183,40 @@ class RewardFunction:
     """
 
     def __init__(self, config: RewardConfig | None = None) -> None:
+        from hmls.nncore.reward_components import (
+            ActionReward,
+            ExplorationReward,
+            FiringReward,
+            GameStateStepReward,
+            RewardComponent,
+            SituationalReward,
+        )
+
         self.config: RewardConfig = config or RewardConfig()
-        self._seen_positions: set[Position] = set()
-        self._occupied_positions: set[Position] = set()
-        self._last_new_seen: int = 0
-        self._last_new_occupied: int = 0
-        self._turn_streaks: dict[str, int] = {}
-        self._pass_streaks: dict[str, int] = {}
-        self._miss_streaks: dict[str, int] = {}
+        self._exploration = ExplorationReward()
+        self._components: list[RewardComponent] = [
+            GameStateStepReward(),
+            FiringReward(),
+            self._exploration,
+            ActionReward(),
+            SituationalReward(),
+        ]
 
     def reset(self) -> None:
         """Reset internal state for a new episode."""
-        self._seen_positions = set()
-        self._occupied_positions = set()
-        self._last_new_seen = 0
-        self._last_new_occupied = 0
-        self._turn_streaks = {}
-        self._pass_streaks = {}
-        self._miss_streaks = {}
+        for component in self._components:
+            component.reset()
 
     def observe_patch(self, patch: TankPatch) -> None:
         """Update exploration state from the observed visibility patch.
 
-        Records newly seen cells (all visible cells in the patch) and
-        newly occupied cells (the tank's current position).
+        Must be called before :meth:`compute_step_reward` for the same
+        step so that exploration bonuses reflect newly seen cells.
 
         Args:
             patch: The egocentric visibility patch.
         """
-        # Track seen cells (visibility-based exploration)
-        half = len(patch.grid) // 2
-        forward = patch.direction.forward_delta()
-        right = patch.direction.turn_right().forward_delta()
-        fx, fy = forward
-        rx, ry = right
-
-        new_seen = 0
-        for ego_row, row in enumerate(patch.grid):
-            for ego_col, cell in enumerate(row):
-                if isinstance(cell, VisibleCell):
-                    fwd_steps = half - ego_row
-                    rgt_steps = ego_col - half
-                    world_x = patch.position.x + fwd_steps * fx + rgt_steps * rx
-                    world_y = patch.position.y + fwd_steps * fy + rgt_steps * ry
-                    pos = Position(world_x, world_y)
-                    if pos not in self._seen_positions:
-                        self._seen_positions.add(pos)
-                        new_seen += 1
-
-        self._last_new_seen = new_seen
-
-        # Track occupied cells (movement-based exploration)
-        tank_pos = patch.position
-        if tank_pos not in self._occupied_positions:
-            self._occupied_positions.add(tank_pos)
-            self._last_new_occupied = 1
-        else:
-            self._last_new_occupied = 0
+        self._exploration.observe_patch(patch)
 
     def compute_step_reward(
         self,
@@ -247,92 +224,31 @@ class RewardFunction:
         patch: TankPatch,
         team: str,
     ) -> float:
-        """Compute the shaped step reward.
+        """Compute the shaped step reward by summing all components.
 
-        Components (all added to the total):
+        Args:
+            entry: The history entry for the current step.
+            patch: The egocentric visibility patch.
+            team: The team of the acting player.
 
-        - ``game_state.step``: per-step time cost
-        - ``firing.hit / miss / neglect``: firing outcome
-        - ``game_state.invalid_move``: for invalid actions
-        - ``actions.pass_action``: for deliberate pass
-        - ``actions.turn_left / turn_right / move_forward / fire``:
-          per-action rewards
-        - ``actions.consecutive_turn``: escalating streak penalty
-        - ``actions.consecutive_pass``: escalating pass streak penalty
-        - ``firing.consecutive_miss``: escalating miss streak penalty
-        - ``exploration.see_cell``: per newly seen cell
-        - ``exploration.occupy_cell``: per newly occupied cell
-        - ``situational.enemy_in_cone``: per visible enemy in cone
+        Returns:
+            Total step reward (sum of all component contributions).
         """
-        cfg = self.config
-        reward = cfg.game_state.step
+        from hmls.nncore.reward_components import RewardContext
 
-        # Fire outcome
-        if entry.hit is True:
-            reward += cfg.firing.hit
-        elif entry.hit is False:
-            reward += cfg.firing.miss
-        elif _enemy_directly_ahead(patch, team):
-            reward += cfg.firing.neglect
-
-        # Exploration bonuses
-        reward += cfg.exploration.see_cell * self._last_new_seen
-        reward += cfg.exploration.occupy_cell * self._last_new_occupied
-
-        # Invalid action
-        if not entry.valid:
-            reward += cfg.game_state.invalid_move
-
-        # Deliberate pass
-        if entry.requested_action == Action.PASS and entry.valid:
-            reward += cfg.actions.pass_action
-
-        # Per-action rewards
-        if entry.requested_action == Action.TURN_LEFT and entry.valid:
-            reward += cfg.actions.turn_left
-        elif entry.requested_action == Action.TURN_RIGHT and entry.valid:
-            reward += cfg.actions.turn_right
-        elif entry.requested_action == Action.MOVE_FORWARD and entry.valid:
-            reward += cfg.actions.move_forward
-        elif entry.requested_action == Action.FIRE and entry.valid:
-            reward += cfg.actions.fire
-
-        # Escalating consecutive-turn reward
-        _TURN_ACTIONS = frozenset({Action.TURN_LEFT, Action.TURN_RIGHT})
-        tank_id = entry.tank_id
-        _is_meaningful_reset = entry.hit is True or (
+        is_meaningful_reset = entry.hit is True or (
             entry.requested_action == Action.MOVE_FORWARD and entry.valid
         )
-        if entry.requested_action in _TURN_ACTIONS and entry.valid:
-            streak = self._turn_streaks.get(tank_id, 0) + 1
-            self._turn_streaks[tank_id] = streak
-            reward += cfg.actions.consecutive_turn * streak
-        elif _is_meaningful_reset:
-            self._turn_streaks[tank_id] = 0
 
-        # Escalating consecutive-pass reward
-        if entry.requested_action == Action.PASS and entry.valid:
-            streak = self._pass_streaks.get(tank_id, 0) + 1
-            self._pass_streaks[tank_id] = streak
-            reward += cfg.actions.consecutive_pass * streak
-        elif _is_meaningful_reset:
-            self._pass_streaks[tank_id] = 0
-
-        # Escalating consecutive-miss reward
-        if entry.hit is False:
-            streak = self._miss_streaks.get(tank_id, 0) + 1
-            self._miss_streaks[tank_id] = streak
-            reward += cfg.firing.consecutive_miss * streak
-        elif _is_meaningful_reset:
-            self._miss_streaks[tank_id] = 0
-
-        # Enemy in forward cone
-        cone_score = _score_enemies_in_cone(
-            patch, team, cfg.situational.enemy_in_cone_distance_discount
+        context = RewardContext(
+            entry=entry,
+            patch=patch,
+            team=team,
+            config=self.config,
+            is_meaningful_reset=is_meaningful_reset,
         )
-        reward += cfg.situational.enemy_in_cone * cone_score
 
-        return reward
+        return sum(component.compute(context) for component in self._components)
 
     def compute_episode_end_reward(
         self,
@@ -345,64 +261,3 @@ class RewardFunction:
             return self.config.game_state.loss
         else:
             return 0.0
-
-
-# ── Helper functions ──────────────────────────────────────────────────
-
-
-def _enemy_directly_ahead(patch: TankPatch, team: str) -> bool:
-    """Check whether an alive enemy tank occupies the cell directly ahead.
-
-    The cell directly ahead in egocentric coordinates is at
-    ``grid[half - 1][half]`` (one row above the centre, same column).
-
-    Args:
-        patch: The egocentric visibility patch.
-        team: The observing player's team.
-
-    Returns:
-        ``True`` if an alive enemy occupies the cell directly ahead.
-    """
-    half = len(patch.grid) // 2
-    ahead_row = half - 1
-    ahead_col = half
-    cell = patch.grid[ahead_row][ahead_col]
-    if isinstance(cell, VisibleCell) and cell.tank is not None:
-        return cell.tank.alive and cell.tank.team != team
-    return False
-
-
-def _score_enemies_in_cone(
-    patch: TankPatch,
-    team: str,
-    distance_discount: float,
-) -> float:
-    """Score alive enemy tanks visible in the forward cone.
-
-    The forward cone comprises all visible cells in rows above the
-    patch centre (``ego_row < half``).  Each enemy's contribution is
-    ``distance_discount ** manhattan_distance``, where the Manhattan
-    distance is computed in egocentric grid coordinates from the
-    player's centre cell.
-
-    Fog cells are naturally excluded because they are :class:`FogCell`,
-    not :class:`VisibleCell`.
-
-    Args:
-        patch: The egocentric visibility patch.
-        team: The observing player's team.
-        distance_discount: Per-unit-distance discount factor.
-            ``1.0`` gives a simple count (no discounting).
-
-    Returns:
-        Distance-discounted score of alive enemy tanks in the cone.
-    """
-    half = len(patch.grid) // 2
-    score = 0.0
-    for ego_row in range(half):
-        for ego_col, cell in enumerate(patch.grid[ego_row]):
-            if isinstance(cell, VisibleCell) and cell.tank is not None:
-                if cell.tank.alive and cell.tank.team != team:
-                    manhattan = (half - ego_row) + abs(ego_col - half)
-                    score += distance_discount**manhattan
-    return score

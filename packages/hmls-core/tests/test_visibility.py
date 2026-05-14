@@ -12,9 +12,11 @@ from hmls.core.visibility import (
     BoundaryCell,
     FogCell,
     PlayerView,
+    TankPatch,
     VisibleCell,
     build_player_view,
     compute_visibility_mask,
+    ego_to_world_position,
     extract_patch,
 )
 
@@ -265,6 +267,107 @@ class TestBuildPlayerView:
         view = build_player_view(state, game_map, "a", 5)
         assert len(view.patches) == 1
         assert view.patches[0].tank_id == "t0"
+
+
+# ── ego_to_world_position ────────────────────────────────────────────
+
+
+def _make_patch(position: Position, direction: Direction, size: int = 9) -> TankPatch:
+    """Create a minimal TankPatch for coordinate conversion tests."""
+    grid: list[list[VisibleCell | FogCell]] = []
+    for _row in range(size):
+        row_cells: list[VisibleCell | FogCell] = []
+        for _col in range(size):
+            row_cells.append(VisibleCell(cell_type=CellType.PASSABLE))
+        grid.append(row_cells)
+    return TankPatch(tank_id="t0", position=position, direction=direction, grid=grid)
+
+
+class TestEgoToWorldPosition:
+    """Tests for ego_to_world_position coordinate conversion."""
+
+    def test_centre_cell_returns_tank_position(self) -> None:
+        """The centre cell always maps to the tank's own position."""
+        for direction in Direction:
+            patch = _make_patch(Position(5, 5), direction)
+            half = len(patch.grid) // 2
+            result = ego_to_world_position(patch, half, half)
+            assert result == Position(5, 5), f"Failed for {direction.name}"
+
+    def test_north_facing_forward_cell(self) -> None:
+        """For NORTH-facing tank at (5,5), cell ahead is (5,4)."""
+        patch = _make_patch(Position(5, 5), Direction.NORTH)
+        half = len(patch.grid) // 2
+        result = ego_to_world_position(patch, half - 1, half)
+        assert result == Position(5, 4)
+
+    @pytest.mark.parametrize(
+        ("direction", "expected"),
+        [
+            (Direction.NORTH, Position(5, 4)),
+            (Direction.EAST, Position(6, 5)),
+            (Direction.SOUTH, Position(5, 6)),
+            (Direction.WEST, Position(4, 5)),
+        ],
+    )
+    def test_forward_cell_all_directions(self, direction: Direction, expected: Position) -> None:
+        """Cell directly ahead maps to one step in the facing direction."""
+        patch = _make_patch(Position(5, 5), direction)
+        half = len(patch.grid) // 2
+        result = ego_to_world_position(patch, half - 1, half)
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        ("direction", "expected"),
+        [
+            (Direction.NORTH, Position(6, 5)),  # right of NORTH = EAST
+            (Direction.EAST, Position(5, 6)),  # right of EAST = SOUTH
+            (Direction.SOUTH, Position(4, 5)),  # right of SOUTH = WEST
+            (Direction.WEST, Position(5, 4)),  # right of WEST = NORTH
+        ],
+    )
+    def test_right_of_centre_all_directions(self, direction: Direction, expected: Position) -> None:
+        """Cell to the right maps to one step in the rightward direction."""
+        patch = _make_patch(Position(5, 5), direction)
+        half = len(patch.grid) // 2
+        result = ego_to_world_position(patch, half, half + 1)
+        assert result == expected
+
+    @pytest.mark.parametrize(
+        ("direction", "expected"),
+        [
+            (Direction.NORTH, Position(6, 3)),  # 2 north + 1 east
+            (Direction.EAST, Position(7, 6)),  # 2 east + 1 south
+            (Direction.SOUTH, Position(4, 7)),  # 2 south + 1 west
+            (Direction.WEST, Position(3, 4)),  # 2 west + 1 north
+        ],
+    )
+    def test_diagonal_cell_all_directions(self, direction: Direction, expected: Position) -> None:
+        """Diagonal cell (2 forward, 1 right) maps correctly."""
+        patch = _make_patch(Position(5, 5), direction)
+        half = len(patch.grid) // 2
+        result = ego_to_world_position(patch, half - 2, half + 1)
+        assert result == expected
+
+    def test_consistency_with_extract_patch(self) -> None:
+        """ego_to_world_position agrees with extract_patch placement."""
+        # Place two tanks: one subject, one target at a known position
+        subject = Tank(id="subject", team="a", position=Position(4, 4), direction=Direction.NORTH)
+        target = Tank(id="target", team="b", position=Position(5, 3), direction=Direction.SOUTH)
+        state, game_map = _make_state(width=11, height=11, tanks=[subject, target])
+
+        patch = extract_patch(state, game_map, "subject", patch_size=9)
+
+        # Find the target in the patch grid
+        found = False
+        for ego_row, row in enumerate(patch.grid):
+            for ego_col, cell in enumerate(row):
+                if isinstance(cell, VisibleCell) and cell.tank is not None:
+                    if cell.tank.id == "target":
+                        world_pos = ego_to_world_position(patch, ego_row, ego_col)
+                        assert world_pos == target.position
+                        found = True
+        assert found, "Target tank should be visible in the patch"
 
     def test_dead_tank_produces_no_patch(self) -> None:
         tank = Tank(
