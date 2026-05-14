@@ -26,7 +26,7 @@ class MkIIModelConfig(TankModelConfig, frozen=True, extra="forbid"):
 
     Attributes:
         patch_size: Side length of the input patch (must be odd, ≥ 3).
-        model_package: Python package defining this model.
+        model_package: Model identifier for the persistence registry.
         cnn_channels: Number of output channels for each conv layer.
         gru1_hidden_size: Dimensionality of the first GRU hidden state.
         gru2_hidden_size: Dimensionality of the second GRU hidden state.

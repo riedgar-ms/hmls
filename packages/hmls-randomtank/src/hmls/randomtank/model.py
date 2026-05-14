@@ -23,7 +23,7 @@ class RandomTankModelConfig(TankModelConfig, frozen=True, extra="forbid"):
 
     Attributes:
         patch_size: Side length of the input patch (must be odd, ≥ 3).
-        model_package: Python package path for dynamic dispatch.
+        model_package: Model identifier for the persistence registry.
         prob_forward_on_passable: Probability of moving forward when
             the cell ahead is passable and empty.
         prob_turn_left_on_passable: Probability of turning left when

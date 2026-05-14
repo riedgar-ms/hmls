@@ -1,8 +1,11 @@
-"""Generic model persistence with dynamic package dispatch.
+"""Model persistence with entry-point-based package registry.
 
 Provides model-agnostic save/load infrastructure that discovers the
-correct concrete persistence implementation at runtime by reading the
-``model_package`` field from ``model_config.json``.
+correct concrete persistence implementation at runtime via the
+``hmls.models`` entry-point registry (see :mod:`hmls.nncore.registry`).
+The ``model_package`` field in ``model_config.json`` may be either a
+short entry-point name (e.g. ``"singlemki"``) or a full Python import
+path (e.g. ``"hmls.singlemki"``).
 
 Architecture
 ~~~~~~~~~~~~
@@ -18,8 +21,12 @@ Architecture
     by the concrete config and model classes.
 
 Each model package (e.g. ``hmls.singlemki``) must expose a
-``persistence`` submodule with a ``PERSISTENCE`` attribute that is
-an instance of :class:`ModelPersistence`.
+``PERSISTENCE`` attribute — either via a ``persistence`` submodule or
+by registering an entry point under the ``hmls.models`` group in its
+``pyproject.toml``::
+
+    [project.entry-points."hmls.models"]
+    singlemki = "hmls.singlemki.persistence:PERSISTENCE"
 """
 
 from __future__ import annotations
@@ -50,10 +57,11 @@ class ModelPersistence(ABC, Generic[ConfigT, ModelT]):
     """Abstract base class for model persistence and factory operations.
 
     Every model package must provide a concrete implementation of this
-    class and expose it as ``PERSISTENCE`` in its ``persistence``
-    submodule.  The dynamic dispatch functions in this module
+    class and expose it as ``PERSISTENCE``, either in a ``persistence``
+    submodule or via an entry point registered under the ``hmls.models``
+    group.  The registry-based dispatch functions in this module
     (:func:`load_model`, :func:`save_model`, etc.) look up the
-    ``PERSISTENCE`` attribute and delegate to its methods.
+    ``PERSISTENCE`` instance and delegate to its methods.
 
     Type parameters:
         ConfigT: The concrete :class:`TankModelConfig` subclass.
@@ -307,7 +315,7 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
         return NNPlayer(team=team, model=model, mode=mode)
 
 
-# ── Dynamic dispatch helpers ──────────────────────────────────────────
+# ── Registry-based dispatch helpers ───────────────────────────────────
 
 
 def _get_persistence(model_package: str) -> ModelPersistence[Any, Any]:
@@ -367,15 +375,16 @@ def read_model_package(directory: Path) -> str:
 #
 # These are the primary API for callers (e.g. the training loop) that
 # need to work with models without knowing the concrete type.  They
-# discover the correct ModelPersistence instance via model_package and
-# delegate.
+# discover the correct ModelPersistence instance via the entry-point
+# registry and delegate.
 
 
 def load_model_config(directory: Path) -> TankModelConfig:
-    """Load a model config using dynamic package dispatch.
+    """Load a model config using the model package registry.
 
     Reads ``model_config.json``, discovers the ``model_package``,
-    imports the correct persistence instance, and delegates to its
+    resolves the correct persistence instance via the entry-point
+    registry, and delegates to its
     :meth:`~ModelPersistence.load_model_config` method.
 
     Args:
@@ -391,11 +400,11 @@ def load_model_config(directory: Path) -> TankModelConfig:
 
 
 def load_model(path: Path) -> tuple[TankModelBase, dict[str, Any]]:
-    """Load a model using dynamic package dispatch.
+    """Load a model using the model package registry.
 
     Reads the model config from the parent directory to discover the
-    ``model_package``, then delegates to the package's persistence
-    instance.
+    ``model_package``, then resolves and delegates to the package's
+    persistence instance.
 
     Args:
         path: Path to the saved model file (e.g. ``model.pt``).
@@ -415,10 +424,10 @@ def save_model(
     reward_config: RewardConfig | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> None:
-    """Save a model using dynamic package dispatch.
+    """Save a model using the model package registry.
 
-    Uses ``model.config.model_package`` to discover the correct
-    persistence instance.
+    Uses ``model.config.model_package`` to resolve the correct
+    persistence instance via the entry-point registry.
 
     Args:
         model: The model to save.
@@ -475,13 +484,14 @@ def create_player(
     model: TankModelBase,
     mode: Literal["play", "learn"],
 ) -> Any:
-    """Create a player instance using dynamic package dispatch.
+    """Create a player instance using the model package registry.
 
     Each model package's ``PERSISTENCE`` instance must implement
     :meth:`~ModelPersistence.create_player`.
 
     Args:
-        model_package: Fully-qualified model package name.
+        model_package: Short entry-point name or fully-qualified
+            model package name.
         team: The team this player controls.
         model: The tank model to use.
         mode: ``"play"`` or ``"learn"``.

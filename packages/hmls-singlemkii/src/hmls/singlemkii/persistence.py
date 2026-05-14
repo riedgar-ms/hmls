@@ -5,9 +5,9 @@ Exposes a :data:`PERSISTENCE` instance of
 parameterised with :class:`~hmls.singlemkii.model.MkIIModelConfig`
 and :class:`~hmls.singlemkii.model.MkIITankPolicyNetwork`.
 
-The generic loader in :mod:`hmls.nncore.persistence` discovers this
-module via the ``model_package`` field in ``model_config.json`` and
-delegates all persistence operations to :data:`PERSISTENCE`.
+This module is registered as the ``singlemkii`` entry point under
+the ``hmls.models`` group.  It can also be discovered via the
+``model_package`` field in ``model_config.json``.
 """
 
 from hmls.nncore.persistence import NNPlayerModelPersistence

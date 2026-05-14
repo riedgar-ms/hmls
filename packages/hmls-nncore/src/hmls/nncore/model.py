@@ -24,9 +24,10 @@ class TankModelConfig(BaseModel, frozen=True, extra="forbid"):
 
     Attributes:
         patch_size: Side length of the input patch (must be odd, ≥ 3).
-        model_package: Fully-qualified Python package that defines the
-            model (e.g. ``"hmls.singlemki"``).  Used by the generic
-            persistence layer to locate the correct load/save routines.
+        model_package: Identifier used by the persistence registry to
+            locate the correct load/save routines.  May be a short
+            entry-point name (e.g. ``"singlemki"``) or a full Python
+            package path (e.g. ``"hmls.singlemki"``).
     """
 
     patch_size: int = Field(default=9, ge=3)

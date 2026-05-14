@@ -92,10 +92,10 @@ def run_game(
 ) -> GameOutcome:
     """Run a single game between two NN models.
 
-    Creates player instances via dynamic dispatch (each model's
-    ``model_package`` determines the concrete player type), places
-    tanks, runs the game engine, and computes step-by-step rewards
-    for learning players.
+    Creates player instances via the model package registry (each
+    model's ``model_package`` determines the concrete player type),
+    places tanks, runs the game engine, and computes step-by-step
+    rewards for learning players.
 
     Args:
         game_map: The map to play on.
