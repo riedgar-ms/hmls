@@ -42,11 +42,9 @@ class TestRemotePlayer:
         try:
             player.request_action("A1", view, loop)
             player.submit_action(Action.MOVE_FORWARD)
-            # Now wait_for_action should resolve immediately.
             result = loop.run_until_complete(player.wait_for_action())
             assert result == Action.MOVE_FORWARD
 
-            # choose_action should return the submitted action.
             chosen = player.choose_action("A1", view)
             assert chosen == Action.MOVE_FORWARD
         finally:
@@ -84,7 +82,6 @@ class TestRemotePlayer:
         loop = asyncio.get_event_loop()
         player.request_action("A1", view, loop)
 
-        # Submit action from a separate task (simulating WebSocket handler).
         async def submit_later() -> None:
             await asyncio.sleep(0.01)
             player.submit_action(Action.FIRE)

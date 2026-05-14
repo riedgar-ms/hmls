@@ -1,7 +1,7 @@
 """Tests that turn_result messages are only sent to the acting player's team.
 
-Verifies the fix for the information-leak bug where both players received
-every turn_result, revealing the opponent's moves.
+Verifies that both players receive every turn_result is prevented — only the
+acting team gets it, while observers receive all turn_results.
 """
 
 from __future__ import annotations
@@ -15,7 +15,10 @@ import pytest
 from hmls.core.map import GameMap
 from hmls.core.tank import Tank
 from hmls.core.types import Action, Direction, Position
-from hmls.server.app import GameSession
+from hmls.server.events import EventBus
+from hmls.server.network_manager import NetworkManager
+from hmls.server.orchestrator import GameOrchestrator
+from hmls.server.remote_player import RemotePlayer
 
 
 def _make_simple_map() -> GameMap:
@@ -31,16 +34,36 @@ def _make_tanks() -> list[Tank]:
     ]
 
 
-def _make_session(max_turns: int = 10) -> GameSession:
-    """Create a GameSession for testing."""
+def _make_components(
+    max_turns: int = 10,
+) -> tuple[EventBus, NetworkManager, GameOrchestrator, dict[str, RemotePlayer]]:
+    """Create wired-up components for testing."""
     game_map = _make_simple_map()
     tanks = _make_tanks()
-    return GameSession(
+    event_bus = EventBus()
+    players: dict[str, RemotePlayer] = {
+        "A": RemotePlayer("A"),
+        "B": RemotePlayer("B"),
+    }
+    nm = NetworkManager(
         game_map=game_map,
         tanks=tanks,
+        players=players,
+        event_bus=event_bus,
+        patch_size=5,
+        max_turns=max_turns,
+    )
+    orchestrator = GameOrchestrator(
+        game_map=game_map,
+        tanks=tanks,
+        players=players,
+        event_bus=event_bus,
         max_turns=max_turns,
         patch_size=5,
     )
+    orchestrator.both_connected = nm.both_connected
+    orchestrator.player_names = nm.player_names
+    return event_bus, nm, orchestrator, players
 
 
 class _RecordingWebSocket:
@@ -60,30 +83,28 @@ class TestTurnResultRouting:
     @pytest.mark.anyio
     async def test_turn_result_sent_only_to_acting_team(self) -> None:
         """After a turn, only the acting team should receive turn_result."""
-        session = _make_session(max_turns=4)
+        _, nm, orchestrator, players = _make_components(max_turns=4)
 
         ws_a = _RecordingWebSocket()
         ws_b = _RecordingWebSocket()
         obs = _RecordingWebSocket()
 
-        session.websockets["A"] = ws_a  # type: ignore[assignment]
-        session.websockets["B"] = ws_b  # type: ignore[assignment]
-        session._observers = [obs]  # type: ignore[list-item]
+        nm.websockets["A"] = ws_a  # type: ignore[assignment]
+        nm.websockets["B"] = ws_b  # type: ignore[assignment]
+        nm.observers = [obs]  # type: ignore[list-item]
 
-        # Simulate the game loop having started: set up the engine.
-        session._both_connected.set()
-        session.player_names = {"A": "Alice", "B": "Bob"}
+        # Signal both players connected.
+        nm.both_connected.set()
+        nm.player_names["A"] = "Alice"
+        nm.player_names["B"] = "Bob"
 
-        # Run the game loop in the background; it will wait for actions.
-        game_task = asyncio.create_task(session.run_game())
+        # Run the game loop in the background.
+        game_task = asyncio.create_task(orchestrator.run_game())
 
-        # Allow time for the game loop to initialise and send your_turn.
         await asyncio.sleep(0.1)
 
-        # Turn 1: Team A acts (engine alternates A, B, A, B, ...).
-        # The game loop should have sent your_turn to A.
-        # Submit an action for team A.
-        session.players["A"].submit_action(Action.PASS)
+        # Turn 1: Team A acts.
+        players["A"].submit_action(Action.PASS)
         await asyncio.sleep(0.1)
 
         # Check: A should have received turn_result, B should not.
@@ -96,10 +117,9 @@ class TestTurnResultRouting:
         assert a_turn_results[0]["tank_id"] == "A1"
 
         # Turn 2: Team B acts.
-        session.players["B"].submit_action(Action.PASS)
+        players["B"].submit_action(Action.PASS)
         await asyncio.sleep(0.1)
 
-        # Check: B should now have 1 turn_result; A should still have 1.
         a_turn_results = [m for m in ws_a.sent if m.get("type") == "turn_result"]
         b_turn_results = [m for m in ws_b.sent if m.get("type") == "turn_result"]
         assert len(a_turn_results) == 1, (
@@ -114,18 +134,16 @@ class TestTurnResultRouting:
             f"Observer should have 2 turn_results, got {len(obs_turn_results)}"
         )
 
-        # Clean up: end the game.
-        session._game_over = True
-        # Submit remaining actions to unblock any pending waits.
+        # Clean up.
+        orchestrator.game_over = True
         try:
-            session.players["A"].submit_action(Action.PASS)
+            players["A"].submit_action(Action.PASS)
         except RuntimeError:
             pass
         try:
-            session.players["B"].submit_action(Action.PASS)
+            players["B"].submit_action(Action.PASS)
         except RuntimeError:
             pass
-        # Cancel the task if still running.
         game_task.cancel()
         try:
             await game_task
