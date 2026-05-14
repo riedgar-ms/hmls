@@ -6,6 +6,7 @@ game map and event log in real-time, without fog-of-war restrictions.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import websockets
@@ -13,7 +14,7 @@ import websockets.asyncio.client
 from pydantic import TypeAdapter
 from textual.app import App, ComposeResult
 from textual.containers import ScrollableContainer
-from textual.widgets import Footer, Header, RichLog, Static
+from textual.widgets import Footer, Header, RichLog, Static, TabbedContent, TabPane
 
 from hmls.core.game_state import GameState
 from hmls.core.map import GameMap
@@ -29,8 +30,11 @@ from hmls.protocol import (
     TurnResultMessage,
     WaitingMessage,
 )
+from hmls.uxcommon.log_tab import LogTabMixin
 from hmls.uxcommon.mixins import LogStatusMixin
 from hmls.uxcommon.widgets.map_view import MapView
+
+logger = logging.getLogger("hmls.observer")
 
 # ── Type adapter for server messages ─────────────────────────────────
 
@@ -40,7 +44,7 @@ _server_message_adapter: TypeAdapter[ServerMessage] = TypeAdapter(ServerMessage)
 # ── Observer TUI ──────────────────────────────────────────────────────
 
 
-class ObserverApp(LogStatusMixin, App[None]):
+class ObserverApp(LogTabMixin, LogStatusMixin, App[None]):
     """Textual TUI for observing an HMLS game in progress.
 
     Displays the full game map (no fog-of-war) and a scrollable event log.
@@ -79,14 +83,18 @@ class ObserverApp(LogStatusMixin, App[None]):
     def compose(self) -> ComposeResult:
         """Compose the observer TUI layout."""
         yield Header()
-        with ScrollableContainer(id="map-scroll"):
-            yield Static("Connecting to server...", id="map-placeholder")
-        yield RichLog(id="log-panel", highlight=True, markup=True)
-        yield Static(f"Connecting to {self._server_url}...", id="status-bar")
+        with TabbedContent(initial="game-tab"):
+            with TabPane("Game", id="game-tab"):
+                with ScrollableContainer(id="map-scroll"):
+                    yield Static("Connecting to server...", id="map-placeholder")
+                yield RichLog(id="log-panel", highlight=True, markup=True)
+                yield Static(f"Connecting to {self._server_url}...", id="status-bar")
+            yield from self._compose_log_tab()
         yield Footer()
 
     def on_mount(self) -> None:
         """Start the WebSocket connection after mount."""
+        self._setup_log_tab()
         log_panel = self.query_one("#log-panel", RichLog)
         log_panel.write("[bold]HMLS Game Observer[/bold]")
         log_panel.write(f"Connecting to {self._server_url}...")
@@ -177,7 +185,7 @@ class ObserverApp(LogStatusMixin, App[None]):
             map_view.update_state(msg.state)
             map_view.active_tank_id = msg.current_tank_id
         except Exception:
-            pass
+            logger.debug("Failed to update map view during state update", exc_info=True)
 
         if msg.current_tank_id:
             self._update_status(

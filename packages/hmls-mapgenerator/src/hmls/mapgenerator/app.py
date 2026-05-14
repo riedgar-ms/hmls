@@ -14,6 +14,7 @@ Run with::
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from rich.text import Text
@@ -34,6 +35,8 @@ from hmls.mapgenerator.generators import (
 
 # Each grid cell is rendered as two characters wide ("██") and one row tall.
 _CELL_WIDTH_CHARS = 2
+
+logger = logging.getLogger("hmls.mapgenerator")
 
 
 # ── Map display widget ───────────────────────────────────────────────
@@ -357,6 +360,12 @@ class MapGeneratorApp(App[None]):
 
                 kwargs[param.name] = val
             except Exception:
+                logger.debug(
+                    "Failed to parse parameter '%s', using default %r",
+                    param.name,
+                    param.default,
+                    exc_info=True,
+                )
                 kwargs[param.name] = param.default
 
         return strategy_cls(**kwargs)

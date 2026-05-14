@@ -7,6 +7,7 @@ view update in real time.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from textual.app import App, ComposeResult
@@ -14,7 +15,7 @@ from textual.binding import Binding
 from textual.containers import ScrollableContainer, VerticalScroll
 from textual.events import Key
 from textual.screen import ModalScreen
-from textual.widgets import Footer, Header, Input, Label, RichLog, Static
+from textual.widgets import Footer, Header, Input, Label, RichLog, Static, TabbedContent, TabPane
 
 from hmls.core.engine import GameEngine, HistoryEntry
 from hmls.core.game_state import GameState
@@ -24,8 +25,11 @@ from hmls.core.types import Action
 from hmls.testharness.cli import build_initial_state, load_map, parse_args, place_tanks
 from hmls.testharness.interactive_player import InteractivePlayer
 from hmls.uxcommon import LogStatusMixin
+from hmls.uxcommon.log_tab import LogTabMixin
 from hmls.uxcommon.widgets.map_view import MapView
 from hmls.uxcommon.widgets.player_view import PlayerViewRegion
+
+logger = logging.getLogger("hmls.testharness")
 
 # ── Save dialog ───────────────────────────────────────────────────────
 
@@ -76,7 +80,7 @@ class SaveDialog(ModalScreen[str | None]):
 # ── Main application ──────────────────────────────────────────────────
 
 
-class TestHarnessApp(LogStatusMixin, App[None]):
+class TestHarnessApp(LogTabMixin, LogStatusMixin, App[None]):
     """Interactive TUI for testing the HMLS tank game.
 
     The user controls each tank in turn using keyboard keys.
@@ -137,36 +141,40 @@ class TestHarnessApp(LogStatusMixin, App[None]):
         """Compose the application layout."""
         yield Header()
 
-        with ScrollableContainer(id="map-scroll"):
-            yield MapView(
-                self._game_map,
-                self._state,
-                id="map-view",
-            )
+        with TabbedContent(initial="game-tab"):
+            with TabPane("Game", id="game-tab"):
+                with ScrollableContainer(id="map-scroll"):
+                    yield MapView(
+                        self._game_map,
+                        self._state,
+                        id="map-view",
+                    )
 
-        yield PlayerViewRegion(
-            "A",
-            self._game_map,
-            self._state,
-            patch_size=self._engine.patch_size,
-            active_tank_id=self._engine.current_tank_id,
-            id="player-a-region",
-        )
-        yield PlayerViewRegion(
-            "B",
-            self._game_map,
-            self._state,
-            patch_size=self._engine.patch_size,
-            active_tank_id=self._engine.current_tank_id,
-            id="player-b-region",
-        )
+                yield PlayerViewRegion(
+                    "A",
+                    self._game_map,
+                    self._state,
+                    patch_size=self._engine.patch_size,
+                    active_tank_id=self._engine.current_tank_id,
+                    id="player-a-region",
+                )
+                yield PlayerViewRegion(
+                    "B",
+                    self._game_map,
+                    self._state,
+                    patch_size=self._engine.patch_size,
+                    active_tank_id=self._engine.current_tank_id,
+                    id="player-b-region",
+                )
 
-        yield RichLog(id="log-panel", highlight=True, markup=True, max_lines=50)
-        yield Static(self._build_status_text(), id="status-bar")
+                yield RichLog(id="log-panel", highlight=True, markup=True, max_lines=50)
+                yield Static(self._build_status_text(), id="status-bar")
+            yield from self._compose_log_tab()
         yield Footer()
 
     def on_mount(self) -> None:
         """Set the active tank highlight after widgets are mounted."""
+        self._setup_log_tab()
         self._update_active_highlight()
 
     def _build_status_text(self) -> str:
@@ -259,6 +267,7 @@ class TestHarnessApp(LogStatusMixin, App[None]):
             path.write_text(result.model_dump_json(indent=2), encoding="utf-8")
             status.update(self._build_status_text() + f"\nSaved to {path.resolve()}")
         except Exception as exc:
+            logger.debug("Failed to save history to %s", path, exc_info=True)
             status.update(self._build_status_text() + f"\nSave error: {exc}")
 
     # ── Key handlers ──────────────────────────────────────────────
