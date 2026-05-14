@@ -14,7 +14,7 @@ class TestRandomTankModelConfig:
     def test_default_config(self) -> None:
         """Default config should have sensible probability values."""
         config = RandomTankModelConfig()
-        assert config.model_package == "hmls.randomtank"
+        assert config.model_id == "hmls.randomtank"
         assert config.patch_size == 9
         assert config.prob_forward_on_passable == 0.7
         assert config.prob_turn_left_on_passable == 0.15
@@ -81,7 +81,7 @@ class TestRandomTankModel:
     def test_default_config(self) -> None:
         """Model with no config arg should use defaults."""
         model = RandomTankModel()
-        assert model.config.model_package == "hmls.randomtank"
+        assert model.config.model_id == "hmls.randomtank"
 
     def test_initial_hidden(self) -> None:
         """initial_hidden should return zeros of the right shape."""

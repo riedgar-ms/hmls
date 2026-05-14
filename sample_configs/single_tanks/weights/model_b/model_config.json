@@ -1,5 +1,5 @@
 {
-  "model_package": "singlemki",
+  "model_id": "singlemki",
   "patch_size": 9,
   "cnn_channels": [32, 64],
   "gru_hidden_size": 128,

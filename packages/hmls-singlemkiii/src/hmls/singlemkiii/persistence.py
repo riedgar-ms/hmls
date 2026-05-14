@@ -7,7 +7,7 @@ and :class:`~hmls.singlemkiii.model.MkIIITankPolicyNetwork`.
 
 This module is registered as the ``singlemkiii`` entry point under
 the ``hmls.models`` group.  It can also be discovered via the
-``model_package`` field in ``model_config.json``.
+``model_id`` field in ``model_config.json``.
 """
 
 from hmls.nncore.persistence import NNPlayerModelPersistence

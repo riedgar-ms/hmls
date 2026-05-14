@@ -107,22 +107,22 @@ def list_available_models() -> dict[str, "ModelPersistence[Any, Any]"]:
     return discover_models()
 
 
-def resolve_model_package(model_package: str) -> "ModelPersistence[Any, Any]":
-    """Resolve a ``model_package`` string to a ``ModelPersistence`` instance.
+def resolve_model_id(model_id: str) -> "ModelPersistence[Any, Any]":
+    """Resolve a ``model_id`` string to a ``ModelPersistence`` instance.
 
     Resolution order:
 
-    1. **Short name match**: Try ``model_package`` as an entry-point name
+    1. **Short name match**: Try ``model_id`` as an entry-point name
        (e.g. ``"singlemki"``).
-    2. **Module-path match**: If ``model_package`` looks like a dotted
+    2. **Module-path match**: If ``model_id`` looks like a dotted
        import path (e.g. ``"hmls.singlemki"``), check whether any
        entry-point's value starts with that path.
     3. **Fallback import**: Use ``importlib.import_module()`` to load
-       ``{model_package}.persistence`` directly — for backwards
+       ``{model_id}.persistence`` directly — for backwards
        compatibility with unregistered or development-only packages.
 
     Args:
-        model_package: A short entry-point name (e.g. ``"singlemki"``)
+        model_id: A short entry-point name (e.g. ``"singlemki"``)
             or a full Python package path (e.g. ``"hmls.singlemki"``).
 
     Returns:
@@ -130,44 +130,44 @@ def resolve_model_package(model_package: str) -> "ModelPersistence[Any, Any]":
         instance.
 
     Raises:
-        ModelRegistryError: If the model package cannot be resolved by
-            any method, or if the resolved object is not a valid
+        ModelRegistryError: If the model cannot be resolved by any
+            method, or if the resolved object is not a valid
             ``ModelPersistence`` instance.
     """
     from hmls.nncore.persistence import ModelPersistence
 
     # Step 1: Try as a short entry-point name
     registry = discover_models()
-    if model_package in registry:
-        return registry[model_package]
+    if model_id in registry:
+        return registry[model_id]
 
     # Step 2: Try as a full module path — match against entry-point values
     for name, persistence in registry.items():
         ep_module = _get_entry_point_module_path(name)
-        if ep_module is not None and ep_module.startswith(model_package + "."):
+        if ep_module is not None and ep_module.startswith(model_id + "."):
             logger.debug(
                 "Resolved '%s' via entry-point '%s' (module: %s)",
-                model_package,
+                model_id,
                 name,
                 ep_module,
             )
             return persistence
 
     # Step 3: Fallback to direct import
-    module_name = f"{model_package}.persistence"
+    module_name = f"{model_id}.persistence"
     try:
         module = importlib.import_module(module_name)
     except ModuleNotFoundError:
         available = sorted(registry.keys())
         available_str = ", ".join(available) if available else "(none)"
         raise ModelRegistryError(
-            f"Model package '{model_package}' could not be resolved. "
+            f"Model '{model_id}' could not be resolved. "
             f"It is not a registered entry-point name, and the module "
             f"'{module_name}' could not be imported.\n"
             f"Available registered models: {available_str}\n"
-            f"Ensure the model package is installed in the current "
-            f"environment and declares an entry point under the "
-            f"'{ENTRY_POINT_GROUP}' group, or verify the 'model_package' "
+            f"Ensure the model is installed in the current environment "
+            f"and declares an entry point under the "
+            f"'{ENTRY_POINT_GROUP}' group, or verify the 'model_id' "
             f"field in model_config.json is correct."
         ) from None
 

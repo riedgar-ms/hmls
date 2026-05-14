@@ -54,7 +54,7 @@ Example:
 ```json
 {
   "patch_size": 9,
-  "model_package": "singlemkiii",
+  "model_id": "singlemkiii",
   "gru_hidden_size": 128
 }
 ```
@@ -62,7 +62,7 @@ Example:
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `patch_size` | int | `9` | Side length of the input visibility patch (must be ≥ 3) |
-| `model_package` | str | `"hmls.singlemkiii"` | Entry-point name or package path for persistence registry |
+| `model_id` | str | `"hmls.singlemkiii"` | Entry-point name or package path for persistence registry |
 | `gru_hidden_size` | int | `128` | Dimensionality of the GRU hidden state |
 
 **Note:** The GRU input size is computed as `5 × patch_size²`. Larger patch sizes significantly increase the number of GRU parameters. The `patch_size` must match the visibility patch size used by the game engine.

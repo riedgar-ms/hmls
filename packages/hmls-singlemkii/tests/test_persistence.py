@@ -84,7 +84,7 @@ class TestModelConfigJson:
         assert loaded.patch_size == 7
         assert loaded.gru1_hidden_size == 256
         assert loaded.gru2_hidden_size == 128
-        assert loaded.model_package == "hmls.singlemkii"
+        assert loaded.model_id == "hmls.singlemkii"
 
     def test_load_missing_raises(self, tmp_path: Path) -> None:
         """Loading from a directory without model_config.json raises."""

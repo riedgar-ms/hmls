@@ -18,7 +18,7 @@ from hmls.nncore.player import NNPlayer
 class _StubConfig(TankModelConfig, frozen=True, extra="forbid"):
     """Minimal config for the stub model."""
 
-    model_package: str = "test.stub"
+    model_id: str = "test.stub"
 
 
 class _StubModel(TankModelBase):

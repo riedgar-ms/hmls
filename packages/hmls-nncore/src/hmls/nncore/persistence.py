@@ -3,7 +3,7 @@
 Provides model-agnostic save/load infrastructure that discovers the
 correct concrete persistence implementation at runtime via the
 ``hmls.models`` entry-point registry (see :mod:`hmls.nncore.registry`).
-The ``model_package`` field in ``model_config.json`` may be either a
+The ``model_id`` field in ``model_config.json`` may be either a
 short entry-point name (e.g. ``"singlemki"``) or a full Python import
 path (e.g. ``"hmls.singlemki"``).
 
@@ -318,42 +318,42 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
 # ── Registry-based dispatch helpers ───────────────────────────────────
 
 
-def _get_persistence(model_package: str) -> ModelPersistence[Any, Any]:
-    """Look up the ``PERSISTENCE`` instance for a model package.
+def _get_persistence(model_id: str) -> ModelPersistence[Any, Any]:
+    """Look up the ``PERSISTENCE`` instance for a model.
 
     Uses the entry-point-based registry for validated lookup, with a
     fallback to direct ``importlib.import_module()`` for backwards
     compatibility with unregistered packages.
 
     Args:
-        model_package: Short entry-point name (e.g. ``"singlemki"``)
+        model_id: Short entry-point name (e.g. ``"singlemki"``)
             or fully-qualified package name
             (e.g. ``"hmls.singlemki"``).
 
     Returns:
-        The model package's persistence instance.
+        The model's persistence instance.
 
     Raises:
-        ModelRegistryError: If the package cannot be resolved or does
+        ModelRegistryError: If the model cannot be resolved or does
             not provide a valid ``ModelPersistence`` instance.
     """
-    from hmls.nncore.registry import resolve_model_package
+    from hmls.nncore.registry import resolve_model_id
 
-    return resolve_model_package(model_package)
+    return resolve_model_id(model_id)
 
 
-def read_model_package(directory: Path) -> str:
-    """Read the ``model_package`` field from a model config JSON file.
+def read_model_id(directory: Path) -> str:
+    """Read the ``model_id`` field from a model config JSON file.
 
     Args:
         directory: Directory containing ``model_config.json``.
 
     Returns:
-        The ``model_package`` string.
+        The ``model_id`` string.
 
     Raises:
         FileNotFoundError: If ``model_config.json`` is missing.
-        KeyError: If ``model_package`` is not present in the JSON.
+        KeyError: If ``model_id`` is not present in the JSON.
     """
     config_path = directory / MODEL_CONFIG_FILENAME
     if not config_path.exists():
@@ -362,13 +362,13 @@ def read_model_package(directory: Path) -> str:
             f"Each model directory must contain a '{MODEL_CONFIG_FILENAME}'."
         )
     data = json.loads(config_path.read_text())
-    if "model_package" not in data:
+    if "model_id" not in data:
         raise KeyError(
-            f"'model_package' field missing from {config_path}. "
-            f"Each model_config.json must specify the package that defines the model."
+            f"'model_id' field missing from {config_path}. "
+            f"Each model_config.json must specify the model identifier."
         )
-    model_package: str = data["model_package"]
-    return model_package
+    model_id: str = data["model_id"]
+    return model_id
 
 
 # ── Public dispatch functions ─────────────────────────────────────────
@@ -380,9 +380,9 @@ def read_model_package(directory: Path) -> str:
 
 
 def load_model_config(directory: Path) -> TankModelConfig:
-    """Load a model config using the model package registry.
+    """Load a model config using the model registry.
 
-    Reads ``model_config.json``, discovers the ``model_package``,
+    Reads ``model_config.json``, discovers the ``model_id``,
     resolves the correct persistence instance via the entry-point
     registry, and delegates to its
     :meth:`~ModelPersistence.load_model_config` method.
@@ -393,17 +393,17 @@ def load_model_config(directory: Path) -> TankModelConfig:
     Returns:
         A concrete :class:`TankModelConfig` subclass instance.
     """
-    model_package = read_model_package(directory)
-    persistence = _get_persistence(model_package)
+    model_id = read_model_id(directory)
+    persistence = _get_persistence(model_id)
     config: TankModelConfig = persistence.load_model_config(directory)
     return config
 
 
 def load_model(path: Path) -> tuple[TankModelBase, dict[str, Any]]:
-    """Load a model using the model package registry.
+    """Load a model using the model registry.
 
     Reads the model config from the parent directory to discover the
-    ``model_package``, then resolves and delegates to the package's
+    ``model_id``, then resolves and delegates to the model's
     persistence instance.
 
     Args:
@@ -413,8 +413,8 @@ def load_model(path: Path) -> tuple[TankModelBase, dict[str, Any]]:
         A tuple of ``(model, metadata)``.
     """
     model_dir = path.parent
-    model_package = read_model_package(model_dir)
-    persistence = _get_persistence(model_package)
+    model_id = read_model_id(model_dir)
+    persistence = _get_persistence(model_id)
     return persistence.load_model(path)
 
 
@@ -424,9 +424,9 @@ def save_model(
     reward_config: RewardConfig | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> None:
-    """Save a model using the model package registry.
+    """Save a model using the model registry.
 
-    Uses ``model.config.model_package`` to resolve the correct
+    Uses ``model.config.model_id`` to resolve the correct
     persistence instance via the entry-point registry.
 
     Args:
@@ -435,15 +435,15 @@ def save_model(
         reward_config: Optional reward configuration.
         metadata: Optional metadata dictionary.
     """
-    persistence = _get_persistence(model.config.model_package)
+    persistence = _get_persistence(model.config.model_id)
     persistence.save_model(model, path, reward_config=reward_config, metadata=metadata)
 
 
 def load_or_create_model(model_dir: Path) -> TankModelBase:
     """Load an existing model or create a fresh one from config.
 
-    Reads ``model_config.json`` (must exist) and the ``model_package``
-    field to determine which package handles the model.  If ``model.pt``
+    Reads ``model_config.json`` (must exist) and the ``model_id``
+    field to determine which model handles persistence.  If ``model.pt``
     exists, loads trained weights; otherwise creates a new model from
     the configuration.
 
@@ -454,43 +454,43 @@ def load_or_create_model(model_dir: Path) -> TankModelBase:
     Returns:
         A :class:`TankModelBase` instance (loaded or freshly initialised).
     """
-    model_package = read_model_package(model_dir)
-    persistence = _get_persistence(model_package)
+    model_id = read_model_id(model_dir)
+    persistence = _get_persistence(model_id)
 
     model_path = model_dir / "model.pt"
     if model_path.exists():
         model: TankModelBase
         model, _metadata = persistence.load_model(model_path)
         logger.info(
-            "Loaded existing model from %s (package: %s)",
+            "Loaded existing model from %s (model_id: %s)",
             model_dir,
-            model_package,
+            model_id,
         )
         return model
 
     config = persistence.load_model_config(model_dir)
     result: TankModelBase = persistence.create_model(config)
     logger.info(
-        "Created new model from config in %s (package: %s)",
+        "Created new model from config in %s (model_id: %s)",
         model_dir,
-        model_package,
+        model_id,
     )
     return result
 
 
 def create_player(
-    model_package: str,
+    model_id: str,
     team: str,
     model: TankModelBase,
     mode: Literal["play", "learn"],
 ) -> Any:
-    """Create a player instance using the model package registry.
+    """Create a player instance using the model registry.
 
-    Each model package's ``PERSISTENCE`` instance must implement
+    Each model's ``PERSISTENCE`` instance must implement
     :meth:`~ModelPersistence.create_player`.
 
     Args:
-        model_package: Short entry-point name or fully-qualified
+        model_id: Short entry-point name or fully-qualified
             model package name.
         team: The team this player controls.
         model: The tank model to use.
@@ -499,5 +499,5 @@ def create_player(
     Returns:
         An :class:`~hmls.nncore.player.NNPlayerBase` instance.
     """
-    persistence = _get_persistence(model_package)
+    persistence = _get_persistence(model_id)
     return persistence.create_player(team=team, model=model, mode=mode)

@@ -26,11 +26,11 @@ class MkIIIModelConfig(TankModelConfig, frozen=True, extra="forbid"):
 
     Attributes:
         patch_size: Side length of the input patch (must be odd, ≥ 3).
-        model_package: Model identifier for the persistence registry.
+        model_id: Model identifier for the persistence registry.
         gru_hidden_size: Dimensionality of the GRU hidden state.
     """
 
-    model_package: str = "hmls.singlemkiii"
+    model_id: str = "hmls.singlemkiii"
     gru_hidden_size: int = 128
 
 

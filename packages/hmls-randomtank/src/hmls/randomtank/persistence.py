@@ -8,7 +8,7 @@ player factory.
 
 This module is registered as the ``randomtank`` entry point under
 the ``hmls.models`` group.  It can also be discovered via the
-``model_package`` field in ``model_config.json``.
+``model_id`` field in ``model_config.json``.
 """
 
 from hmls.nncore.persistence import NNPlayerModelPersistence

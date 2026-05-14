@@ -23,7 +23,7 @@ class RandomTankModelConfig(TankModelConfig, frozen=True, extra="forbid"):
 
     Attributes:
         patch_size: Side length of the input patch (must be odd, ≥ 3).
-        model_package: Model identifier for the persistence registry.
+        model_id: Model identifier for the persistence registry.
         prob_forward_on_passable: Probability of moving forward when
             the cell ahead is passable and empty.
         prob_turn_left_on_passable: Probability of turning left when
@@ -34,7 +34,7 @@ class RandomTankModelConfig(TankModelConfig, frozen=True, extra="forbid"):
             right) when the cell ahead is impassable or occupied.
     """
 
-    model_package: str = "hmls.randomtank"
+    model_id: str = "hmls.randomtank"
     prob_forward_on_passable: float = Field(default=0.7, ge=0.0, le=1.0)
     prob_turn_left_on_passable: float = Field(default=0.15, ge=0.0, le=1.0)
     prob_turn_left_on_blocked: float = Field(default=0.5, ge=0.0, le=1.0)

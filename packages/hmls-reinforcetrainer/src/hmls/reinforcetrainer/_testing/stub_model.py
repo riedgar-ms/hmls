@@ -21,11 +21,11 @@ class StubModelConfig(TankModelConfig, frozen=True, extra="forbid"):
 
     Attributes:
         patch_size: Side length of the input patch (must be odd, ≥ 3).
-        model_package: Model identifier for the persistence registry.
+        model_id: Model identifier for the persistence registry.
         hidden_size: Dimensionality of the hidden state.
     """
 
-    model_package: str = "hmls.reinforcetrainer._testing"
+    model_id: str = "hmls.reinforcetrainer._testing"
     hidden_size: int = 16
 
 
