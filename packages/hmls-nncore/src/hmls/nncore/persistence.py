@@ -263,7 +263,7 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
         if not path.exists():
             raise FileNotFoundError(f"Model file not found: {path}")
 
-        save_data: dict[str, Any] = torch.load(path, weights_only=False)
+        save_data: dict[str, Any] = torch.load(path, weights_only=True)
 
         config = self._config_cls.model_validate(save_data["config"])
         model = self._model_cls(config)
