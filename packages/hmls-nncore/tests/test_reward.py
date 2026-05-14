@@ -1090,19 +1090,34 @@ def test_consecutive_miss_config_round_trip() -> None:
 
 
 def test_reset_clears_all_state() -> None:
-    """Reset clears seen, occupied, and streak state."""
-    reward_fn = RewardFunction()
-    for i in range(3):
-        reward_fn.observe_patch(_make_patch_at(Position(i, 0)))
-    assert len(reward_fn._seen_positions) > 0
-    assert len(reward_fn._occupied_positions) > 0
+    """Reset clears seen, occupied, and streak state.
 
+    After reset, exploration bonuses should be re-earned for the same
+    positions, and streak counters should restart from zero.
+    """
+    cfg = RewardConfig(
+        exploration=ExplorationRewardConfig(see_cell=0.1, occupy_cell=0.5),
+        actions=ActionsRewardConfig(consecutive_turn=-0.1),
+    )
+    reward_fn = RewardFunction(cfg)
+
+    # Build up state: observe some patches and generate a turn streak
+    patch = _make_patch_at(Position(0, 0))
+    reward_fn.observe_patch(patch)
+    entry_turn = _make_entry(action=Action.TURN_LEFT)
+    first_reward = reward_fn.compute_step_reward(entry_turn, patch, "alpha")
+
+    # Second turn in streak should have higher penalty
+    reward_fn.observe_patch(patch)
+    second_reward = reward_fn.compute_step_reward(entry_turn, patch, "alpha")
+    assert second_reward < first_reward  # streak penalty escalates
+
+    # After reset, same patch should give exploration bonuses again
     reward_fn.reset()
-    assert len(reward_fn._seen_positions) == 0
-    assert len(reward_fn._occupied_positions) == 0
-    assert len(reward_fn._turn_streaks) == 0
-    assert len(reward_fn._pass_streaks) == 0
-    assert len(reward_fn._miss_streaks) == 0
+    reward_fn.observe_patch(patch)
+    reward_after_reset = reward_fn.compute_step_reward(entry_turn, patch, "alpha")
+    # Should match first_reward since streak and exploration reset
+    assert abs(reward_after_reset - first_reward) < 1e-9
 
 
 # ── Nested config JSON tests ────────────────────────────────────────
