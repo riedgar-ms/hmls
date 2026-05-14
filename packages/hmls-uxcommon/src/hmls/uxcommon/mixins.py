@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import logging
+
 from textual.widgets import RichLog, Static
+
+logger = logging.getLogger("hmls.uxcommon")
 
 
 def format_turn_status(valid: bool, reason: str, hit: bool | None) -> str:
@@ -41,7 +45,7 @@ class LogStatusMixin:
             log_panel = self.query_one("#log-panel", RichLog)  # type: ignore[attr-defined]
             log_panel.write(message)
         except Exception:
-            pass
+            logger.debug("Failed to write to log panel: %s", message, exc_info=True)
 
     def _update_status(self, text: str) -> None:
         """Update the status bar."""
@@ -49,7 +53,7 @@ class LogStatusMixin:
             status = self.query_one("#status-bar", Static)  # type: ignore[attr-defined]
             status.update(text)
         except Exception:
-            pass
+            logger.debug("Failed to update status bar: %s", text, exc_info=True)
 
     def _log_turn_result(
         self,

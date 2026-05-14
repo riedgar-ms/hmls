@@ -10,13 +10,14 @@ per team), so the user can see each tank's recent actions at a glance.
 
 from __future__ import annotations
 
+import logging
 from collections import defaultdict
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, ScrollableContainer, Vertical
 from textual.timer import Timer
-from textual.widgets import Footer, Header, RichLog, Static
+from textual.widgets import Footer, Header, RichLog, Static, TabbedContent, TabPane
 
 from hmls.core.engine import GameResult, HistoryEntry
 from hmls.core.game_state import GameState
@@ -24,10 +25,13 @@ from hmls.core.map import GameMap
 from hmls.core.tank import TankId
 from hmls.replayviewer.cli import build_state_timeline, load_game_result, parse_args
 from hmls.uxcommon import LogStatusMixin
+from hmls.uxcommon.log_tab import LogTabMixin
 from hmls.uxcommon.mixins import format_turn_status
 from hmls.uxcommon.styles import TEAM_STYLES
 from hmls.uxcommon.widgets.map_view import MapView
 from hmls.uxcommon.widgets.team_legend import TeamLegend
+
+logger = logging.getLogger("hmls.replayviewer")
 
 # ── Constants ─────────────────────────────────────────────────────────
 
@@ -71,7 +75,7 @@ def _tank_panel_id(tank_id: TankId) -> str:
     return f"panel-tank-{tank_id}"
 
 
-class ReplayViewerApp(LogStatusMixin, App[None]):
+class ReplayViewerApp(LogTabMixin, LogStatusMixin, App[None]):
     """TUI application for replaying HMLS tank game history files.
 
     Key bindings:
@@ -170,42 +174,46 @@ class ReplayViewerApp(LogStatusMixin, App[None]):
     def compose(self) -> ComposeResult:
         """Compose the application layout."""
         yield Header()
-        yield TeamLegend(TEAM_STYLES, id="team-legend")
+        with TabbedContent(initial="game-tab"):
+            with TabPane("Game", id="game-tab"):
+                yield TeamLegend(TEAM_STYLES, id="team-legend")
 
-        with ScrollableContainer(id="map-scroll"):
-            yield MapView(
-                self._game_map,
-                self._states[0],
-                id="map-view",
-            )
+                with ScrollableContainer(id="map-scroll"):
+                    yield MapView(
+                        self._game_map,
+                        self._states[0],
+                        id="map-view",
+                    )
 
-        # Per-tank log grid: one column per team, one panel per tank.
-        with ScrollableContainer(id="log-scroll"):
-            with Horizontal(id="log-grid"):
-                for team, tank_ids in self._teams.items():
-                    style = TEAM_STYLES.get(team, "")
-                    with Vertical(classes="team-col"):
-                        for tid in tank_ids:
-                            with Vertical(id=_tank_panel_id(tid), classes="tank-panel"):
-                                yield Static(
-                                    f"[{style}]{tid}[/{style}]",
-                                    classes="tank-label",
-                                )
-                                yield RichLog(
-                                    id=_tank_log_id(tid),
-                                    highlight=True,
-                                    markup=True,
-                                    max_lines=_MAX_LOG_LINES,
-                                    classes="tank-log",
-                                )
+                # Per-tank log grid: one column per team, one panel per tank.
+                with ScrollableContainer(id="log-scroll"):
+                    with Horizontal(id="log-grid"):
+                        for team, tank_ids in self._teams.items():
+                            style = TEAM_STYLES.get(team, "")
+                            with Vertical(classes="team-col"):
+                                for tid in tank_ids:
+                                    with Vertical(id=_tank_panel_id(tid), classes="tank-panel"):
+                                        yield Static(
+                                            f"[{style}]{tid}[/{style}]",
+                                            classes="tank-label",
+                                        )
+                                        yield RichLog(
+                                            id=_tank_log_id(tid),
+                                            highlight=True,
+                                            markup=True,
+                                            max_lines=_MAX_LOG_LINES,
+                                            classes="tank-log",
+                                        )
 
-        # Hidden RichLog keeps LogStatusMixin._write_log working.
-        yield RichLog(id="log-panel")
-        yield Static(self._build_status_text(), id="status-bar")
+                # Hidden RichLog keeps LogStatusMixin._write_log working.
+                yield RichLog(id="log-panel")
+                yield Static(self._build_status_text(), id="status-bar")
+            yield from self._compose_log_tab()
         yield Footer()
 
     def on_mount(self) -> None:
         """Set initial active tank highlight."""
+        self._setup_log_tab()
         self._update_display()
 
     # ── Navigation helpers ────────────────────────────────────────
@@ -272,6 +280,7 @@ class ReplayViewerApp(LogStatusMixin, App[None]):
             try:
                 log_widget = self.query_one(f"#{_tank_log_id(tid)}", RichLog)
             except Exception:
+                logger.debug("Failed to find log widget for tank %s", tid, exc_info=True)
                 continue
 
             log_widget.clear()
@@ -285,6 +294,7 @@ class ReplayViewerApp(LogStatusMixin, App[None]):
             try:
                 panel = self.query_one(f"#{_tank_panel_id(tid)}")
             except Exception:
+                logger.debug("Failed to find panel for tank %s", tid, exc_info=True)
                 continue
             if tid == active_id:
                 panel.add_class("active-tank")

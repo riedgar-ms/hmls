@@ -152,6 +152,7 @@ class GameSession:
         try:
             await websocket.send_text(game_start_msg.model_dump_json())
         except Exception:
+            logger.debug("Observer disconnected during initial game_start send", exc_info=True)
             self._observers.remove(websocket)
             return
 
@@ -165,6 +166,7 @@ class GameSession:
             try:
                 await websocket.send_text(state_msg.model_dump_json())
             except Exception:
+                logger.debug("Observer disconnected during state_update send", exc_info=True)
                 self._observers.remove(websocket)
                 return
 
@@ -226,7 +228,11 @@ class GameSession:
                             ).model_dump_json()
                         )
                     except Exception:
-                        pass
+                        logger.debug(
+                            "Failed to notify Team %s of opponent disconnect",
+                            other_team,
+                            exc_info=True,
+                        )
 
     async def _client_loop(self, team: str, websocket: WebSocket) -> None:
         """Listen for action messages from a connected client."""
@@ -264,6 +270,7 @@ class GameSession:
             try:
                 await ws.send_text(message)
             except Exception:
+                logger.debug("Observer disconnected during broadcast", exc_info=True)
                 disconnected.append(ws)
         for ws in disconnected:
             self._observers.remove(ws)

@@ -7,6 +7,7 @@ explored terrain, and accepts keyboard input for tank control.
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Any
 
 import websockets
@@ -16,7 +17,7 @@ from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal
 from textual.events import Key
-from textual.widgets import Footer, Header, RichLog, Static
+from textual.widgets import Footer, Header, RichLog, Static, TabbedContent, TabPane
 
 from hmls.client.automap import AutoMap, CellState
 from hmls.client.cli import parse_args
@@ -34,6 +35,7 @@ from hmls.protocol import (
     WaitingMessage,
     YourTurnMessage,
 )
+from hmls.uxcommon.log_tab import LogTabMixin
 from hmls.uxcommon.mixins import LogStatusMixin
 from hmls.uxcommon.styles import (
     ACTIVE_DEAD_STYLE,
@@ -50,6 +52,8 @@ from hmls.uxcommon.styles import (
     TEAM_B_STYLE,
 )
 from hmls.uxcommon.widgets import PatchView
+
+logger = logging.getLogger("hmls.client")
 
 # ── Type adapter for server messages ─────────────────────────────────
 
@@ -145,7 +149,7 @@ class AutoMapView(Static):
 # ── Main client TUI ──────────────────────────────────────────────────
 
 
-class ClientApp(LogStatusMixin, App[None]):
+class ClientApp(LogTabMixin, LogStatusMixin, App[None]):
     """Textual TUI for the HMLS game client.
 
     Displays the automapped terrain, tank positions, and a log panel.
@@ -201,14 +205,18 @@ class ClientApp(LogStatusMixin, App[None]):
     def compose(self) -> ComposeResult:
         """Compose the client TUI layout."""
         yield Header()
-        yield AutoMapView(1, 1, id="automap-view")  # Placeholder until assign.
-        yield Horizontal(id="patches-panel")
-        yield RichLog(id="log-panel", highlight=True, markup=True)
-        yield Static("Connecting...", id="status-bar")
+        with TabbedContent(initial="game-tab"):
+            with TabPane("Game", id="game-tab"):
+                yield AutoMapView(1, 1, id="automap-view")  # Placeholder until assign.
+                yield Horizontal(id="patches-panel")
+                yield RichLog(id="log-panel", highlight=True, markup=True)
+                yield Static("Connecting...", id="status-bar")
+            yield from self._compose_log_tab()
         yield Footer()
 
     def on_mount(self) -> None:
         """Start the WebSocket connection after mount."""
+        self._setup_log_tab()
         log_panel = self.query_one("#log-panel", RichLog)
         log_panel.write(f"[bold]HMLS Game Client[/bold] — {self._player_name}")
         log_panel.write(f"Connecting to {self._server_url}...")
