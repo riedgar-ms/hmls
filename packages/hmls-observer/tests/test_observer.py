@@ -119,12 +119,12 @@ class TestStateUpdateMessage:
         assert parsed.turns_taken == 5
         assert len(parsed.state.tanks) == 2
 
-    def test_state_update_empty_tank_id_when_game_over(self) -> None:
-        """StateUpdateMessage with empty current_tank_id for game over."""
+    def test_state_update_none_tank_id_when_game_over(self) -> None:
+        """StateUpdateMessage with None current_tank_id for game over."""
         state = GameState(tanks=_make_tanks())
         msg = StateUpdateMessage(
             state=state,
-            current_tank_id="",
+            current_tank_id=None,
             turns_taken=10,
         )
 
@@ -132,7 +132,7 @@ class TestStateUpdateMessage:
         parsed = _server_message_adapter.validate_json(json_str)
 
         assert isinstance(parsed, StateUpdateMessage)
-        assert parsed.current_tank_id == ""
+        assert parsed.current_tank_id is None
 
 
 class TestTurnResultMessage:

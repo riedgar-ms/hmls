@@ -7,7 +7,7 @@ from enum import IntEnum
 from pathlib import Path
 from typing import Self
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 
 class MapLoadError(Exception):
@@ -42,7 +42,7 @@ class GameMap(BaseModel, extra="forbid"):
 
     width: int
     height: int
-    cells: list[CellType] = []
+    cells: list[CellType] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _validate_cells(self) -> Self:

@@ -155,13 +155,13 @@ class StateUpdateMessage(BaseModel, extra="forbid"):
     Attributes:
         type: Discriminator, always ``"state_update"``.
         state: The current full game state.
-        current_tank_id: The tank that will act next (empty if game over).
+        current_tank_id: The tank that will act next, or ``None`` if game over.
         turns_taken: Number of turns completed so far.
     """
 
     type: Literal["state_update"] = "state_update"
     state: GameState
-    current_tank_id: TankId = ""
+    current_tank_id: TankId | None = None
     turns_taken: int = 0
 
 

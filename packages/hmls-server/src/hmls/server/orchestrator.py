@@ -177,7 +177,7 @@ class GameOrchestrator:
                 StateUpdatedEvent(
                     state=self.engine.state,
                     current_tank_id=(
-                        self.engine.current_tank_id if not self.engine.game_over else ""
+                        self.engine.current_tank_id if not self.engine.game_over else None
                     ),
                     turns_taken=self.engine.turns_taken,
                 )
