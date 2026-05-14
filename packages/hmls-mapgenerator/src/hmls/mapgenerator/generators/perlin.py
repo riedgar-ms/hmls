@@ -40,7 +40,7 @@ import math
 import random
 
 from hmls.core import CellType, GameMap
-from hmls.mapgenerator.generators.base import STRATEGY_REGISTRY, MapStrategy, StrategyParam
+from hmls.mapgenerator.generators.base import MapStrategy, StrategyParam, register_strategy
 
 # ── Perlin noise primitives ───────────────────────────────────────────
 
@@ -157,6 +157,7 @@ def _fractal_noise2d(
 # ── Strategy class ────────────────────────────────────────────────────
 
 
+@register_strategy
 class PerlinNoiseStrategy(MapStrategy):
     """Obstacle placement using 2D Perlin noise thresholding.
 
@@ -169,6 +170,8 @@ class PerlinNoiseStrategy(MapStrategy):
             larger, smoother terrain features.
         octaves: Number of noise layers summed together.
     """
+
+    display_name = "Perlin Noise"
 
     @classmethod
     def get_params(cls) -> list[StrategyParam]:
@@ -229,7 +232,3 @@ class PerlinNoiseStrategy(MapStrategy):
         for i in range(min(target_count, len(noise_values))):
             _, cx, cy = noise_values[i]
             game_map[cx, cy] = CellType.IMPASSABLE
-
-
-# Register for TUI discovery
-STRATEGY_REGISTRY["Perlin Noise"] = PerlinNoiseStrategy

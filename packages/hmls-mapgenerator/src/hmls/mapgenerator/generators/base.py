@@ -24,8 +24,8 @@ The generation pipeline has three phases:
 
 Writing a new strategy
 ----------------------
-Subclass :class:`MapStrategy` and implement ``place_obstacles()``.
-Then pass an instance to ``generate_map(strategy=...)``.
+Subclass :class:`MapStrategy`, set a ``display_name`` class variable,
+implement ``place_obstacles()``, and decorate with :func:`register_strategy`.
 
 To make your strategy configurable via the TUI:
 
@@ -33,7 +33,9 @@ To make your strategy configurable via the TUI:
 2. Override :meth:`~MapStrategy.get_params` to return a list of
    :class:`StrategyParam` descriptors.  The TUI reads these to build input
    widgets dynamically.
-3. Register the strategy in :data:`STRATEGY_REGISTRY`.
+3. Place the module in the ``generators/`` directory — it will be
+   auto-discovered via :func:`pkgutil.iter_modules` (see
+   :mod:`hmls.mapgenerator.generators.__init__`).
 """
 
 from __future__ import annotations
@@ -42,6 +44,7 @@ import random
 import warnings
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import ClassVar
 
 from hmls.core import GameMap
 from hmls.mapgenerator.connectivity import (
@@ -90,12 +93,19 @@ class MapStrategy(ABC):
     :func:`generate_map` function handles connectivity enforcement
     separately.
 
-    Subclasses **must** implement :meth:`place_obstacles`.  They may also
-    override :meth:`get_params` to return a list of :class:`StrategyParam`
-    descriptors so the TUI can build input widgets for strategy-specific
-    settings.  Strategy-specific configuration (e.g. shape, scale, octaves)
-    belongs on the concrete subclass.
+    Subclasses **must** implement :meth:`place_obstacles` and define a
+    :attr:`display_name` class variable (used by the TUI strategy selector).
+    They may also override :meth:`get_params` to return a list of
+    :class:`StrategyParam` descriptors so the TUI can build input widgets for
+    strategy-specific settings.  Strategy-specific configuration (e.g. shape,
+    scale, octaves) belongs on the concrete subclass.
+
+    Attributes:
+        display_name: Human-readable name shown in the TUI strategy selector.
+            Concrete subclasses must define this as a class variable.
     """
+
+    display_name: ClassVar[str]
 
     @classmethod
     def get_params(cls) -> list[StrategyParam]:
@@ -136,6 +146,39 @@ class MapStrategy(ABC):
 # (inherited from MapStrategy) and a constructor that accepts those
 # params as keyword arguments.
 STRATEGY_REGISTRY: dict[str, type[MapStrategy]] = {}
+
+
+def register_strategy(cls: type[MapStrategy]) -> type[MapStrategy]:
+    """Class decorator that registers a :class:`MapStrategy` subclass.
+
+    Reads :attr:`~MapStrategy.display_name` from the decorated class and
+    adds it to :data:`STRATEGY_REGISTRY` under that name.
+
+    Usage::
+
+        @register_strategy
+        class MyStrategy(MapStrategy):
+            display_name = "My Strategy"
+            ...
+
+    .. note::
+
+        Registration happens at import time.  Strategy modules are
+        auto-imported by :mod:`hmls.mapgenerator.generators.__init__`
+        using :func:`pkgutil.iter_modules`, so simply placing a new
+        module in the ``generators/`` directory is sufficient for it to
+        be discovered — no manual edits to ``__init__.py`` required.
+
+    Raises:
+        TypeError: If *cls* does not define a ``display_name`` class variable.
+    """
+    if not hasattr(cls, "display_name") or not isinstance(cls.display_name, str):
+        raise TypeError(
+            f"{cls.__name__} must define a 'display_name' class variable "
+            f"(str) to be registered as a map strategy."
+        )
+    STRATEGY_REGISTRY[cls.display_name] = cls
+    return cls
 
 
 # ── Main entry point ──────────────────────────────────────────────────

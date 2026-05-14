@@ -23,8 +23,7 @@ from textual.containers import Horizontal, ScrollableContainer, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Footer, Header, Input, Label, Select, Static, Switch
 
-# Ensure all strategies are registered by importing their modules
-import hmls.mapgenerator.generators.perlin  # noqa: F401
+# Ensure all strategies are registered by importing the generators subpackage
 from hmls.core import CellType, GameMap
 from hmls.mapgenerator.generators import (
     STRATEGY_REGISTRY,
