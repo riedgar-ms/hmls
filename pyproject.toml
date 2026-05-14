@@ -16,6 +16,7 @@ dev = [
     "hmls-client",
     "hmls-core",
     "hmls-mapgenerator",
+    "hmls-networking",
     "hmls-nncore",
     "hmls-observer",
     "hmls-protocol",
@@ -34,6 +35,7 @@ dev = [
 hmls-client = { workspace = true }
 hmls-core = { workspace = true }
 hmls-mapgenerator = { workspace = true }
+hmls-networking = { workspace = true }
 hmls-nncore = { workspace = true }
 hmls-observer = { workspace = true }
 hmls-protocol = { workspace = true }
@@ -58,7 +60,7 @@ extend-select = ["I"]
 [tool.mypy]
 files = ["packages"]
 exclude = ["tests/"]
-mypy_path = "packages/hmls-core/src:packages/hmls-mapgenerator/src:packages/hmls-testharness/src:packages/hmls-uxcommon/src:packages/hmls-replayviewer/src:packages/hmls-protocol/src:packages/hmls-server/src:packages/hmls-client/src:packages/hmls-observer/src:packages/hmls-nncore/src:packages/hmls-singlemki/src:packages/hmls-singlemkii/src:packages/hmls-singlemkiii/src:packages/hmls-randomtank/src:packages/hmls-reinforcetrainer/src"
+mypy_path = "packages/hmls-core/src:packages/hmls-mapgenerator/src:packages/hmls-testharness/src:packages/hmls-uxcommon/src:packages/hmls-replayviewer/src:packages/hmls-protocol/src:packages/hmls-server/src:packages/hmls-client/src:packages/hmls-observer/src:packages/hmls-networking/src:packages/hmls-nncore/src:packages/hmls-singlemki/src:packages/hmls-singlemkii/src:packages/hmls-singlemkiii/src:packages/hmls-randomtank/src:packages/hmls-reinforcetrainer/src"
 plugins = ["pydantic.mypy"]
 strict = true
 explicit_package_bases = true

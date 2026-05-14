@@ -8,11 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
 
-import websockets
-import websockets.asyncio.client
-from pydantic import TypeAdapter
 from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal
@@ -24,6 +20,7 @@ from hmls.client.cli import parse_args
 from hmls.core.tank import TankId
 from hmls.core.types import Action, Position
 from hmls.core.visibility import TankInfo
+from hmls.networking import GameWebSocketSession
 from hmls.protocol import (
     ActionMessage,
     AssignMessage,
@@ -54,10 +51,6 @@ from hmls.uxcommon.styles import (
 from hmls.uxcommon.widgets import PatchView
 
 logger = logging.getLogger("hmls.client")
-
-# ── Type adapter for server messages ─────────────────────────────────
-
-_server_message_adapter: TypeAdapter[ServerMessage] = TypeAdapter(ServerMessage)
 
 # ── Automap widget ────────────────────────────────────────────────────
 
@@ -199,7 +192,7 @@ class ClientApp(LogTabMixin, LogStatusMixin, App[None]):
         self._active_tank_id: TankId = ""
         self._awaiting_action: bool = False
         self._action_queue: asyncio.Queue[Action] = asyncio.Queue()
-        self._ws: Any = None
+        self._session: GameWebSocketSession | None = None
         self._game_over: bool = False
 
     def compose(self) -> ComposeResult:
@@ -225,32 +218,22 @@ class ClientApp(LogTabMixin, LogStatusMixin, App[None]):
     async def _connection_loop(self) -> None:
         """Manage the WebSocket connection and message handling."""
         try:
-            async with websockets.asyncio.client.connect(self._server_url) as ws:
-                self._ws = ws
-
-                # Send join message.
-                join_msg = JoinMessage(player_name=self._player_name)
-                await ws.send(join_msg.model_dump_json())
+            identity = JoinMessage(player_name=self._player_name)
+            async with GameWebSocketSession.connect(self._server_url, identity) as session:
+                self._session = session
                 self._write_log("Join message sent.")
 
-                # Message handling loop.
-                async for raw in ws:
+                async for msg in session.receive_messages():
                     if self._game_over:
                         break
-                    await self._handle_message(str(raw))
+                    await self._handle_message(msg)
 
         except Exception as exc:
             self._write_log(f"[red]Connection error: {exc}[/red]")
             self._update_status("DISCONNECTED")
 
-    async def _handle_message(self, raw: str) -> None:
-        """Parse and dispatch a server message."""
-        try:
-            msg = _server_message_adapter.validate_json(raw)
-        except Exception as exc:
-            self._write_log(f"[red]Invalid message: {exc}[/red]")
-            return
-
+    async def _handle_message(self, msg: ServerMessage) -> None:
+        """Dispatch a parsed server message to the appropriate handler."""
         if isinstance(msg, WaitingMessage):
             self._write_log(msg.message)
             self._update_status("Waiting for opponent...")
@@ -336,9 +319,9 @@ class ClientApp(LogTabMixin, LogStatusMixin, App[None]):
         self._awaiting_action = False
 
         # Send action to server.
-        if self._ws and not self._game_over:
+        if self._session and not self._game_over:
             action_msg = ActionMessage(action=action)
-            await self._ws.send(action_msg.model_dump_json())
+            await self._session.send(action_msg)
 
     def _handle_turn_result(self, msg: TurnResultMessage) -> None:
         """Handle a turn result notification."""
