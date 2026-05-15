@@ -197,9 +197,9 @@ class ExplorationRewardConfig(BaseModel, frozen=True, extra="forbid"):
 
     Attributes:
         see_cell: Reward per newly *seen* cell in the visibility patch
-            (cells visible but not necessarily stepped on).
+            (cells visible but not necessarily moved into).
         occupy_cell: Reward per newly *occupied* cell (cells the tank
-            physically moves onto for the first time).
+            physically moves into for the first time).
     """
 
     see_cell: float = Field(
@@ -207,7 +207,7 @@ class ExplorationRewardConfig(BaseModel, frozen=True, extra="forbid"):
         title="See Cell Reward",
         description=(
             "Reward per newly seen cell in the visibility patch "
-            "(visible but not necessarily stepped on)."
+            "(visible but not necessarily moved into)."
         ),
     )
     occupy_cell: float = Field(
@@ -215,7 +215,7 @@ class ExplorationRewardConfig(BaseModel, frozen=True, extra="forbid"):
         title="Occupy Cell Reward",
         description=(
             "Reward per newly occupied cell (cells the tank physically "
-            "moves onto for the first time)."
+            "moves into for the first time)."
         ),
     )
 
