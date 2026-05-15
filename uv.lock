@@ -235,12 +235,14 @@ version = "0.1.0"
 source = { editable = "packages/hmls-mapgenerator" }
 dependencies = [
     { name = "hmls-core" },
+    { name = "pydantic" },
     { name = "textual" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "hmls-core", editable = "packages/hmls-core" },
+    { name = "pydantic", specifier = ">=2.0" },
     { name = "textual", specifier = ">=0.40" },
 ]
 

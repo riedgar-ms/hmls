@@ -46,6 +46,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import ClassVar
 
+from pydantic import BaseModel
+
 from hmls.core import GameMap
 from hmls.mapgenerator.connectivity import (
     connect_impassable_regions,
@@ -137,6 +139,33 @@ class MapStrategy(ABC):
                 but need not be exact.
             rng: Seeded :class:`random.Random` instance for reproducibility.
         """
+
+
+# ── Strategy configuration base class ────────────────────────────────
+
+
+class StrategyConfigBase(BaseModel, ABC, frozen=True, extra="forbid"):
+    """Abstract base for strategy configuration models.
+
+    Each concrete subclass must:
+
+    - Define a ``type`` field as a :class:`~typing.Literal` with a unique
+      snake_case identifier (e.g. ``Literal["blob_and_line"]``).
+    - Implement :meth:`create_strategy` to return a fully configured
+      :class:`MapStrategy` instance.
+
+    The ``type`` field serves as the Pydantic discriminator for the
+    :data:`~hmls.mapgenerator.generators.StrategyConfig` union type,
+    allowing JSON like ``{"type": "perlin_noise", "scale": 0.1}`` to be
+    parsed into the correct concrete config class automatically.
+
+    Subclasses inherit ``frozen=True`` and ``extra="forbid"`` for
+    immutability and strict JSON parsing.
+    """
+
+    @abstractmethod
+    def create_strategy(self) -> MapStrategy:
+        """Instantiate and return a :class:`MapStrategy` with this config's parameters."""
 
 
 # ── Strategy registry ─────────────────────────────────────────────────

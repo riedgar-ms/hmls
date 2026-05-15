@@ -7,9 +7,17 @@ obstacles using a mix of filled ellipses and thick line segments.
 from __future__ import annotations
 
 import random
+from typing import Literal
+
+from pydantic import Field
 
 from hmls.core import CellType, GameMap
-from hmls.mapgenerator.generators.base import MapStrategy, StrategyParam, register_strategy
+from hmls.mapgenerator.generators.base import (
+    MapStrategy,
+    StrategyConfigBase,
+    StrategyParam,
+    register_strategy,
+)
 
 
 @register_strategy
@@ -162,6 +170,31 @@ class BlobAndLineStrategy(MapStrategy):
                             count += 1
 
         return count
+
+
+# ── Pydantic configuration model ─────────────────────────────────────
+
+
+class BlobAndLineConfig(StrategyConfigBase, frozen=True, extra="forbid"):
+    """Configuration for the Blob & Line map generation strategy.
+
+    Serialisable Pydantic model that captures the parameters for
+    :class:`BlobAndLineStrategy`.  The ``type`` literal serves as
+    the discriminator in the :data:`~hmls.mapgenerator.generators.StrategyConfig`
+    union.
+
+    Attributes:
+        type: Discriminator literal, always ``"blob_and_line"``.
+        shape: Obstacle geometry blend.  0.0 = fully linear walls,
+            1.0 = fully circular blobs, 0.5 = mixed.
+    """
+
+    type: Literal["blob_and_line"] = "blob_and_line"
+    shape: float = Field(default=0.5, ge=0.0, le=1.0)
+
+    def create_strategy(self) -> BlobAndLineStrategy:
+        """Create a :class:`BlobAndLineStrategy` with the configured shape."""
+        return BlobAndLineStrategy(shape=self.shape)
 
 
 def _bresenham(x0: int, y0: int, x1: int, y1: int) -> list[tuple[int, int]]:
