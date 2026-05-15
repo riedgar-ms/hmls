@@ -8,6 +8,7 @@ Of course, there's a couple of ulterior motives.
 The first is to serve as a framework for learning how to create and train models to play a game.
 Fog-of-war generally makes gameplay very hard for a computer, so even this simple game is a non-trivial problem.
 The complexity will multiply as each player controls more tanks.
+Note that no new techniques are introduced here; this repository aims to provide readily understandable implementations of well-known algorithms.
 
 The second motive is to experiment with coding agents.
 Almost none of the code in this repository is manually written.
