@@ -58,8 +58,10 @@ class BlobAndLineStrategy(MapStrategy):
 
     Algorithm
     ---------
-    Obstacles are placed one at a time until the target impassable fraction
-    is reached (within a small tolerance).  For each obstacle:
+    Obstacles are placed one at a time until the impassable cell count
+    reaches ``floor(fraction × total_cells)``.  Since each shape adds
+    multiple cells, the final count may slightly overshoot the target.
+    For each obstacle:
 
     1. A random number ``r`` in ``[0, 1)`` is drawn.
     2. If ``r < shape``, a **circular blob** (filled ellipse) is placed at a
