@@ -246,11 +246,11 @@ class TestReturnBaseline:
         """Alpha outside (0, 1) should raise ValueError."""
         import pytest
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"alpha must be in \(0, 1\)"):
             ReturnBaseline(alpha=0.0)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"alpha must be in \(0, 1\)"):
             ReturnBaseline(alpha=1.0)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"alpha must be in \(0, 1\)"):
             ReturnBaseline(alpha=-0.5)
 
     def test_baseline_with_reinforce_update(self) -> None:

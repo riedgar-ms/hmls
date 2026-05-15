@@ -36,7 +36,7 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Generic, Literal, TypeVar
+from typing import Any, Literal
 
 import torch
 
@@ -48,14 +48,10 @@ MODEL_CONFIG_FILENAME = "model_config.json"
 
 logger = logging.getLogger(__name__)
 
-ModelT = TypeVar("ModelT", bound=TankModelBase)
-ConfigT = TypeVar("ConfigT", bound=TankModelConfig)
-
-
 # ── Persistence ABC ──────────────────────────────────────────────────
 
 
-class ModelPersistence(ABC, Generic[ConfigT, ModelT]):
+class ModelPersistence[ConfigT: TankModelConfig, ModelT: TankModelBase](ABC):
     """Abstract base class for model persistence and factory operations.
 
     Every model package must provide a concrete implementation of this
@@ -175,7 +171,9 @@ class ModelPersistence(ABC, Generic[ConfigT, ModelT]):
 # ── NNPlayer-based concrete implementation ────────────────────────────
 
 
-class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
+class NNPlayerModelPersistence[ConfigT: TankModelConfig, ModelT: TankModelBase](
+    ModelPersistence[ConfigT, ModelT],
+):
     """Persistence implementation for NNPlayer-based models.
 
     Handles the common pattern shared by all models that use:

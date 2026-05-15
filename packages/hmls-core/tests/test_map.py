@@ -39,7 +39,7 @@ class TestGameMapConstruction:
 
     def test_negative_dimensions_raise(self) -> None:
         """Negative dimensions should be rejected."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"must be >= 1"):
             GameMap(width=-1, height=3)
 
     def test_total_cells(self) -> None:
@@ -149,7 +149,8 @@ class TestStringRepresentation:
         """repr includes dimensions."""
         m = GameMap(width=3, height=2)
         r = repr(m)
-        assert "3" in r and "2" in r
+        assert "3" in r
+        assert "2" in r
 
 
 class TestGameMapSerialisation:

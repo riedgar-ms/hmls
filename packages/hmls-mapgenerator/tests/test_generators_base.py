@@ -95,7 +95,8 @@ class TestGenerateMap:
     def test_small_grid(self) -> None:
         """Small grids should not crash."""
         gm = generate_map(3, 3, impassable_fraction=0.3, seed=42)
-        assert gm.width == 3 and gm.height == 3
+        assert gm.width == 3
+        assert gm.height == 3
 
     def test_1x1_grid(self) -> None:
         """A 1×1 grid should not crash."""
@@ -108,12 +109,12 @@ class TestInvalidParameters:
 
     def test_invalid_fraction_low(self) -> None:
         """Negative fraction raises ValueError."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"impassable_fraction must be 0\.0–1\.0"):
             generate_map(10, 10, impassable_fraction=-0.1)
 
     def test_invalid_fraction_high(self) -> None:
         """Fraction > 1.0 raises ValueError."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"impassable_fraction must be 0\.0–1\.0"):
             generate_map(10, 10, impassable_fraction=1.1)
 
     def test_shape_and_strategy_conflict(self) -> None:

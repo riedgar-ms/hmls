@@ -41,9 +41,9 @@ class TestBlobAndLineStrategy:
 
     def test_invalid_shape(self) -> None:
         """Invalid shape values raise ValueError."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"shape must be 0\.0–1\.0"):
             BlobAndLineStrategy(shape=-0.1)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"shape must be 0\.0–1\.0"):
             BlobAndLineStrategy(shape=1.1)
 
 
