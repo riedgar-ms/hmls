@@ -278,7 +278,7 @@ class TestBlobAndLineConfigGetParams:
     def test_shape_param_hint(self) -> None:
         """Hint comes from Field(description=...)."""
         param = BlobAndLineConfig.get_params()[0]
-        assert param.hint == "0 = linear, 1 = circular"
+        assert param.hint == "0 = linear, 1 = blobs"
 
     def test_shape_param_bounds(self) -> None:
         """Bounds are derived from Field(ge=, le=)."""
