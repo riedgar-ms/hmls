@@ -19,6 +19,7 @@ from hmls.reinforcetrainer.config import (
     TrainerConfig,
 )
 from hmls.reinforcetrainer.training_loop import (
+    TrainingSession,
     _validate_game_patch_size,
     _validate_model_configs,
     train,
@@ -336,3 +337,218 @@ class TestTrainIntegration:
         # Files should be game_000003.json and game_000006.json
         assert sample_files[0].name == "game_000003.json"
         assert sample_files[1].name == "game_000006.json"
+
+
+class TestTrainingSession:
+    """Unit tests for the TrainingSession class."""
+
+    def test_construction_with_valid_config(self, tmp_path: Path) -> None:
+        """TrainingSession initializes correctly from a valid config."""
+        model_a_dir = tmp_path / "model_a"
+        model_b_dir = tmp_path / "model_b"
+        _setup_model_dir(model_a_dir)
+        _setup_model_dir(model_b_dir)
+
+        config = TrainerConfig(
+            model_a=ModelRef(dir=model_a_dir, train=True),
+            model_b=ModelRef(dir=model_b_dir, train=True),
+            map=MapConfig(min_size=8, max_size=8),
+            game=GameConfig(games_per_map=2, total_maps=3, max_turns=20),
+            output=OutputConfig(sample_game_dir=tmp_path / "samples"),
+            hyperparameters=HyperparameterConfig(seed=42),
+        )
+
+        session = TrainingSession(config)
+
+        assert session.total_games == 0
+        assert session.wins_a == 0
+        assert session.wins_b == 0
+        assert session.draws == 0
+        assert session.optimizer_a is not None
+        assert session.optimizer_b is not None
+        assert session.baseline_a is not None
+        assert session.baseline_b is not None
+        assert session.total_games_planned == 6
+
+    def test_frozen_model_has_no_optimizer(self, tmp_path: Path) -> None:
+        """A frozen model should not have an optimizer or baseline."""
+        model_a_dir = tmp_path / "model_a"
+        model_b_dir = tmp_path / "model_b"
+        _setup_model_dir(model_a_dir)
+        _setup_model_dir(model_b_dir)
+
+        config = TrainerConfig(
+            model_a=ModelRef(dir=model_a_dir, train=True),
+            model_b=ModelRef(dir=model_b_dir, train=False),
+            map=MapConfig(min_size=8, max_size=8),
+            game=GameConfig(games_per_map=1, total_maps=1, max_turns=10),
+            output=OutputConfig(sample_game_dir=tmp_path / "samples"),
+            hyperparameters=HyperparameterConfig(seed=42),
+        )
+
+        session = TrainingSession(config)
+
+        assert session.optimizer_a is not None
+        assert session.optimizer_b is None
+        assert session.baseline_a is not None
+        assert session.baseline_b is None
+
+    def test_train_one_game_increments_total_games(self, tmp_path: Path) -> None:
+        """train_one_game increments total_games and returns a GameOutcome."""
+        from hmls.reinforcetrainer.game_runner import GameOutcome, create_map
+
+        model_a_dir = tmp_path / "model_a"
+        model_b_dir = tmp_path / "model_b"
+        _setup_model_dir(model_a_dir)
+        _setup_model_dir(model_b_dir)
+
+        config = TrainerConfig(
+            model_a=ModelRef(dir=model_a_dir, train=True),
+            model_b=ModelRef(dir=model_b_dir, train=True),
+            map=MapConfig(min_size=8, max_size=8),
+            game=GameConfig(games_per_map=1, total_maps=1, max_turns=20),
+            output=OutputConfig(sample_game_dir=tmp_path / "samples"),
+            hyperparameters=HyperparameterConfig(seed=42),
+        )
+
+        session = TrainingSession(config)
+        game_map = create_map(8, 8, 0.2, "Blob & Line", seed=123)
+
+        outcome = session.train_one_game(game_map)
+
+        assert isinstance(outcome, GameOutcome)
+        assert session.total_games == 1
+
+    def test_stats_tracking_across_multiple_games(self, tmp_path: Path) -> None:
+        """Stats are accumulated correctly across multiple games."""
+        from hmls.reinforcetrainer.game_runner import create_map
+
+        model_a_dir = tmp_path / "model_a"
+        model_b_dir = tmp_path / "model_b"
+        _setup_model_dir(model_a_dir)
+        _setup_model_dir(model_b_dir)
+
+        config = TrainerConfig(
+            model_a=ModelRef(dir=model_a_dir, train=True),
+            model_b=ModelRef(dir=model_b_dir, train=True),
+            map=MapConfig(min_size=8, max_size=8),
+            game=GameConfig(games_per_map=1, total_maps=1, max_turns=20),
+            output=OutputConfig(
+                sample_game_dir=tmp_path / "samples",
+                sample_game_interval=100,
+                save_weights_interval=100,
+            ),
+            hyperparameters=HyperparameterConfig(seed=42),
+        )
+
+        session = TrainingSession(config)
+        game_map = create_map(8, 8, 0.2, "Blob & Line", seed=123)
+
+        for _ in range(5):
+            session.train_one_game(game_map)
+
+        assert session.total_games == 5
+        # All games must have some result
+        assert (
+            session.wins_a
+            + session.wins_b
+            + session.draws
+            + session.lethargy_a
+            + session.lethargy_b
+        ) == 5
+
+    def test_save_weights_if_due_respects_interval(self, tmp_path: Path) -> None:
+        """Weights are only saved at the configured interval."""
+        from hmls.reinforcetrainer.game_runner import create_map
+
+        model_a_dir = tmp_path / "model_a"
+        model_b_dir = tmp_path / "model_b"
+        _setup_model_dir(model_a_dir)
+        _setup_model_dir(model_b_dir)
+
+        config = TrainerConfig(
+            model_a=ModelRef(dir=model_a_dir, train=True),
+            model_b=ModelRef(dir=model_b_dir, train=True),
+            map=MapConfig(min_size=8, max_size=8),
+            game=GameConfig(games_per_map=1, total_maps=1, max_turns=20),
+            output=OutputConfig(
+                sample_game_dir=tmp_path / "samples",
+                sample_game_interval=100,
+                save_weights_interval=3,
+            ),
+            hyperparameters=HyperparameterConfig(seed=42),
+        )
+
+        session = TrainingSession(config)
+        game_map = create_map(8, 8, 0.2, "Blob & Line", seed=123)
+
+        # Play 2 games — should NOT save yet
+        for _ in range(2):
+            session.train_one_game(game_map)
+            session.save_weights_if_due()
+
+        assert not (model_a_dir / "model.pt").exists()
+
+        # Play 1 more game (total=3) — should save
+        session.train_one_game(game_map)
+        session.save_weights_if_due()
+
+        assert (model_a_dir / "model.pt").exists()
+        assert (model_b_dir / "model.pt").exists()
+
+    def test_save_sample_if_due_respects_interval(self, tmp_path: Path) -> None:
+        """Sample games are only saved at the configured interval."""
+        from hmls.reinforcetrainer.game_runner import create_map
+
+        model_a_dir = tmp_path / "model_a"
+        model_b_dir = tmp_path / "model_b"
+        _setup_model_dir(model_a_dir)
+        _setup_model_dir(model_b_dir)
+
+        config = TrainerConfig(
+            model_a=ModelRef(dir=model_a_dir, train=True),
+            model_b=ModelRef(dir=model_b_dir, train=True),
+            map=MapConfig(min_size=8, max_size=8),
+            game=GameConfig(games_per_map=1, total_maps=1, max_turns=20),
+            output=OutputConfig(
+                sample_game_dir=tmp_path / "samples",
+                sample_game_interval=2,
+                save_weights_interval=100,
+            ),
+            hyperparameters=HyperparameterConfig(seed=42),
+        )
+
+        session = TrainingSession(config)
+        game_map = create_map(8, 8, 0.2, "Blob & Line", seed=123)
+
+        # Game 1 — no sample saved
+        outcome1 = session.train_one_game(game_map)
+        session.save_sample_if_due(outcome1)
+        assert not (tmp_path / "samples").exists() or not list(
+            (tmp_path / "samples").glob("*.json")
+        )
+
+        # Game 2 — sample saved
+        outcome2 = session.train_one_game(game_map)
+        session.save_sample_if_due(outcome2)
+        sample_files = list((tmp_path / "samples").glob("*.json"))
+        assert len(sample_files) == 1
+
+    def test_incompatible_configs_raises(self, tmp_path: Path) -> None:
+        """TrainingSession raises ValueError for incompatible model configs."""
+        model_a_dir = tmp_path / "model_a"
+        model_b_dir = tmp_path / "model_b"
+        _setup_model_dir(model_a_dir, model_config=StubModelConfig(patch_size=9))
+        _setup_model_dir(model_b_dir, model_config=StubModelConfig(patch_size=7))
+
+        config = TrainerConfig(
+            model_a=ModelRef(dir=model_a_dir),
+            model_b=ModelRef(dir=model_b_dir),
+            map=MapConfig(min_size=8, max_size=8),
+            game=GameConfig(games_per_map=1, total_maps=1, max_turns=10),
+            output=OutputConfig(sample_game_dir=tmp_path / "samples"),
+            hyperparameters=HyperparameterConfig(seed=42),
+        )
+
+        with pytest.raises(ValueError, match="patch_size"):
+            TrainingSession(config)
