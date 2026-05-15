@@ -2,6 +2,7 @@
 
 This guide walks through playing a networked game.
 For installation, see the [main README](../README.md#getting-started).
+All commands include a `--help` option which will show all the arguments they accept.
 
 ## Map generation
 
@@ -24,6 +25,7 @@ uv run hmls-server map.json 3
 ```
 
 The server waits for two players to connect before starting the game.
+Once the game has ended, the server will save the game to the file `history.json` (the output file path can be set via command line argument).
 
 
 ## Connecting Players
@@ -61,3 +63,14 @@ uv run hmls-observer ws://localhost:8765/ws --name Spectator
 ```
 
 Observers can connect at any time — before or after the game starts.
+
+## Reviewing the history
+
+To watch a completed game, use the replay viewer:
+
+```bash
+uv run hmls-replayviewer path/to/history.json
+```
+
+The replay shows the entire map, and all tanks from both teams.
+Commands for adjusting the replay (and stepping backwards) are included in the view itself.
