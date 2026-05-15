@@ -64,3 +64,7 @@ To replay the game history, run:
 ```bash
 uv run hmls-replayviewer path/to/history.json
 ```
+
+## Further Reading
+
+See our [documentation](./docs/)
