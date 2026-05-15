@@ -77,7 +77,8 @@
     "impassable_fraction": 0.1,
     "strategies": [
       {
-        "type": "blob_and_line"
+        "type": "blob_and_line",
+        "shape": 0.5
       },
       {
         "type": "perlin_noise",
