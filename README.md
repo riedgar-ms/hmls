@@ -1,65 +1,53 @@
 # hmls
 
-Assorted Experiments in AI.
-This is a collection of packages for playing a simple tank game.
+A simple tank game, written in Python.
 Two players take turns moving their tanks around a landscape (with cells which are either passable or impassable), subject to fog-of-war.
-On each turn, the active tank can move forward, turn left, turn right, fire or pass.
-The ultimate goal is to train a model to play this game.
+On each turn, the active tank can move forward, turn left, turn right, fire (with a range of one cell forward) or pass.
 
-## Packages
+Of course, there's a couple of ulterior motives.
+The first is to serve as a framework for learning how to create and train models to play a game.
+Fog-of-war generally makes gameplay very hard for a computer, so even this simple game is a non-trivial problem.
+The complexity will multiply as each player controls more tanks.
+Note that no new techniques are introduced here; this repository aims to provide readily understandable implementations of well-known algorithms.
 
-| Package | Description |
-|---|---|
-| `hmls.core` | Core data types (`GameMap`, `CellType`), game engine, and visibility system |
-| `hmls.protocol` | Wire protocol models for server/client WebSocket communication |
-| `hmls.server` | Headless WebSocket game server (FastAPI + Uvicorn) |
-| `hmls.client` | WebSocket game client with Textual TUI and automapper |
-| `hmls.observer` | TUI observer client — connects to a running server and displays the full game map and event log in real-time (no fog-of-war) |
-| `hmls.testharness` | Interactive TUI for manually testing tank game behaviour |
-| `hmls.replayviewer` | TUI replay viewer for game history files |
-| `hmls.mapgenerator` | Randomised map generation with Textual TUI |
-| `hmls.uxcommon` | Shared TUI widgets and styles |
+The second motive is to experiment with coding agents.
+Almost none of the code in this repository is manually written.
+Instead, Copilot has been given instructions, and asked to plan an implementation.
+After a round or two of clarifying questions, Copilot then writes the code.
+The code is subject to manual review, and several refactorings have been performed in consequence (although Copilot still does the actual work of the refactor).
 
 ## Getting started
 
+This repository is configured for use with the [`uv` package manager](https://docs.astral.sh/uv/).
+To set up, run:
 ```bash
 # Clone and install
-git clone <repo-url>
+git clone https://github.com/riedgar-ms/hmls.git
 cd hmls
 uv sync --all-packages
 ```
 
-### Map Generator TUI
+To play a game, you'll first need to create a map.
+Run the map generator with:
 
 ```bash
 uv run hmls-mapgenerator
 ```
 
-See [packages/hmls-mapgenerator/README.md](packages/hmls-mapgenerator/README.md)
-for full documentation.
+This will start up a [Textual](https://textual.textualize.io/) UI in your console.
+Use this to generate a map and save it to disk (it will be a JSON file).
 
-### Test Harness TUI
-
-The test harness lets you play through a tank game interactively,
-controlling every tank yourself. It shows a god-view map alongside
-each player's fog-of-war patches.
+In order to get a sense for how the game works, use this map with the test harness.
+This isn't for proper games, since it shows in a single (Textual) view then entire map, plus the individual fog-of-war patches for each tank.
+Start up the harness with
 
 ```bash
-# Generate a map first, then run the harness with it
 uv run hmls-testharness path/to/map.json 3
 ```
 
-**Arguments:**
-
-| Argument | Description |
-|---|---|
-| `map_file` | Path to a JSON map file (as saved by `hmls-mapgenerator`) |
-| `tanks_per_player` | Number of tanks each of the two teams starts with |
-| `--seed N` | Random seed for tank placement (optional) |
-| `--max-turns N` | Maximum individual turns before the game ends (default 200) |
-| `--patch-size N` | Visibility patch size, odd ≥ 3 (default 9) |
-
-**Controls:**
+This will open the map, and place down three tanks for each player.
+Play proceeds by alternating between the two players, each moving one of their tanks (the one highlighted).
+The controls are:
 
 | Key | Action |
 |---|---|
@@ -72,94 +60,12 @@ uv run hmls-testharness path/to/map.json 3
 
 When the game ends, a summary is shown and you are prompted to save the
 full game history as JSON.
-
-### Replay Viewer
-
-The replay viewer lets you step through a saved game history file,
-viewing the full game state at each turn.
+To replay the game history, run:
 
 ```bash
 uv run hmls-replayviewer path/to/history.json
 ```
 
-**Arguments:**
+## Further Reading
 
-| Argument | Description |
-|---|---|
-| `history_file` | Path to a JSON game history file (as saved by the test harness or server) |
-
-### Game Server
-
-The game server is a headless WebSocket server (FastAPI + Uvicorn) that
-hosts a single game, accepting two player clients (one per team) and any
-number of observer clients. It logs events to the console but has no TUI
-of its own — use `hmls-observer` to watch the game visually.
-
-```bash
-uv run hmls-server path/to/map.json 3
-```
-
-**Arguments:**
-
-| Argument | Description |
-|---|---|
-| `map_file` | Path to a JSON map file (as saved by `hmls-mapgenerator`) |
-| `tanks_per_player` | Number of tanks each team starts with |
-| `--port N` | WebSocket server port (default 8765) |
-| `--seed N` | Random seed for tank placement (optional) |
-| `--max-turns N` | Maximum individual turns before the game ends (default 200) |
-| `--patch-size N` | Visibility patch size, odd ≥ 3 (default 9) |
-
-### Game Observer
-
-The observer connects to a running server and displays a full god-view
-map alongside a real-time event log. Observers see the complete game
-state without fog-of-war restrictions and do not affect gameplay.
-
-```bash
-uv run hmls-observer ws://localhost:8765/ws --name "Spectator"
-```
-
-**Arguments:**
-
-| Argument | Description |
-|---|---|
-| `server_url` | WebSocket server URL (e.g. `ws://localhost:8765/ws`) |
-| `--name NAME` | Display name for this observer (default "Observer") |
-
-### Game Client
-
-The game client connects to a running server and provides an interactive
-TUI with an automapper. As your tanks explore, the automapper reveals
-passable/impassable terrain, removing fog-of-war from previously seen areas.
-
-```bash
-uv run hmls-client ws://localhost:8765/ws --name "Alice"
-```
-
-**Arguments:**
-
-| Argument | Description |
-|---|---|
-| `server_url` | WebSocket server URL (e.g. `ws://localhost:8765/ws`) |
-| `--name NAME` | Player name sent to the server (default "Player") |
-
-**Controls** (same as test harness):
-
-| Key | Action |
-|---|---|
-| `W` | Move forward |
-| `A` | Turn left |
-| `D` | Turn right |
-| `Space` | Fire |
-| `Tab` | Pass (skip turn) |
-| `Q` | Quit |
-
-## Development
-
-```bash
-uv run ruff format --check .   # check formatting
-uv run ruff check .            # lint
-uv run mypy .                  # type check
-uv run pytest                  # run all tests
-```
+See our [documentation](./docs/)
