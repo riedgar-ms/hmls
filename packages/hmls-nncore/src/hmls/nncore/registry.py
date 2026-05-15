@@ -60,18 +60,19 @@ def discover_models() -> dict[str, "ModelPersistence[Any, Any]"]:
     seen: set[str] = set()
     for name in names:
         if name in seen:
-            raise ModelRegistryError(
+            msg = (
                 f"Duplicate model entry-point name '{name}' — "
                 f"two installed packages register the same name under "
                 f"the '{ENTRY_POINT_GROUP}' group. Uninstall one of the "
                 f"conflicting packages to resolve this."
             )
+            raise ModelRegistryError(msg)
         seen.add(name)
 
     for ep in eps:
         try:
             obj = ep.load()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "Failed to load entry point '%s' (%s): %s",
                 ep.name,
@@ -160,7 +161,7 @@ def resolve_model_id(model_id: str) -> "ModelPersistence[Any, Any]":
     except ModuleNotFoundError:
         available = sorted(registry.keys())
         available_str = ", ".join(available) if available else "(none)"
-        raise ModelRegistryError(
+        msg = (
             f"Model '{model_id}' could not be resolved. "
             f"It is not a registered entry-point name, and the module "
             f"'{module_name}' could not be imported.\n"
@@ -169,22 +170,25 @@ def resolve_model_id(model_id: str) -> "ModelPersistence[Any, Any]":
             f"and declares an entry point under the "
             f"'{ENTRY_POINT_GROUP}' group, or verify the 'model_id' "
             f"field in model_config.json is correct."
-        ) from None
+        )
+        raise ModelRegistryError(msg) from None
 
     if not hasattr(module, "PERSISTENCE"):
-        raise ModelRegistryError(
+        msg = (
             f"Module '{module_name}' was imported successfully but does "
             f"not expose a 'PERSISTENCE' attribute. Every model package "
             f"must define: PERSISTENCE = NNPlayerModelPersistence(...)"
         )
+        raise ModelRegistryError(msg)
 
     obj = module.PERSISTENCE
     if not isinstance(obj, ModelPersistence):
-        raise ModelRegistryError(
+        msg = (
             f"'{module_name}.PERSISTENCE' is not a ModelPersistence "
             f"instance (got {type(obj).__name__}). It must be an "
             f"instance of hmls.nncore.persistence.ModelPersistence."
         )
+        raise ModelRegistryError(msg)
 
     return obj
 

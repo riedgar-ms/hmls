@@ -152,7 +152,8 @@ def compute_visibility_mask(n: int) -> list[list[bool]]:
         ValueError: If *n* is even or less than 3.
     """
     if n < 3 or n % 2 == 0:
-        raise ValueError(f"patch size must be odd and >= 3, got {n}")
+        msg = f"patch size must be odd and >= 3, got {n}"
+        raise ValueError(msg)
 
     half = n // 2
     mask: list[list[bool]] = []

@@ -49,15 +49,14 @@ class GameMap(BaseModel, extra="forbid"):
         """Fill default cells or validate that an explicit list matches dimensions."""
         expected = self.width * self.height
         if self.width < 1:
-            raise ValueError(f"width must be >= 1, got {self.width}")
+            raise ValueError(f"width must be >= 1, got {self.width}")  # noqa: EM102
         if self.height < 1:
-            raise ValueError(f"height must be >= 1, got {self.height}")
+            raise ValueError(f"height must be >= 1, got {self.height}")  # noqa: EM102
         if not self.cells:
             self.cells = [CellType.PASSABLE] * expected
         elif len(self.cells) != expected:
-            raise ValueError(
-                f"cells length {len(self.cells)} does not match width*height ({expected})"
-            )
+            msg = f"cells length {len(self.cells)} does not match width*height ({expected})"
+            raise ValueError(msg)
         return self
 
     # ── Cell access ───────────────────────────────────────────────────
@@ -74,9 +73,8 @@ class GameMap(BaseModel, extra="forbid"):
         """
         x, y = pos
         if not self.in_bounds(x, y):
-            raise IndexError(
-                f"Position ({x}, {y}) is out of bounds for a {self.width}×{self.height} map"
-            )
+            msg = f"Position ({x}, {y}) is out of bounds for a {self.width}×{self.height} map"
+            raise IndexError(msg)
         return self.cells[y * self.width + x]
 
     def __setitem__(self, pos: tuple[int, int], cell_type: CellType) -> None:
@@ -87,9 +85,8 @@ class GameMap(BaseModel, extra="forbid"):
         """
         x, y = pos
         if not self.in_bounds(x, y):
-            raise IndexError(
-                f"Position ({x}, {y}) is out of bounds for a {self.width}×{self.height} map"
-            )
+            msg = f"Position ({x}, {y}) is out of bounds for a {self.width}×{self.height} map"
+            raise IndexError(msg)
         self.cells[y * self.width + x] = cell_type
 
     # ── Iteration helpers─────────────────────────────────────────────
@@ -158,9 +155,9 @@ def load_map(path: Path) -> GameMap:
         MapLoadError: If the file cannot be parsed or validated.
     """
     if not path.exists():
-        raise FileNotFoundError(f"Map file not found: {path}")
+        raise FileNotFoundError(f"Map file not found: {path}")  # noqa: EM102
     try:
         text = path.read_text(encoding="utf-8")
         return GameMap.model_validate_json(text)
     except Exception as exc:
-        raise MapLoadError(f"Error loading map: {exc}") from exc
+        raise MapLoadError(f"Error loading map: {exc}") from exc  # noqa: EM102

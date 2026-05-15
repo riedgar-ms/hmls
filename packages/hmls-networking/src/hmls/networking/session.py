@@ -41,7 +41,7 @@ class GameWebSocketSession:
             :class:`~hmls.protocol.ObserveMessage`).
     """
 
-    def __init__(self, ws: Any, url: str) -> None:
+    def __init__(self, ws: Any, url: str) -> None:  # noqa: ANN401
         """Initialise with an already-connected WebSocket.
 
         Users should not call this directly; use :meth:`connect` instead.
@@ -97,7 +97,7 @@ class GameWebSocketSession:
         async for raw in self._ws:
             try:
                 msg = _server_message_adapter.validate_json(str(raw))
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.warning("Failed to parse server message: %s", exc)
                 continue
             yield msg

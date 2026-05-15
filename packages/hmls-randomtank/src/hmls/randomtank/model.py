@@ -44,11 +44,12 @@ class RandomTankModelConfig(TankModelConfig, frozen=True, extra="forbid"):
         """Ensure passable probabilities sum to at most 1.0."""
         total = self.prob_forward_on_passable + self.prob_turn_left_on_passable
         if total > 1.0:
-            raise ValueError(
+            msg = (
                 f"prob_forward_on_passable ({self.prob_forward_on_passable}) + "
                 f"prob_turn_left_on_passable ({self.prob_turn_left_on_passable}) "
                 f"= {total}, which exceeds 1.0"
             )
+            raise ValueError(msg)
         return self
 
 

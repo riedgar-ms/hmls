@@ -23,7 +23,7 @@ from hmls.randomtank.player import RandomTankPlayer
 
 
 def _make_patch(
-    front_cell: Any,
+    front_cell: Any,  # noqa: ANN401
     patch_size: int = 9,
     tank_id: str = "A1",
 ) -> TankPatch:

@@ -57,7 +57,8 @@ def _create_lethargy_policy(config: LethargyConfig) -> LethargyPolicy:
             max_consecutive_turns=config.max_consecutive_turns,
         )
     else:
-        raise ValueError(f"Unknown lethargy policy: {config.policy!r}")
+        msg = f"Unknown lethargy policy: {config.policy!r}"
+        raise ValueError(msg)
 
 
 def _validate_model_configs(config_a: TankModelConfig, config_b: TankModelConfig) -> None:
@@ -75,11 +76,12 @@ def _validate_model_configs(config_a: TankModelConfig, config_b: TankModelConfig
         ValueError: If configurations are incompatible.
     """
     if config_a.patch_size != config_b.patch_size:
-        raise ValueError(
+        msg = (
             f"Model configurations are incompatible: patch_size differs "
             f"(A={config_a.patch_size}, B={config_b.patch_size}). "
             f"Both models must use the same patch_size."
         )
+        raise ValueError(msg)
 
 
 def _validate_game_patch_size(
@@ -98,17 +100,19 @@ def _validate_game_patch_size(
         ValueError: If the game patch_size doesn't match a model's patch_size.
     """
     if game_patch_size != model_config_a.patch_size:
-        raise ValueError(
+        msg = (
             f"GameConfig patch_size ({game_patch_size}) does not match "
             f"model A patch_size ({model_config_a.patch_size}). "
             f"The game and model configurations must agree on patch_size."
         )
+        raise ValueError(msg)
     if game_patch_size != model_config_b.patch_size:
-        raise ValueError(
+        msg = (
             f"GameConfig patch_size ({game_patch_size}) does not match "
             f"model B patch_size ({model_config_b.patch_size}). "
             f"The game and model configurations must agree on patch_size."
         )
+        raise ValueError(msg)
 
 
 def _save_weights(

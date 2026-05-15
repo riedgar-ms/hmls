@@ -49,7 +49,7 @@ class BlobAndLineStrategy(MapStrategy):
             ValueError: If *shape* is outside ``[0.0, 1.0]``.
         """
         if not 0.0 <= shape <= 1.0:
-            raise ValueError(f"shape must be 0.0–1.0, got {shape}")
+            raise ValueError(f"shape must be 0.0–1.0, got {shape}")  # noqa: EM102
         self.shape = shape
 
     def place_obstacles(

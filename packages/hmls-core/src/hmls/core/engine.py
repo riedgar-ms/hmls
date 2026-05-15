@@ -123,7 +123,7 @@ def _next_alive_tank(state: GameState, team: str, cursor: int) -> tuple[TankId, 
         idx = (cursor + i) % n
         if team_tanks[idx].alive:
             return team_tanks[idx].id, (idx + 1) % n
-    raise StopIteration(f"No alive tanks for team {team!r}")
+    raise StopIteration(f"No alive tanks for team {team!r}")  # noqa: EM102
 
 
 def _set_current_tank(state: GameState, tank_id: TankId) -> GameState:
@@ -160,9 +160,10 @@ def _validate_basic_params(max_turns: int, patch_size: int) -> None:
         ValueError: If *patch_size* is not odd or < 3, or *max_turns* < 1.
     """
     if patch_size < 3 or patch_size % 2 == 0:
-        raise ValueError(f"patch_size must be odd and >= 3, got {patch_size}")
+        msg = f"patch_size must be odd and >= 3, got {patch_size}"
+        raise ValueError(msg)
     if max_turns < 1:
-        raise ValueError(f"max_turns must be >= 1, got {max_turns}")
+        raise ValueError(f"max_turns must be >= 1, got {max_turns}")  # noqa: EM102
 
 
 def _validate_tanks(tanks: list[Tank], game_map: GameMap) -> None:
@@ -175,21 +176,23 @@ def _validate_tanks(tanks: list[Tank], game_map: GameMap) -> None:
         ValueError: On any invalid tank configuration.
     """
     if not tanks:
-        raise ValueError("Must provide at least one tank")
+        raise ValueError("Must provide at least one tank")  # noqa: EM101
 
     ids = [t.id for t in tanks]
     if len(set(ids)) != len(ids):
-        raise ValueError("Tank IDs must be unique")
+        raise ValueError("Tank IDs must be unique")  # noqa: EM101
 
     positions = [t.position for t in tanks]
     if len(set(positions)) != len(positions):
-        raise ValueError("Tanks must not share starting positions")
+        raise ValueError("Tanks must not share starting positions")  # noqa: EM101
 
     for t in tanks:
         if not game_map.in_bounds(t.position.x, t.position.y):
-            raise ValueError(f"Tank {t.id!r} is out of bounds at {t.position}")
+            msg = f"Tank {t.id!r} is out of bounds at {t.position}"
+            raise ValueError(msg)
         if game_map[t.position.x, t.position.y] != CellType.PASSABLE:
-            raise ValueError(f"Tank {t.id!r} starts on an impassable cell at {t.position}")
+            msg = f"Tank {t.id!r} starts on an impassable cell at {t.position}"
+            raise ValueError(msg)
 
 
 def _validate_teams(tanks: list[Tank], players: dict[str, Player]) -> None:
@@ -203,15 +206,17 @@ def _validate_teams(tanks: list[Tank], players: dict[str, Player]) -> None:
     """
     team_names = {t.team for t in tanks}
     if len(team_names) != 2:
-        raise ValueError(f"Exactly 2 teams required, got {len(team_names)}: {team_names}")
+        msg = f"Exactly 2 teams required, got {len(team_names)}: {team_names}"
+        raise ValueError(msg)
 
     for team in team_names:
         if team not in players:
-            raise ValueError(f"No player provided for team {team!r}")
+            raise ValueError(f"No player provided for team {team!r}")  # noqa: EM102
 
     for name, player in players.items():
         if player.team != name:
-            raise ValueError(f"Player registered under {name!r} has team {player.team!r}")
+            msg = f"Player registered under {name!r} has team {player.team!r}"
+            raise ValueError(msg)
 
 
 # ── Engine ────────────────────────────────────────────────────────────
@@ -326,7 +331,8 @@ class GameEngine:
         """
         tank_id = self._state.current_tank_id
         if tank_id is None:
-            raise RuntimeError("No current tank (game may be over or not started)")
+            msg = "No current tank (game may be over or not started)"
+            raise RuntimeError(msg)
         return tank_id
 
     @property
@@ -410,7 +416,7 @@ class GameEngine:
             RuntimeError: If the game is already over.
         """
         if self.game_over:
-            raise RuntimeError("Game is already over")
+            raise RuntimeError("Game is already over")  # noqa: EM101
 
         tank_id = self.current_tank_id
         team = self.current_team

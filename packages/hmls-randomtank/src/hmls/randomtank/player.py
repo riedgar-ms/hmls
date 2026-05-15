@@ -197,11 +197,13 @@ class RandomTankPlayer(NNPlayerBase):
 
     def _forward_play(self, patch: TankPatch) -> int:
         """Not used — choose_action is overridden."""
-        raise NotImplementedError("RandomTankPlayer does not use _forward_play")
+        msg = "RandomTankPlayer does not use _forward_play"
+        raise NotImplementedError(msg)
 
     def _forward_learn(self, patch: TankPatch) -> tuple[int, float, torch.Tensor, torch.Tensor]:
         """Not used — choose_action is overridden."""
-        raise NotImplementedError("RandomTankPlayer does not use _forward_learn")
+        msg = "RandomTankPlayer does not use _forward_learn"
+        raise NotImplementedError(msg)
 
     def _reset_model_state(self) -> None:
         """No model state to reset."""

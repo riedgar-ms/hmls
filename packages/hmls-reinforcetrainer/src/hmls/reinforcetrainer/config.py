@@ -39,10 +39,11 @@ class MapConfig(BaseModel, frozen=True, extra="forbid"):
     def _check_size_bounds(self) -> "MapConfig":
         """Ensure max_size >= min_size."""
         if self.max_size < self.min_size:
-            raise ValueError(
+            msg = (
                 f"max_size ({self.max_size}) must be greater than or equal to "
                 f"min_size ({self.min_size})"
             )
+            raise ValueError(msg)
         return self
 
 
@@ -65,7 +66,8 @@ class GameConfig(BaseModel, frozen=True, extra="forbid"):
     def _check_patch_size_odd(self) -> "GameConfig":
         """Ensure patch_size is odd."""
         if self.patch_size % 2 == 0:
-            raise ValueError(f"patch_size must be odd, got {self.patch_size}")
+            msg = f"patch_size must be odd, got {self.patch_size}"
+            raise ValueError(msg)
         return self
 
 

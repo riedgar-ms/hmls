@@ -228,7 +228,7 @@ class ClientApp(LogTabMixin, LogStatusMixin, App[None]):
                         break
                     await self._handle_message(msg)
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             self._write_log(f"[red]Connection error: {exc}[/red]")
             self._update_status("DISCONNECTED")
 
@@ -305,8 +305,8 @@ class ClientApp(LogTabMixin, LogStatusMixin, App[None]):
             ]
             if patch_widgets:
                 await patches_panel.mount_all(patch_widgets)
-        except Exception:
-            pass
+        except Exception:  # noqa: BLE001
+            logger.debug("Failed to update patches panel", exc_info=True)
 
         self._update_status(
             f"Team {self._team} | Tank {msg.tank_id}'s turn\n"

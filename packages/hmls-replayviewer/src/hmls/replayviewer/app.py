@@ -279,7 +279,7 @@ class ReplayViewerApp(LogTabMixin, LogStatusMixin, App[None]):
         for tid in self._all_tank_ids:
             try:
                 log_widget = self.query_one(f"#{_tank_log_id(tid)}", RichLog)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 logger.debug("Failed to find log widget for tank %s", tid, exc_info=True)
                 continue
 
@@ -293,7 +293,7 @@ class ReplayViewerApp(LogTabMixin, LogStatusMixin, App[None]):
             # Highlight the panel of the tank that just acted.
             try:
                 panel = self.query_one(f"#{_tank_panel_id(tid)}")
-            except Exception:
+            except Exception:  # noqa: BLE001
                 logger.debug("Failed to find panel for tank %s", tid, exc_info=True)
                 continue
             if tid == active_id:

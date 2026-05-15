@@ -64,7 +64,8 @@ def create_map(
     """
     if strategy_name not in STRATEGY_REGISTRY:
         available = ", ".join(sorted(STRATEGY_REGISTRY.keys()))
-        raise KeyError(f"Unknown map strategy '{strategy_name}'. Available: {available}")
+        msg = f"Unknown map strategy '{strategy_name}'. Available: {available}"
+        raise KeyError(msg)
     strategy_cls = STRATEGY_REGISTRY[strategy_name]
     strategy: MapStrategy = strategy_cls()
     return generate_map(

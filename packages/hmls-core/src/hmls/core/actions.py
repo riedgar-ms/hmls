@@ -174,9 +174,10 @@ def apply_action(
     """
     tank = state.get_tank(tank_id)
     if not tank.alive:
-        raise ValueError(f"Tank {tank_id!r} is not alive")
+        raise ValueError(f"Tank {tank_id!r} is not alive")  # noqa: EM102
     if state.current_tank_id != tank_id:
-        raise ValueError(f"It is not tank {tank_id!r}'s turn (current: {state.current_tank_id!r})")
+        msg = f"It is not tank {tank_id!r}'s turn (current: {state.current_tank_id!r})"
+        raise ValueError(msg)
 
     new_tanks = list(state.tanks)
     hit: bool | None = None

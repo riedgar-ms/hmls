@@ -80,7 +80,8 @@ class ConsecutiveTurnLimit(LethargyPolicy):
 
     def __init__(self, max_consecutive_turns: int = 5) -> None:
         if max_consecutive_turns < 2:
-            raise ValueError(f"max_consecutive_turns must be >= 2, got {max_consecutive_turns}")
+            msg = f"max_consecutive_turns must be >= 2, got {max_consecutive_turns}"
+            raise ValueError(msg)
         self._max: int = max_consecutive_turns
         self._streak: dict[TankId, int] = {}
 

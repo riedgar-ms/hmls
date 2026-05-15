@@ -105,7 +105,7 @@ class ObserverApp(LogTabMixin, LogStatusMixin, App[None]):
                         break
                     await self._handle_message(msg)
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             self._write_log(f"[red]Connection error: {exc}[/red]")
             self._update_status("DISCONNECTED")
 
@@ -165,7 +165,7 @@ class ObserverApp(LogTabMixin, LogStatusMixin, App[None]):
             map_view = self.query_one("#map-view", MapView)
             map_view.update_state(msg.state)
             map_view.active_tank_id = msg.current_tank_id or ""
-        except Exception:
+        except Exception:  # noqa: BLE001
             logger.debug("Failed to update map view during state update", exc_info=True)
 
         if msg.current_tank_id:

@@ -32,3 +32,11 @@ mypy .
 ```
 
 To auto-fix formatting: `ruff format .`
+
+### Lint suppression patterns
+
+When a ruff rule fires but the code is intentional, use inline `# noqa` comments rather than disabling rules globally. Follow these conventions:
+
+- **EM101/EM102** (string/f-string in exception): If the `raise` statement (from `raise` to closing paren) is ≤60 characters, suppress with `# noqa: EM101` or `# noqa: EM102`. If longer, extract the message to a `msg` variable on the preceding line.
+- **BLE001** (blind `except Exception`): Suppress with `# noqa: BLE001` only when the caught exception is logged or otherwise reported to the user. Never silently swallow exceptions.
+- **ANN401** (`Any` type): Suppress with `# noqa: ANN401` only where `Any` is genuinely unavoidable (e.g. external library types, generic factory callables).

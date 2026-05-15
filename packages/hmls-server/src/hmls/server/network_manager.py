@@ -109,7 +109,7 @@ class NetworkManager:
         try:
             raw = await websocket.receive_text()
             msg = _client_message_adapter.validate_json(raw)
-        except (WebSocketDisconnect, Exception) as exc:
+        except (WebSocketDisconnect, Exception) as exc:  # noqa: BLE001
             logger.warning("Connection error before identification: %s", exc)
             return
 
@@ -138,7 +138,7 @@ class NetworkManager:
         )
         try:
             await websocket.send_text(game_start_msg.model_dump_json())
-        except Exception:
+        except Exception:  # noqa: BLE001
             logger.debug(
                 "Observer disconnected during initial game_start send",
                 exc_info=True,
@@ -155,7 +155,7 @@ class NetworkManager:
             )
             try:
                 await websocket.send_text(state_msg.model_dump_json())
-            except Exception:
+            except Exception:  # noqa: BLE001
                 logger.debug(
                     "Observer disconnected during state_update send",
                     exc_info=True,
@@ -221,7 +221,7 @@ class NetworkManager:
 
             try:
                 msg = _client_message_adapter.validate_json(raw)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 await websocket.send_text(
                     ErrorMessage(message=f"Invalid message: {exc}").model_dump_json()
                 )
@@ -251,7 +251,7 @@ class NetworkManager:
         for ws in self.observers:
             try:
                 await ws.send_text(message)
-            except Exception:
+            except Exception:  # noqa: BLE001
                 logger.debug("Observer disconnected during broadcast", exc_info=True)
                 disconnected.append(ws)
         for ws in disconnected:
@@ -272,7 +272,7 @@ class NetworkManager:
         try:
             await self.websockets[team].send_text(message)
             return True
-        except Exception:
+        except Exception:  # noqa: BLE001
             logger.debug("Failed to send to Team %s", team, exc_info=True)
             return False
 

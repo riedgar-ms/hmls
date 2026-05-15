@@ -120,7 +120,7 @@ class TestEventBus:
             results.append("first")
 
         async def bad_handler(event: _DummyEventA) -> None:
-            raise ValueError("boom")
+            raise ValueError("boom")  # noqa: EM101
 
         async def good_last(event: _DummyEventA) -> None:
             results.append("last")
