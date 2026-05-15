@@ -6,6 +6,7 @@ import asyncio
 
 import pytest
 
+from hmls.core.game_state import GameState
 from hmls.core.map import GameMap
 from hmls.core.tank import Tank
 from hmls.core.types import Action, Direction, Position
@@ -20,8 +21,6 @@ def _make_simple_map() -> GameMap:
 
 def _make_view(game_map: GameMap, tanks: list[Tank], team: str) -> PlayerView:
     """Build a PlayerView for the given team."""
-    from hmls.core.game_state import GameState
-
     state = GameState(tanks=tanks, current_tank_id=tanks[0].id)
     return build_player_view(state, game_map, team, patch_size=7)
 

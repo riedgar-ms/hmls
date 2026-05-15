@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
 import torch
 from torch.distributions import Categorical
 
+from hmls.nncore.encoding import FiveChannelPatchEncoder
 from hmls.nncore.trajectory import Episode
 from hmls.reinforcetrainer._testing.stub_model import StubModelConfig, StubTankModel
 from hmls.reinforcetrainer.updater import ReturnBaseline, reinforce_update
@@ -14,8 +16,6 @@ def _make_episode_with_tensors(
     model: StubTankModel, num_steps: int
 ) -> tuple[Episode, list[torch.Tensor], list[torch.Tensor]]:
     """Helper: run a model to get a real episode with tensor log_probs and entropies."""
-    from hmls.nncore.encoding import FiveChannelPatchEncoder
-
     episode = Episode()
     log_prob_tensors: list[torch.Tensor] = []
     entropy_tensors: list[torch.Tensor] = []
@@ -121,8 +121,6 @@ class TestReinforceUpdate:
         torch.manual_seed(42)
         model = StubTankModel(StubModelConfig())
         optimizer = torch.optim.Adam(model.parameters(), lr=1e-2)
-
-        from hmls.nncore.encoding import FiveChannelPatchEncoder
 
         # Create a fixed input
         patch = torch.randn(
@@ -244,8 +242,6 @@ class TestReturnBaseline:
 
     def test_invalid_alpha_raises(self) -> None:
         """Alpha outside (0, 1) should raise ValueError."""
-        import pytest
-
         with pytest.raises(ValueError, match=r"alpha must be in \(0, 1\)"):
             ReturnBaseline(alpha=0.0)
         with pytest.raises(ValueError, match=r"alpha must be in \(0, 1\)"):

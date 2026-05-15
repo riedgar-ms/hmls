@@ -22,6 +22,7 @@ from hmls.core.visibility import (
     TankPatch,
     VisibleCell,
 )
+from hmls.nncore.constants import ACTION_TO_INDEX
 from hmls.nncore.player import NNPlayerBase
 from hmls.randomtank.model import RandomTankModel, RandomTankModelConfig
 
@@ -114,8 +115,6 @@ class RandomTankPlayer(NNPlayerBase):
 
         # Record trajectory step in learn mode (with dummy log_prob)
         if self._mode == "learn":
-            from hmls.nncore.constants import ACTION_TO_INDEX
-
             action_idx = ACTION_TO_INDEX[action]
             self._episode.add_step(action_index=action_idx, log_prob=0.0)
             # Provide dummy tensors for the training loop (never used

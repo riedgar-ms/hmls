@@ -314,6 +314,7 @@ class RewardFunction:
     """
 
     def __init__(self, config: RewardConfig | None = None) -> None:
+        # Lazy import: circular dependency with reward_components.py
         from hmls.nncore.reward_components import (
             ActionReward,
             ExplorationReward,
@@ -365,6 +366,7 @@ class RewardFunction:
         Returns:
             Total step reward (sum of all component contributions).
         """
+        # Lazy import: circular dependency with reward_components.py
         from hmls.nncore.reward_components import RewardContext
 
         is_meaningful_reset = entry.hit is True or (

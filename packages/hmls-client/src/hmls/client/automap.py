@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from enum import IntEnum
 
+from hmls.core.map import CellType
 from hmls.core.types import Direction
 from hmls.core.visibility import PlayerView, TankPatch, VisibleCell
 
@@ -116,8 +117,6 @@ class AutoMap:
                     continue
 
                 # Mark the cell.
-                from hmls.core.map import CellType
-
                 if cell.cell_type == CellType.PASSABLE:
                     self._grid[world_y][world_x] = CellState.PASSABLE
                 else:

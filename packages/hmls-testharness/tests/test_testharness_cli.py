@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from hmls.core.map import GameMap
+from hmls.core.map import GameMap, MapLoadError
+from hmls.core.placement import InsufficientPassableCellsError
 from hmls.testharness.cli import build_initial_state, load_map, parse_args, place_tanks
 
 # ── Helpers ───────────────────────────────────────────────────────────
@@ -65,8 +66,6 @@ class TestLoadMap:
 
     def test_malformed_json_raises(self, tmp_path: Path) -> None:
         """Invalid JSON content should raise MapLoadError."""
-        from hmls.core.map import MapLoadError
-
         path = tmp_path / "bad.json"
         path.write_text("{not valid", encoding="utf-8")
         with pytest.raises(MapLoadError):
@@ -101,8 +100,6 @@ class TestPlaceTanks:
 
     def test_insufficient_cells_raises(self) -> None:
         """A 1×1 map cannot hold 2 tanks → InsufficientPassableCellsError."""
-        from hmls.core.placement import InsufficientPassableCellsError
-
         tiny = GameMap(width=1, height=1)
         with pytest.raises(InsufficientPassableCellsError):
             place_tanks(tiny, 1)

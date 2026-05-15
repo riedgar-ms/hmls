@@ -7,7 +7,7 @@ import json
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from hmls.core import CellType
+from hmls.core import CellType, GameMap
 from hmls.mapgenerator.connectivity import find_components
 from hmls.mapgenerator.generators import (
     StrategyConfig,
@@ -200,8 +200,6 @@ class TestStrategyConfigUnion:
 
 
 def _is_passable(gm: object, x: int, y: int) -> bool:
-    from hmls.core import GameMap
-
     assert isinstance(gm, GameMap)
     return gm[x, y] == CellType.PASSABLE
 
