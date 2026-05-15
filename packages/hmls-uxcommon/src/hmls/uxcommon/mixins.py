@@ -32,7 +32,7 @@ def format_turn_status(valid: bool, reason: str, hit: bool | None) -> str:
 
 
 class LogStatusMixin:
-    """Mixin providing ``_write_log`` and ``_update_status`` helpers.
+    """Mixin providing ``_write_log``, ``_update_status``, and ``_log_turn_result`` helpers.
 
     Intended for Textual ``App`` subclasses whose compose tree includes
     a ``RichLog`` with id ``#log-panel`` and a ``Static`` with id

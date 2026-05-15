@@ -1,8 +1,8 @@
 """Logging utilities for Textual TUI applications.
 
-Provides a custom logging handler that routes Python log records to a
-Textual ``RichLog`` widget, and a mixin that integrates a "Log" tab into
-apps using ``TabbedContent``.
+Provides :class:`TextualLogHandler`, a custom :class:`logging.Handler`
+that routes Python log records to a Textual ``RichLog`` widget with
+Rich-markup level colouring.
 """
 
 from __future__ import annotations

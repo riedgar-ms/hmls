@@ -24,9 +24,10 @@ Algorithm overview
    The ``octaves`` parameter controls how many layers are used.
 
 4. **Thresholding** — All noise values are collected and sorted.  The
-   threshold is chosen so that exactly the target fraction of cells fall
-   below it and are marked impassable.  This guarantees the impassable
-   fraction matches the target precisely (before connectivity enforcement).
+   lowest ``floor(fraction × total_cells)`` cells are marked impassable,
+   so the result closely approximates (but may slightly undershoot) the
+   requested fraction.  Connectivity enforcement may further adjust the
+   final count.
 
 References
 ----------

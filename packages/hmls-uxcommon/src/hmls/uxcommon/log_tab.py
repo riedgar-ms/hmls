@@ -1,8 +1,9 @@
 """Mixin providing a Log tab for Textual TUI applications.
 
-The :class:`LogTabMixin` adds a ``TabbedContent`` structure with a
-"Game" tab (for existing app content) and a "Log" tab that captures
-all ``hmls.*`` logger output via :class:`~hmls.uxcommon.logging.TextualLogHandler`.
+The :class:`LogTabMixin` provides helper methods for composing a "Log"
+``TabPane`` and attaching a :class:`~hmls.uxcommon.logging.TextualLogHandler`
+that captures all ``hmls.*`` logger output.  The app is responsible for
+creating the ``TabbedContent`` and any other tabs (e.g. a "Game" tab).
 """
 
 from __future__ import annotations

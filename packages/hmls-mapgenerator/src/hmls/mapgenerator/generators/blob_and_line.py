@@ -31,8 +31,8 @@ class BlobAndLineConfig(StrategyConfigBase, frozen=True, extra="forbid"):
 
     Attributes:
         type: Discriminator literal, always ``"blob_and_line"``.
-        shape: Obstacle geometry blend.  0.0 = fully linear walls,
-            1.0 = fully circular blobs, 0.5 = mixed.
+        shape: Obstacle geometry blend.  0.0 = all linear walls,
+            1.0 = all blobs (filled ellipses), 0.5 = mixed.
     """
 
     type: Literal["blob_and_line"] = "blob_and_line"
@@ -41,7 +41,7 @@ class BlobAndLineConfig(StrategyConfigBase, frozen=True, extra="forbid"):
         ge=0.0,
         le=1.0,
         title="Shape",
-        description="0 = linear, 1 = circular",
+        description="0 = linear, 1 = blobs",
     )
 
     def create_strategy(self) -> BlobAndLineStrategy:
@@ -58,18 +58,20 @@ class BlobAndLineStrategy(MapStrategy):
 
     Algorithm
     ---------
-    Obstacles are placed one at a time until the target impassable fraction
-    is reached (within a small tolerance).  For each obstacle:
+    Obstacles are placed one at a time until the impassable cell count
+    reaches ``floor(fraction × total_cells)``.  Since each shape adds
+    multiple cells, the final count may slightly overshoot the target.
+    For each obstacle:
 
     1. A random number ``r`` in ``[0, 1)`` is drawn.
-    2. If ``r < shape``, a **circular blob** (filled ellipse) is placed at a
+    2. If ``r < shape``, a **blob** (filled ellipse) is placed at a
        random position with random radii.
     3. Otherwise, a **linear wall** (thick line segment) is placed between
        two random endpoints with a random thickness.
 
     Attributes:
-        shape: Obstacle geometry blend.  0.0 = fully linear walls,
-            1.0 = fully circular blobs, 0.5 = mixed.
+        shape: Obstacle geometry blend.  0.0 = all linear walls,
+            1.0 = all blobs (filled ellipses), 0.5 = mixed.
     """
 
     display_name = "Blob & Line"

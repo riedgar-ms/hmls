@@ -291,7 +291,7 @@ class TestTrainerConfig:
         assert loaded.hyperparameters.max_grad_norm == 5.0
 
     def test_default_reward_config(self, tmp_path: Path) -> None:
-        """Default reward config in ModelRef uses BasicRewardConfig defaults."""
+        """Default reward config in ModelRef uses RewardConfig defaults."""
         config = TrainerConfig(
             model_a=ModelRef(dir=tmp_path / "a"),
             model_b=ModelRef(dir=tmp_path / "b"),

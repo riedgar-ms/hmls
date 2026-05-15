@@ -101,7 +101,7 @@ Hence, _getting rewards right is hard_.
 | Parameter | What it controls |
 |-----------|-----------------|
 | `learning_rate` | How fast the network updates (default 0.001) |
-| `gamma` | Discount factor, as introduced above — how much to value future rewards (default 0.995) |
+| `gamma` | Discount factor, as introduced above — how much to value future rewards (default 0.99) |
 | `entropy_coeff` | Bonus for action diversity; prevents premature convergence |
 | `max_grad_norm` | Gradient clipping to stabilise training |
 | `seed` | Set for reproducibility; omit or `null` for random |

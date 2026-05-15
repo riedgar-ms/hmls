@@ -57,11 +57,11 @@ class FiveChannelPatchEncoder:
         """Index of each channel in the encoded patch tensor.
 
         Attributes:
-            TERRAIN: Passable = 1.0, impassable = 0.0, fog = −1.0.
+            TERRAIN: Passable = 1.0, impassable / boundary = 0.0, fog = −1.0.
             FRIENDLY: 1.0 if an alive friendly tank occupies the cell.
             ENEMY: 1.0 if an alive enemy tank occupies the cell.
             WRECKAGE: 1.0 if a dead tank (any team) occupies the cell.
-            VISIBILITY: 1.0 if visible, 0.0 if fog.
+            VISIBILITY: 1.0 if visible or boundary, 0.0 if fog.
         """
 
         TERRAIN = 0

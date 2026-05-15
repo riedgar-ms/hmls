@@ -1,7 +1,10 @@
-"""Remote player: bridges WebSocket communication with the game engine.
+"""Remote player: bridges WebSocket clients with the game engine.
 
-Implements the :class:`~hmls.core.player.Player` interface by sending
-turn information over WebSocket and awaiting the client's action response.
+Extends :class:`~hmls.core.player.PendingActionPlayer` to coordinate
+between the async game loop and the WebSocket layer.  This class does
+not perform WebSocket I/O itself — the
+:class:`~hmls.server.network_manager.NetworkManager` handles sending
+and receiving protocol messages.
 """
 
 from __future__ import annotations

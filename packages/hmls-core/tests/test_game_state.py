@@ -29,7 +29,7 @@ class TestGameStateConstruction:
     """Tests for creating GameState instances."""
 
     def test_basic_construction(self) -> None:
-        """A game state can be created with a map and tanks."""
+        """A game state can be created with tanks."""
         state = _make_state()
         assert len(state.tanks) == 2
         assert state.current_tank_id == "a1"

@@ -1,4 +1,4 @@
-"""Tests for the observer client message handling logic."""
+"""Tests for observer protocol message serialization and parsing."""
 
 from __future__ import annotations
 

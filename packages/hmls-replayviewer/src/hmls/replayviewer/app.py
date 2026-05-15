@@ -1,11 +1,11 @@
 """Main Textual TUI application for the HMLS game replay viewer.
 
 Lets the user step through a recorded game history, watching the map
-and fog-of-war patches update at each turn.  Supports both manual
+and tank positions update at each turn.  Supports both manual
 stepping (arrow keys) and automatic playback with adjustable speed.
 
-Action logs are displayed per-tank in a two-column grid (one column
-per team), so the user can see each tank's recent actions at a glance.
+Action logs are displayed per-tank in a grid (one column per team),
+so the user can see each tank's recent actions at a glance.
 """
 
 from __future__ import annotations
@@ -265,7 +265,7 @@ class ReplayViewerApp(LogTabMixin, LogStatusMixin, App[None]):
         status = self.query_one("#status-bar", Static)
         status.update(self._build_status_text())
 
-    # ── Status bar ────────────────────────────────────────────────
+    # ── Log & status bar ─────────────────────────────────────────
 
     def _rebuild_log(self) -> None:
         """Clear and rebuild per-tank log panels with entries up to the current step."""

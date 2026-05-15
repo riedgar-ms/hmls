@@ -2,6 +2,6 @@
 
 This package provides shared building blocks — patch encoding strategies,
 reward functions, model base classes, persistence helpers, and trajectory
-utilities — used by NN-based tank player packages such as ``hmls-singlemki``
-and ``hmls-singlemkii``.
+utilities — used by NN-based tank player packages such as ``hmls-singlemki``,
+``hmls-singlemkii``, and ``hmls-singlemkiii``.
 """

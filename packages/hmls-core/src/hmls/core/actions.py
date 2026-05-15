@@ -31,10 +31,10 @@ class ApplyResult(BaseModel, extra="forbid"):
 
     Attributes:
         state: The new game state after the action is applied.
-        hit: Whether a fire action hit an enemy tank.  ``True`` if an
-            alive enemy was destroyed, ``False`` if the shot missed (no
-            target, out of bounds, or target already dead).  ``None`` for
-            non-fire actions.
+        hit: Whether a fire action hit another tank.  ``True`` if an
+            alive tank was destroyed (friendly fire included),
+            ``False`` if the shot missed (no target, out of bounds, or
+            target already dead).  ``None`` for non-fire actions.
     """
 
     state: GameState
@@ -112,9 +112,10 @@ def _replace_tank(tanks: list[Tank], updated: Tank) -> list[Tank]:
 def _apply_fire(state: GameState, tank: Tank) -> tuple[list[Tank], bool]:
     """Resolve a FIRE action for *tank* and return the updated tank list and hit flag.
 
-    Checks the single cell directly ahead of *tank*.  If an alive enemy
-    occupies that cell, it is destroyed (friendly fire included).  Firing
-    into wreckage (a dead tank) or an empty cell counts as a miss.
+    Checks the single cell directly ahead of *tank*.  If an alive tank
+    (other than the firing tank) occupies that cell, it is destroyed —
+    friendly fire is possible.  Firing into wreckage (a dead tank) or
+    an empty cell counts as a miss.
 
     Args:
         state: Current game state.
@@ -122,7 +123,7 @@ def _apply_fire(state: GameState, tank: Tank) -> tuple[list[Tank], bool]:
 
     Returns:
         A tuple of (new_tanks, hit) where *hit* is ``True`` if an alive
-        enemy was destroyed.
+        tank was destroyed.
     """
     new_tanks = list(state.tanks)
     hit = False
