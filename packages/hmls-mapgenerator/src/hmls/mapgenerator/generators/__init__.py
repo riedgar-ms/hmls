@@ -18,12 +18,12 @@ from typing import Annotated
 from pydantic import Field
 
 from hmls.core import GameMap
+from hmls.mapgenerator.generators._generate import generate_map
 from hmls.mapgenerator.generators.base import (
     STRATEGY_REGISTRY,
     MapStrategy,
     StrategyConfigBase,
     StrategyParam,
-    generate_map,
     register_strategy,
 )
 
@@ -32,6 +32,8 @@ from hmls.mapgenerator.generators.base import (
 # See :func:`~.base.register_strategy` for the decorator that performs
 # the actual registration.
 for _info in pkgutil.iter_modules(__path__, __name__ + "."):
+    if _info.name.endswith("._generate"):
+        continue
     importlib.import_module(_info.name)
 del _info
 
