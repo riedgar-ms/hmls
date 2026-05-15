@@ -207,7 +207,7 @@ class GameEngine:
         # Teams sorted alphabetically for deterministic alternation.
         self._team_order: list[str] = sorted({t.team for t in tanks})
         # Per-team cursors for cycling through tanks.
-        self._cursors: dict[str, int] = {t: 0 for t in self._team_order}
+        self._cursors: dict[str, int] = dict.fromkeys(self._team_order, 0)
         # Global turn counter (indexes into team_order for alternation).
         self._global_turn: int = 0
         self._turns_taken: int = 0
