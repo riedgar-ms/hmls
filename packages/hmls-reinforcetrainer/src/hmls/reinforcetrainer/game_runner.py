@@ -14,7 +14,7 @@ from pathlib import Path
 from hmls.core.engine import GameEngine, GameResult, HistoryEntry
 from hmls.core.map import GameMap
 from hmls.core.placement import place_tanks
-from hmls.mapgenerator import STRATEGY_REGISTRY, MapStrategy, generate_map
+from hmls.mapgenerator import StrategyConfigBase, generate_map_from_config
 from hmls.nncore.model import TankModelBase
 from hmls.nncore.persistence import create_player
 from hmls.nncore.player import NNPlayerBase
@@ -44,36 +44,28 @@ def create_map(
     width: int,
     height: int,
     impassable_fraction: float,
-    strategy_name: str,
+    strategy_config: StrategyConfigBase,
     seed: int | None = None,
 ) -> GameMap:
-    """Generate a random map using the specified strategy.
+    """Generate a random map using the specified strategy configuration.
 
     Args:
         width: Map width in cells.
         height: Map height in cells.
         impassable_fraction: Fraction of cells to make impassable.
-        strategy_name: Name of a registered map strategy.
+        strategy_config: A concrete :class:`StrategyConfigBase` subclass
+            instance describing which strategy and parameters to use.
         seed: Optional random seed.
 
     Returns:
         A newly generated GameMap.
-
-    Raises:
-        KeyError: If strategy_name is not in the registry.
     """
-    if strategy_name not in STRATEGY_REGISTRY:
-        available = ", ".join(sorted(STRATEGY_REGISTRY.keys()))
-        msg = f"Unknown map strategy '{strategy_name}'. Available: {available}"
-        raise KeyError(msg)
-    strategy_cls = STRATEGY_REGISTRY[strategy_name]
-    strategy: MapStrategy = strategy_cls()
-    return generate_map(
+    return generate_map_from_config(
         width,
         height,
         impassable_fraction=impassable_fraction,
+        strategy_config=strategy_config,
         seed=seed,
-        strategy=strategy,
     )
 
 

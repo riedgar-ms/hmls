@@ -14,6 +14,7 @@ import torch
 from torch.optim import Optimizer
 
 from hmls.core.map import GameMap
+from hmls.mapgenerator import StrategyConfigBase
 from hmls.nncore.model import TankModelBase, TankModelConfig
 from hmls.nncore.persistence import (
     load_model_config,
@@ -399,6 +400,11 @@ class TrainingSession:
             self.config.map.max_size,
             self.config.map.impassable_fraction * 100,
         )
+        strategy_types = [s.type for s in self.config.map.strategies]
+        logger.info(
+            "  Strategies: %s (cycling round-robin)",
+            ", ".join(strategy_types),
+        )
         logger.info(
             "  Max turns/game: %d, γ=%s, lr=%s",
             self.config.game.max_turns,
@@ -423,13 +429,15 @@ def _generate_map(
     config: TrainerConfig,
     rng: random.Random,
     map_idx: int,
+    strategy_config: StrategyConfigBase,
 ) -> GameMap:
     """Generate a random map for the training loop.
 
     Args:
-        config: Training configuration (map size/strategy settings).
+        config: Training configuration (map size settings).
         rng: Random number generator for map dimensions and seed.
         map_idx: Zero-based map index (used for logging).
+        strategy_config: The strategy configuration to use for this map.
 
     Returns:
         A newly generated GameMap.
@@ -441,7 +449,7 @@ def _generate_map(
         map_width,
         map_height,
         config.map.impassable_fraction,
-        config.map.strategy,
+        strategy_config,
         seed=map_seed,
     )
     logger.debug(
@@ -451,7 +459,7 @@ def _generate_map(
         map_width,
         map_height,
         map_seed,
-        config.map.strategy,
+        strategy_config.type,  # type: ignore[attr-defined]
     )
     return game_map
 
@@ -473,7 +481,8 @@ def train(config: TrainerConfig) -> None:
     session.log_training_start()
 
     for map_idx in range(config.game.total_maps):
-        game_map = _generate_map(config, session.rng, map_idx)
+        strategy_config = config.map.strategies[map_idx % len(config.map.strategies)]
+        game_map = _generate_map(config, session.rng, map_idx, strategy_config)
         for _ in range(config.game.games_per_map):
             outcome = session.train_one_game(game_map)
             session.save_sample_if_due(outcome)

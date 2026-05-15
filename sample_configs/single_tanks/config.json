@@ -75,7 +75,7 @@
     "min_size": 10,
     "max_size": 15,
     "impassable_fraction": 0.1,
-    "strategy": "Blob & Line"
+    "strategies": [{"type": "blob_and_line"}]
   },
   "game": {
     "games_per_map": 10,

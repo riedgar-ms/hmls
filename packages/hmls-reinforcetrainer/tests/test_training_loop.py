@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from hmls.mapgenerator import BlobAndLineConfig
 from hmls.nncore.persistence import load_or_create_model
 from hmls.nncore.reward import ExplorationRewardConfig, FiringRewardConfig, RewardConfig
 from hmls.reinforcetrainer._testing.persistence import PERSISTENCE as STUB_PERSISTENCE
@@ -412,7 +413,7 @@ class TestTrainingSession:
         )
 
         session = TrainingSession(config)
-        game_map = create_map(8, 8, 0.2, "Blob & Line", seed=123)
+        game_map = create_map(8, 8, 0.2, BlobAndLineConfig(), seed=123)
 
         outcome = session.train_one_game(game_map)
 
@@ -442,7 +443,7 @@ class TestTrainingSession:
         )
 
         session = TrainingSession(config)
-        game_map = create_map(8, 8, 0.2, "Blob & Line", seed=123)
+        game_map = create_map(8, 8, 0.2, BlobAndLineConfig(), seed=123)
 
         for _ in range(5):
             session.train_one_game(game_map)
@@ -480,7 +481,7 @@ class TestTrainingSession:
         )
 
         session = TrainingSession(config)
-        game_map = create_map(8, 8, 0.2, "Blob & Line", seed=123)
+        game_map = create_map(8, 8, 0.2, BlobAndLineConfig(), seed=123)
 
         # Play 2 games — should NOT save yet
         for _ in range(2):
@@ -519,7 +520,7 @@ class TestTrainingSession:
         )
 
         session = TrainingSession(config)
-        game_map = create_map(8, 8, 0.2, "Blob & Line", seed=123)
+        game_map = create_map(8, 8, 0.2, BlobAndLineConfig(), seed=123)
 
         # Game 1 — no sample saved
         outcome1 = session.train_one_game(game_map)
@@ -552,3 +553,57 @@ class TestTrainingSession:
 
         with pytest.raises(ValueError, match="patch_size"):
             TrainingSession(config)
+
+
+class TestStrategyCycling:
+    """Tests for round-robin strategy cycling in the training loop."""
+
+    def test_strategies_cycle_round_robin(self, tmp_path: Path) -> None:
+        """Maps cycle through the strategies list using modulo indexing."""
+        from unittest.mock import patch as mock_patch
+
+        from hmls.mapgenerator import BlobAndLineConfig, PerlinNoiseConfig
+
+        model_dir_a = tmp_path / "model_a"
+        model_dir_b = tmp_path / "model_b"
+        _setup_model_dir(model_dir_a)
+        _setup_model_dir(model_dir_b)
+
+        strategies = [
+            BlobAndLineConfig(shape=0.3),
+            PerlinNoiseConfig(scale=0.05),
+        ]
+        config = TrainerConfig(
+            model_a=ModelRef(dir=model_dir_a),
+            model_b=ModelRef(dir=model_dir_b, train=False),
+            map=MapConfig(min_size=8, max_size=8, strategies=strategies),
+            game=GameConfig(games_per_map=1, total_maps=4, max_turns=30),
+            output=OutputConfig(sample_game_dir=tmp_path / "samples"),
+            hyperparameters=HyperparameterConfig(seed=42),
+        )
+
+        observed_configs: list[object] = []
+        original_generate = __import__(
+            "hmls.reinforcetrainer.training_loop", fromlist=["_generate_map"]
+        )._generate_map
+
+        def tracking_generate(
+            cfg: TrainerConfig,
+            rng: object,
+            map_idx: int,
+            strategy_config: object,
+        ) -> object:
+            observed_configs.append(strategy_config)
+            return original_generate(cfg, rng, map_idx, strategy_config)
+
+        with mock_patch(
+            "hmls.reinforcetrainer.training_loop._generate_map",
+            side_effect=tracking_generate,
+        ):
+            train(config)
+
+        assert len(observed_configs) == 4
+        assert isinstance(observed_configs[0], BlobAndLineConfig)
+        assert isinstance(observed_configs[1], PerlinNoiseConfig)
+        assert isinstance(observed_configs[2], BlobAndLineConfig)
+        assert isinstance(observed_configs[3], PerlinNoiseConfig)
