@@ -41,7 +41,7 @@ from typing import Any, Literal
 import torch
 
 from hmls.nncore.model import TankModelBase, TankModelConfig
-from hmls.nncore.player import NNPlayerBase
+from hmls.nncore.player import NNPlayer, NNPlayerBase
 from hmls.nncore.reward import RewardConfig
 
 MODEL_CONFIG_FILENAME = "model_config.json"
@@ -312,8 +312,6 @@ class NNPlayerModelPersistence[ConfigT: TankModelConfig, ModelT: TankModelBase](
         if self._player_factory is not None:
             return self._player_factory(team, model, mode)
 
-        from hmls.nncore.player import NNPlayer
-
         return NNPlayer(team=team, model=model, mode=mode)
 
 
@@ -339,6 +337,7 @@ def _get_persistence(model_id: str) -> ModelPersistence[Any, Any]:
         ModelRegistryError: If the model cannot be resolved or does
             not provide a valid ``ModelPersistence`` instance.
     """
+    # Lazy import: circular dependency with registry.py
     from hmls.nncore.registry import resolve_model_id
 
     return resolve_model_id(model_id)

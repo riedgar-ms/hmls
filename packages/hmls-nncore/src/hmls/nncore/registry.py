@@ -50,6 +50,7 @@ def discover_models() -> dict[str, ModelPersistence[Any, Any]]:
         ModelRegistryError: If duplicate entry-point names are detected
             among installed packages.
     """
+    # Lazy import: circular dependency with persistence.py
     from hmls.nncore.persistence import ModelPersistence
 
     eps = entry_points(group=ENTRY_POINT_GROUP)
@@ -135,6 +136,7 @@ def resolve_model_id(model_id: str) -> ModelPersistence[Any, Any]:
             method, or if the resolved object is not a valid
             ``ModelPersistence`` instance.
     """
+    # Lazy import: circular dependency with persistence.py
     from hmls.nncore.persistence import ModelPersistence
 
     # Step 1: Try as a short entry-point name

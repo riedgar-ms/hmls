@@ -8,6 +8,7 @@ view update in real time.
 from __future__ import annotations
 
 import logging
+import sys
 from pathlib import Path
 
 from textual.app import App, ComposeResult
@@ -19,7 +20,8 @@ from textual.widgets import Footer, Header, Input, Label, RichLog, Static, Tabbe
 
 from hmls.core.engine import GameEngine, HistoryEntry
 from hmls.core.game_state import GameState
-from hmls.core.map import GameMap
+from hmls.core.map import GameMap, MapLoadError
+from hmls.core.placement import InsufficientPassableCellsError
 from hmls.core.player import Player
 from hmls.core.types import Action
 from hmls.testharness.cli import build_initial_state, load_map, parse_args, place_tanks
@@ -292,11 +294,6 @@ class TestHarnessApp(LogTabMixin, LogStatusMixin, App[None]):
 
 def main() -> None:
     """Entry point for the TUI application."""
-    import sys
-
-    from hmls.core.map import MapLoadError
-    from hmls.core.placement import InsufficientPassableCellsError
-
     args = parse_args()
     try:
         game_map = load_map(args.map_file)

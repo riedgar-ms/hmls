@@ -10,6 +10,7 @@ import pytest
 
 from hmls.core.engine import GameEngine, GameResult
 from hmls.core.map import GameMap
+from hmls.core.player import Player
 from hmls.core.tank import Tank
 from hmls.core.types import Action, Direction, Position
 from hmls.core.visibility import build_player_view
@@ -83,7 +84,6 @@ class TestHistorySave:
         orchestrator = _make_orchestrator(history_file=history_file)
 
         # Manually wire up the engine and simulate a short game.
-        from hmls.core.player import Player
 
         players: dict[str, Player] = {
             "A": orchestrator.players["A"],
