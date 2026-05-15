@@ -38,7 +38,7 @@ from __future__ import annotations
 
 import math
 import random
-from typing import Literal
+from typing import ClassVar, Literal
 
 from pydantic import Field
 
@@ -46,11 +46,10 @@ from hmls.core import CellType, GameMap
 from hmls.mapgenerator.generators.base import (
     MapStrategy,
     StrategyConfigBase,
-    StrategyParam,
     register_strategy,
 )
 
-# ── Perlin noise primitives ───────────────────────────────────────────
+# ── Perlin noise primitives───────────────────────────────────────────
 
 # 12 gradient vectors for 2D Perlin noise (edges of a cube projected to 2D).
 _GRAD2: list[tuple[int, int]] = [
@@ -162,6 +161,45 @@ def _fractal_noise2d(
     return value
 
 
+# ── Pydantic configuration model ─────────────────────────────────────
+
+
+class PerlinNoiseConfig(StrategyConfigBase, frozen=True, extra="forbid"):
+    """Configuration for the Perlin Noise map generation strategy.
+
+    Serialisable Pydantic model that captures the parameters for
+    :class:`PerlinNoiseStrategy`.  The ``type`` literal serves as
+    the discriminator in the :data:`~hmls.mapgenerator.generators.StrategyConfig`
+    union.
+
+    Attributes:
+        type: Discriminator literal, always ``"perlin_noise"``.
+        scale: Noise scale / zoom level.  Lower values produce larger,
+            smoother terrain features.
+        octaves: Number of fractal noise layers summed together.
+    """
+
+    type: Literal["perlin_noise"] = "perlin_noise"
+    scale: float = Field(
+        default=0.05,
+        ge=0.02,
+        le=0.2,
+        title="Noise scale",
+        description="Lower values produce larger features",
+    )
+    octaves: int = Field(
+        default=4,
+        ge=1,
+        le=8,
+        title="Octaves",
+        description="Number of fractal noise layers",
+    )
+
+    def create_strategy(self) -> PerlinNoiseStrategy:
+        """Create a :class:`PerlinNoiseStrategy` with the configured parameters."""
+        return PerlinNoiseStrategy(scale=self.scale, octaves=self.octaves)
+
+
 # ── Strategy class ────────────────────────────────────────────────────
 
 
@@ -180,14 +218,7 @@ class PerlinNoiseStrategy(MapStrategy):
     """
 
     display_name = "Perlin Noise"
-
-    @classmethod
-    def get_params(cls) -> list[StrategyParam]:
-        """Return the configurable parameters for this strategy."""
-        return [
-            StrategyParam("scale", "Noise scale", float, 0.05, 0.02, 0.2),
-            StrategyParam("octaves", "Octaves", int, 4, 1, 8),
-        ]
+    config_class: ClassVar[type[StrategyConfigBase]] = PerlinNoiseConfig
 
     def __init__(self, scale: float = 0.05, octaves: int = 4) -> None:
         """Create a Perlin noise strategy.
@@ -240,30 +271,3 @@ class PerlinNoiseStrategy(MapStrategy):
         for i in range(min(target_count, len(noise_values))):
             _, cx, cy = noise_values[i]
             game_map[cx, cy] = CellType.IMPASSABLE
-
-
-# ── Pydantic configuration model ─────────────────────────────────────
-
-
-class PerlinNoiseConfig(StrategyConfigBase, frozen=True, extra="forbid"):
-    """Configuration for the Perlin Noise map generation strategy.
-
-    Serialisable Pydantic model that captures the parameters for
-    :class:`PerlinNoiseStrategy`.  The ``type`` literal serves as
-    the discriminator in the :data:`~hmls.mapgenerator.generators.StrategyConfig`
-    union.
-
-    Attributes:
-        type: Discriminator literal, always ``"perlin_noise"``.
-        scale: Noise scale / zoom level.  Lower values produce larger,
-            smoother terrain features.
-        octaves: Number of fractal noise layers summed together.
-    """
-
-    type: Literal["perlin_noise"] = "perlin_noise"
-    scale: float = Field(default=0.05, gt=0.0)
-    octaves: int = Field(default=4, ge=1)
-
-    def create_strategy(self) -> PerlinNoiseStrategy:
-        """Create a :class:`PerlinNoiseStrategy` with the configured parameters."""
-        return PerlinNoiseStrategy(scale=self.scale, octaves=self.octaves)

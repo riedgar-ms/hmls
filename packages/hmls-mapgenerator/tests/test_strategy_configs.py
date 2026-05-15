@@ -11,6 +11,7 @@ from hmls.core import CellType
 from hmls.mapgenerator.connectivity import find_components
 from hmls.mapgenerator.generators import (
     StrategyConfig,
+    StrategyParam,
     generate_map_from_config,
 )
 from hmls.mapgenerator.generators.blob_and_line import (
@@ -253,3 +254,109 @@ class TestGenerateMapFromConfig:
         gm2 = generate_map_from_config(15, 15, strategy_config=cfg, seed=99)
         for pos in gm1.all_positions():
             assert gm1[pos] == gm2[pos], f"Mismatch at {pos}"
+
+
+# ── get_params() derivation from Pydantic config ─────────────────────
+
+
+class TestBlobAndLineConfigGetParams:
+    """Tests that BlobAndLineConfig.get_params() derives correct StrategyParam values."""
+
+    def test_returns_one_param(self) -> None:
+        """BlobAndLineConfig has exactly one configurable parameter."""
+        params = BlobAndLineConfig.get_params()
+        assert len(params) == 1
+
+    def test_shape_param_name(self) -> None:
+        """The parameter name matches the Pydantic field name."""
+        param = BlobAndLineConfig.get_params()[0]
+        assert param.name == "shape"
+
+    def test_shape_param_label(self) -> None:
+        """Label comes from Field(title=...)."""
+        param = BlobAndLineConfig.get_params()[0]
+        assert param.label == "Shape"
+
+    def test_shape_param_hint(self) -> None:
+        """Hint comes from Field(description=...)."""
+        param = BlobAndLineConfig.get_params()[0]
+        assert param.hint == "0 = linear, 1 = circular"
+
+    def test_shape_param_bounds(self) -> None:
+        """Bounds are derived from Field(ge=, le=)."""
+        param = BlobAndLineConfig.get_params()[0]
+        assert param.min_val == 0.0
+        assert param.max_val == 1.0
+
+    def test_shape_param_default(self) -> None:
+        """Default is taken from the Field default."""
+        param = BlobAndLineConfig.get_params()[0]
+        assert param.default == 0.5
+
+    def test_shape_param_type(self) -> None:
+        """Type annotation is float."""
+        param = BlobAndLineConfig.get_params()[0]
+        assert param.param_type is float
+
+
+class TestPerlinNoiseConfigGetParams:
+    """Tests that PerlinNoiseConfig.get_params() derives correct StrategyParam values."""
+
+    def test_returns_two_params(self) -> None:
+        """PerlinNoiseConfig has two configurable parameters."""
+        params = PerlinNoiseConfig.get_params()
+        assert len(params) == 2
+
+    def test_scale_param(self) -> None:
+        """Scale parameter has correct metadata."""
+        param = PerlinNoiseConfig.get_params()[0]
+        assert param.name == "scale"
+        assert param.label == "Noise scale"
+        assert param.param_type is float
+        assert param.default == 0.05
+        assert param.min_val == 0.02
+        assert param.max_val == 0.2
+
+    def test_scale_param_hint(self) -> None:
+        """Scale has a description-based hint."""
+        param = PerlinNoiseConfig.get_params()[0]
+        assert param.hint is not None
+        assert "feature" in param.hint.lower() or "scale" in param.hint.lower()
+
+    def test_octaves_param(self) -> None:
+        """Octaves parameter has correct metadata."""
+        param = PerlinNoiseConfig.get_params()[1]
+        assert param.name == "octaves"
+        assert param.label == "Octaves"
+        assert param.param_type is int
+        assert param.default == 4
+        assert param.min_val == 1
+        assert param.max_val == 8
+
+    def test_octaves_param_hint(self) -> None:
+        """Octaves has a description-based hint."""
+        param = PerlinNoiseConfig.get_params()[1]
+        assert param.hint is not None
+
+
+class TestStrategyGetParamsDelegation:
+    """Tests that MapStrategy.get_params() delegates to config_class."""
+
+    def test_blob_and_line_delegation(self) -> None:
+        """BlobAndLineStrategy.get_params() returns same as BlobAndLineConfig.get_params()."""
+        strategy_params = BlobAndLineStrategy.get_params()
+        config_params = BlobAndLineConfig.get_params()
+        assert strategy_params == config_params
+
+    def test_perlin_delegation(self) -> None:
+        """PerlinNoiseStrategy.get_params() returns same as PerlinNoiseConfig.get_params()."""
+        strategy_params = PerlinNoiseStrategy.get_params()
+        config_params = PerlinNoiseConfig.get_params()
+        assert strategy_params == config_params
+
+    def test_strategy_params_are_strategy_param_instances(self) -> None:
+        """All params from strategy delegation are StrategyParam instances."""
+        for param in BlobAndLineStrategy.get_params():
+            assert isinstance(param, StrategyParam)
+        for param in PerlinNoiseStrategy.get_params():
+            assert isinstance(param, StrategyParam)
