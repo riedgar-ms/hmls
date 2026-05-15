@@ -10,11 +10,11 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any
 
 import websockets
 import websockets.asyncio.client
 from pydantic import BaseModel, TypeAdapter
+from websockets.asyncio.client import ClientConnection
 
 from hmls.protocol import ServerMessage
 
@@ -41,7 +41,7 @@ class GameWebSocketSession:
             :class:`~hmls.protocol.ObserveMessage`).
     """
 
-    def __init__(self, ws: Any, url: str) -> None:  # noqa: ANN401
+    def __init__(self, ws: ClientConnection, url: str) -> None:
         """Initialise with an already-connected WebSocket.
 
         Users should not call this directly; use :meth:`connect` instead.
