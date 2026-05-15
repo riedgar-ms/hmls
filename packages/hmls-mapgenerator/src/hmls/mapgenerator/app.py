@@ -48,7 +48,7 @@ class MapDisplay(Static):
         self,
         renderable: str = "",
         *,
-        id: str | None = None,
+        id: str | None = None,  # noqa: A002 -- matches Textual Widget API
     ) -> None:
         super().__init__(renderable, id=id)
         self._game_map: GameMap | None = None

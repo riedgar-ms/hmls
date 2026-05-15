@@ -265,7 +265,7 @@ def train(config: TrainerConfig) -> None:
             config.map.strategy,
         )
 
-        for game_idx in range(config.game.games_per_map):
+        for _game_idx in range(config.game.games_per_map):
             total_games += 1
 
             # Run game

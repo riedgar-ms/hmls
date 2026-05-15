@@ -69,7 +69,7 @@ class AutoMapView(Static):
     directional arrows.
     """
 
-    def __init__(self, width: int, height: int, *, team: str = "A", id: str | None = None) -> None:
+    def __init__(self, width: int, height: int, *, team: str = "A", id: str | None = None) -> None:  # noqa: A002 -- matches Textual Widget API
         super().__init__(id=id)
         self._map_width = width
         self._map_height = height

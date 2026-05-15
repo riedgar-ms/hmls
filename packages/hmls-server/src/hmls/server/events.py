@@ -118,9 +118,8 @@ class EventBus:
             try:
                 await callback(event)
             except Exception:
-                logger.error(
+                logger.exception(
                     "Error in event handler %s for %s",
                     callback.__qualname__,
                     type(event).__name__,
-                    exc_info=True,
                 )

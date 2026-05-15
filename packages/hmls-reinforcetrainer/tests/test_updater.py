@@ -504,7 +504,9 @@ class TestGradientClipping:
 
         # Parameters should differ due to clipping
         any_differ = False
-        for (_, p1), (_, p2) in zip(model1.named_parameters(), model2.named_parameters()):
+        for (_, p1), (_, p2) in zip(
+            model1.named_parameters(), model2.named_parameters(), strict=True
+        ):
             if not torch.allclose(p1, p2):
                 any_differ = True
                 break

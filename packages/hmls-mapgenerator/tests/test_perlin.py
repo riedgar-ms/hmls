@@ -37,11 +37,11 @@ class TestPerlinNoiseStrategy:
 
     def test_seed_reproducibility(self) -> None:
         """Same seed and parameters should produce identical maps."""
-        kwargs: dict[str, object] = dict(
-            impassable_fraction=0.3,
-            strategy=PerlinNoiseStrategy(scale=0.08, octaves=3),
-            seed=123,
-        )
+        kwargs: dict[str, object] = {
+            "impassable_fraction": 0.3,
+            "strategy": PerlinNoiseStrategy(scale=0.08, octaves=3),
+            "seed": 123,
+        }
         gm1 = generate_map(15, 15, **kwargs)  # type: ignore[arg-type]
         gm2 = generate_map(15, 15, **kwargs)  # type: ignore[arg-type]
         for pos in gm1.all_positions():

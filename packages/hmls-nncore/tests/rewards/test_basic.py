@@ -190,6 +190,6 @@ def test_reward_config_is_frozen() -> None:
     config = RewardConfig()
     try:
         config.actions = ActionsRewardConfig()  # type: ignore[misc]
-        assert False, "Should have raised"
+        raise AssertionError("Should have raised")
     except TypeError, ValueError, AttributeError:
         pass
