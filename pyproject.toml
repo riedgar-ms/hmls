@@ -69,7 +69,10 @@ select = [
     "G",
     "F401",  # unused-import
     "I", # unsorted-import
+    "PT",
+    "PTH",
     "RUF022", # unsorted-dunderall
+    "UP",
 ]
 
 [tool.mypy]
