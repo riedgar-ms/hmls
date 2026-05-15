@@ -1,30 +1,27 @@
 # hmls
 
-Assorted Experiments in AI.
-This is a collection of packages for playing a simple tank game.
+A simple tank game, written in Python.
 Two players take turns moving their tanks around a landscape (with cells which are either passable or impassable), subject to fog-of-war.
-On each turn, the active tank can move forward, turn left, turn right, fire or pass.
-The ultimate goal is to train a model to play this game.
+On each turn, the active tank can move forward, turn left, turn right, fire (with a range of one cell forward) or pass.
 
-## Packages
+Of course, there's a couple of ulterior motives.
+The first is to serve as a framework for learning how to create and train models to play a game.
+Fog-of-war generally makes gameplay very hard for a computer, so even this simple game is a non-trivial problem.
+The complexity will multiply as each player controls more tanks.
 
-| Package | Description |
-|---|---|
-| `hmls.core` | Core data types (`GameMap`, `CellType`), game engine, and visibility system |
-| `hmls.protocol` | Wire protocol models for server/client WebSocket communication |
-| `hmls.server` | Headless WebSocket game server (FastAPI + Uvicorn) |
-| `hmls.client` | WebSocket game client with Textual TUI and automapper |
-| `hmls.observer` | TUI observer client — connects to a running server and displays the full game map and event log in real-time (no fog-of-war) |
-| `hmls.testharness` | Interactive TUI for manually testing tank game behaviour |
-| `hmls.replayviewer` | TUI replay viewer for game history files |
-| `hmls.mapgenerator` | Randomised map generation with Textual TUI |
-| `hmls.uxcommon` | Shared TUI widgets and styles |
+The second motive is to experiment with coding agents.
+Almost none of the code in this repository is manually written.
+Instead, Copilot has been given instructions, and asked to plan an implementation.
+After a round or two of clarifying questions, Copilot then writes the code.
+The code is subject to manual review, and several refactorings have been performed in consequence (although Copilot still does the actual work of the refactor).
 
 ## Getting started
 
+This repository is configured for use with the [`uv` package manager](https://docs.astral.sh/uv/).
+To set up, run:
 ```bash
 # Clone and install
-git clone <repo-url>
+git clone https://github.com/riedgar-ms/hmls.git
 cd hmls
 uv sync --all-packages
 ```
