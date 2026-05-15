@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from hmls.mapgenerator import BlobAndLineConfig, PerlinNoiseConfig
 from hmls.nncore.reward import FiringRewardConfig, GameStateRewardConfig, RewardConfig
 from hmls.reinforcetrainer.config import (
     GameConfig,
@@ -34,7 +35,8 @@ class TestTrainerConfig:
         assert config.map.min_size == 15
         assert config.map.max_size == 25
         assert config.map.impassable_fraction == 0.3
-        assert config.game.games_per_map == 10
+        assert len(config.map.strategies) == 1
+        assert isinstance(config.map.strategies[0], BlobAndLineConfig)
         assert config.game.total_maps == 100
         assert config.game.max_turns == 200
         assert config.game.patch_size == 9
@@ -48,7 +50,10 @@ class TestTrainerConfig:
             model_a=ModelRef(dir=tmp_path / "a", train=False),
             model_b=ModelRef(dir=tmp_path / "b", train=True),
             map=MapConfig(
-                min_size=10, max_size=30, impassable_fraction=0.4, strategy="Perlin Noise"
+                min_size=10,
+                max_size=30,
+                impassable_fraction=0.4,
+                strategies=[PerlinNoiseConfig(scale=0.1)],
             ),
             game=GameConfig(games_per_map=5, total_maps=50, max_turns=150),
             output=OutputConfig(
@@ -149,7 +154,12 @@ class TestTrainerConfig:
         config_data = {
             "model_a": {"dir": "models/a", "train": True},
             "model_b": {"dir": "models/b", "train": False},
-            "map": {"min_size": 10, "max_size": 25, "impassable_fraction": 0.2},
+            "map": {
+                "min_size": 10,
+                "max_size": 25,
+                "impassable_fraction": 0.2,
+                "strategies": [{"type": "blob_and_line", "shape": 0.7}],
+            },
             "game": {"games_per_map": 5, "total_maps": 10, "max_turns": 100},
             "hyperparameters": {"learning_rate": 0.01, "gamma": 0.9, "seed": 7},
         }
@@ -338,3 +348,48 @@ class TestTrainerConfig:
         )
         assert config.model_a.reward.firing.hit == 1.0
         assert config.model_b.reward.firing.hit == 0.1
+
+    def test_empty_strategies_list_raises(self, tmp_path: Path) -> None:
+        """An empty strategies list raises validation error."""
+        with pytest.raises(ValidationError, match="at least one"):
+            TrainerConfig(
+                model_a=ModelRef(dir=tmp_path / "a"),
+                model_b=ModelRef(dir=tmp_path / "b"),
+                map=MapConfig(strategies=[]),
+            )
+
+    def test_multiple_strategies(self, tmp_path: Path) -> None:
+        """Multiple strategies in the list are accepted."""
+        config = TrainerConfig(
+            model_a=ModelRef(dir=tmp_path / "a"),
+            model_b=ModelRef(dir=tmp_path / "b"),
+            map=MapConfig(
+                strategies=[
+                    BlobAndLineConfig(shape=0.3),
+                    PerlinNoiseConfig(scale=0.1),
+                ],
+            ),
+        )
+        assert len(config.map.strategies) == 2
+        assert isinstance(config.map.strategies[0], BlobAndLineConfig)
+        assert isinstance(config.map.strategies[1], PerlinNoiseConfig)
+
+    def test_strategies_json_round_trip(self, tmp_path: Path) -> None:
+        """Strategies list with discriminated union round-trips through JSON."""
+        config_data = {
+            "model_a": {"dir": "models/a"},
+            "model_b": {"dir": "models/b"},
+            "map": {
+                "strategies": [
+                    {"type": "blob_and_line", "shape": 0.8},
+                    {"type": "perlin_noise", "scale": 0.1, "octaves": 3},
+                ],
+            },
+        }
+        loaded = TrainerConfig.model_validate_json(json.dumps(config_data).encode())
+        assert len(loaded.map.strategies) == 2
+        assert isinstance(loaded.map.strategies[0], BlobAndLineConfig)
+        assert loaded.map.strategies[0].shape == 0.8
+        assert isinstance(loaded.map.strategies[1], PerlinNoiseConfig)
+        assert loaded.map.strategies[1].scale == 0.1
+        assert loaded.map.strategies[1].octaves == 3

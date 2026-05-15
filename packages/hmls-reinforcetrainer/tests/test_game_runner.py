@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
+from hmls.mapgenerator import BlobAndLineConfig
 from hmls.reinforcetrainer._testing.stub_model import StubModelConfig, StubTankModel
 from hmls.reinforcetrainer.game_runner import (
     GameOutcome,
@@ -20,19 +19,22 @@ class TestCreateMap:
 
     def test_creates_map_with_correct_dimensions(self) -> None:
         """Generated map has the requested dimensions."""
-        game_map = create_map(15, 10, 0.3, "Blob & Line", seed=42)
+        game_map = create_map(15, 10, 0.3, BlobAndLineConfig(), seed=42)
         assert game_map.width == 15
         assert game_map.height == 10
 
-    def test_unknown_strategy_raises_key_error(self) -> None:
-        """An unknown strategy name raises KeyError."""
-        with pytest.raises(KeyError, match="Unknown map strategy"):
-            create_map(10, 10, 0.3, "NonExistent Strategy")
+    def test_perlin_strategy_config(self) -> None:
+        """A PerlinNoiseConfig strategy produces a valid map."""
+        from hmls.mapgenerator import PerlinNoiseConfig
+
+        game_map = create_map(10, 10, 0.3, PerlinNoiseConfig(), seed=42)
+        assert game_map.width == 10
+        assert game_map.height == 10
 
     def test_deterministic_with_seed(self) -> None:
         """Same seed produces same map."""
-        map1 = create_map(10, 10, 0.3, "Blob & Line", seed=123)
-        map2 = create_map(10, 10, 0.3, "Blob & Line", seed=123)
+        map1 = create_map(10, 10, 0.3, BlobAndLineConfig(), seed=123)
+        map2 = create_map(10, 10, 0.3, BlobAndLineConfig(), seed=123)
         assert map1.cells == map2.cells
 
 
@@ -45,7 +47,7 @@ class TestRunGame:
 
         model_a = StubTankModel(StubModelConfig())
         model_b = StubTankModel(StubModelConfig())
-        game_map = create_map(10, 10, 0.2, "Blob & Line", seed=1)
+        game_map = create_map(10, 10, 0.2, BlobAndLineConfig(), seed=1)
 
         outcome = run_game(
             game_map,
@@ -67,7 +69,7 @@ class TestRunGame:
 
         model_a = StubTankModel(StubModelConfig())
         model_b = StubTankModel(StubModelConfig())
-        game_map = create_map(10, 10, 0.2, "Blob & Line", seed=2)
+        game_map = create_map(10, 10, 0.2, BlobAndLineConfig(), seed=2)
 
         outcome = run_game(
             game_map,
@@ -88,7 +90,7 @@ class TestRunGame:
 
         model_a = StubTankModel(StubModelConfig())
         model_b = StubTankModel(StubModelConfig())
-        game_map = create_map(10, 10, 0.2, "Blob & Line", seed=3)
+        game_map = create_map(10, 10, 0.2, BlobAndLineConfig(), seed=3)
 
         outcome = run_game(
             game_map,
@@ -116,7 +118,7 @@ class TestSaveSampleGame:
 
         model_a = StubTankModel(StubModelConfig())
         model_b = StubTankModel(StubModelConfig())
-        game_map = create_map(10, 10, 0.2, "Blob & Line", seed=5)
+        game_map = create_map(10, 10, 0.2, BlobAndLineConfig(), seed=5)
 
         outcome = run_game(
             game_map,
@@ -148,7 +150,7 @@ class TestRunGameWithStubRecording:
 
         model_a = StubTankModel(StubModelConfig())
         model_b = StubTankModel(StubModelConfig())
-        game_map = create_map(10, 10, 0.2, "Blob & Line", seed=10)
+        game_map = create_map(10, 10, 0.2, BlobAndLineConfig(), seed=10)
 
         outcome = run_game(
             game_map,
@@ -178,7 +180,7 @@ class TestRunGameWithStubRecording:
 
         model_a = StubTankModel(StubModelConfig())
         model_b = StubTankModel(StubModelConfig())
-        game_map = create_map(10, 10, 0.2, "Blob & Line", seed=11)
+        game_map = create_map(10, 10, 0.2, BlobAndLineConfig(), seed=11)
 
         outcome = run_game(
             game_map,
@@ -208,7 +210,7 @@ class TestRunGameWithStubRecording:
 
         model_a = StubTankModel(StubModelConfig())
         model_b = StubTankModel(StubModelConfig())
-        game_map = create_map(10, 10, 0.2, "Blob & Line", seed=12)
+        game_map = create_map(10, 10, 0.2, BlobAndLineConfig(), seed=12)
 
         outcome = run_game(
             game_map,
@@ -237,7 +239,7 @@ class TestRunGameWithStubRecording:
 
         model_a = StubTankModel(StubModelConfig())
         model_b = StubTankModel(StubModelConfig())
-        game_map = create_map(10, 10, 0.2, "Blob & Line", seed=13)
+        game_map = create_map(10, 10, 0.2, BlobAndLineConfig(), seed=13)
 
         outcome = run_game(
             game_map,
@@ -261,7 +263,7 @@ class TestRunGameWithStubRecording:
 
         model_a = StubTankModel(StubModelConfig())
         model_b = StubTankModel(StubModelConfig())
-        game_map = create_map(10, 10, 0.2, "Blob & Line", seed=14)
+        game_map = create_map(10, 10, 0.2, BlobAndLineConfig(), seed=14)
 
         outcome = run_game(
             game_map,

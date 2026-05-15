@@ -212,6 +212,13 @@ class MapGeneratorApp(App[None]):
         color: $text-muted;
     }
 
+    #strategy-params .param-hint {
+        margin-top: 0;
+        color: $text-disabled;
+        text-style: italic;
+        width: 100%;
+    }
+
     #map-area {
         padding: 1 2;
     }
@@ -269,6 +276,8 @@ class MapGeneratorApp(App[None]):
                 with Vertical(id="strategy-params"):
                     for param in default_params:
                         yield Label(param.label)
+                        if param.hint:
+                            yield Label(param.hint, classes="param-hint")
                         yield Input(
                             value=str(param.default),
                             id=f"sp-{param.name}",
@@ -305,6 +314,8 @@ class MapGeneratorApp(App[None]):
 
         for param in params:
             await container.mount(Label(param.label))
+            if param.hint:
+                await container.mount(Label(param.hint, classes="param-hint"))
             await container.mount(Input(value=str(param.default), id=f"sp-{param.name}"))
 
     def on_select_changed(self, event: Select.Changed) -> None:

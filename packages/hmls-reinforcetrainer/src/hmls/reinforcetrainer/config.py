@@ -9,11 +9,25 @@ forward slashes (they are converted to platform-native paths automatically).
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+from hmls.mapgenerator import (
+    BlobAndLineConfig,
+    PerlinNoiseConfig,
+)
 from hmls.nncore.reward import RewardConfig
+
+StrategyConfigField = Annotated[
+    BlobAndLineConfig | PerlinNoiseConfig,
+    Field(discriminator="type"),
+]
+"""Discriminated union of strategy configs for use in Pydantic fields.
+
+Re-declared locally so that ``MapConfig`` can embed it in a ``list``
+field with proper discriminator support.
+"""
 
 
 class MapConfig(BaseModel, frozen=True, extra="forbid"):
@@ -23,17 +37,25 @@ class MapConfig(BaseModel, frozen=True, extra="forbid"):
     inclusive bounds (``min_size``, ``max_size``) and each new map picks a
     random width and height independently from that range.
 
+    When multiple strategies are provided, the trainer cycles through them
+    round-robin as successive maps are generated.
+
     Attributes:
         min_size: Minimum width/height of randomly generated maps (must be >= 5).
         max_size: Maximum width/height of randomly generated maps (must be >= min_size).
         impassable_fraction: Fraction of cells that are impassable.
-        strategy: Name of the map generation strategy to use.
+        strategies: Ordered list of map generation strategy configurations.
+            The trainer cycles through them round-robin.  Each entry is a
+            discriminated union keyed on ``type`` (e.g. ``"blob_and_line"``,
+            ``"perlin_noise"``).
     """
 
     min_size: int = Field(default=15, ge=5)
     max_size: int = Field(default=25, ge=5)
     impassable_fraction: float = Field(default=0.3, ge=0.0, le=0.8)
-    strategy: str = "Blob & Line"
+    strategies: list[StrategyConfigField] = Field(
+        default_factory=lambda: [BlobAndLineConfig()],  # type: ignore[arg-type]
+    )
 
     @model_validator(mode="after")
     def _check_size_bounds(self) -> MapConfig:
@@ -43,6 +65,14 @@ class MapConfig(BaseModel, frozen=True, extra="forbid"):
                 f"max_size ({self.max_size}) must be greater than or equal to "
                 f"min_size ({self.min_size})"
             )
+            raise ValueError(msg)
+        return self
+
+    @model_validator(mode="after")
+    def _check_strategies_nonempty(self) -> MapConfig:
+        """Ensure at least one strategy is provided."""
+        if len(self.strategies) == 0:
+            msg = "strategies must contain at least one entry"
             raise ValueError(msg)
         return self
 

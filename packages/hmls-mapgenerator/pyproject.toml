@@ -5,6 +5,7 @@ description = "Randomised game map generator with Textual TUI"
 requires-python = ">=3.14"
 dependencies = [
     "hmls-core",
+    "pydantic>=2.0",
     "textual>=0.40",
 ]
 

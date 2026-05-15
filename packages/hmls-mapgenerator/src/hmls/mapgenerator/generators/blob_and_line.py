@@ -7,9 +7,49 @@ obstacles using a mix of filled ellipses and thick line segments.
 from __future__ import annotations
 
 import random
+from typing import ClassVar, Literal
+
+from pydantic import Field
 
 from hmls.core import CellType, GameMap
-from hmls.mapgenerator.generators.base import MapStrategy, StrategyParam, register_strategy
+from hmls.mapgenerator.generators.base import (
+    MapStrategy,
+    StrategyConfigBase,
+    register_strategy,
+)
+
+# ── Pydantic configuration model ─────────────────────────────────────
+
+
+class BlobAndLineConfig(StrategyConfigBase, frozen=True, extra="forbid"):
+    """Configuration for the Blob & Line map generation strategy.
+
+    Serialisable Pydantic model that captures the parameters for
+    :class:`BlobAndLineStrategy`.  The ``type`` literal serves as
+    the discriminator in the :data:`~hmls.mapgenerator.generators.StrategyConfig`
+    union.
+
+    Attributes:
+        type: Discriminator literal, always ``"blob_and_line"``.
+        shape: Obstacle geometry blend.  0.0 = fully linear walls,
+            1.0 = fully circular blobs, 0.5 = mixed.
+    """
+
+    type: Literal["blob_and_line"] = "blob_and_line"
+    shape: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        title="Shape",
+        description="0 = linear, 1 = circular",
+    )
+
+    def create_strategy(self) -> BlobAndLineStrategy:
+        """Create a :class:`BlobAndLineStrategy` with the configured shape."""
+        return BlobAndLineStrategy(shape=self.shape)
+
+
+# ── Strategy class ────────────────────────────────────────────────────
 
 
 @register_strategy
@@ -33,11 +73,7 @@ class BlobAndLineStrategy(MapStrategy):
     """
 
     display_name = "Blob & Line"
-
-    @classmethod
-    def get_params(cls) -> list[StrategyParam]:
-        """Return the configurable parameters for this strategy."""
-        return [StrategyParam("shape", "Shape (0=linear, 1=circular)", float, 0.5, 0.0, 1.0)]
+    config_class: ClassVar[type[StrategyConfigBase]] = BlobAndLineConfig
 
     def __init__(self, shape: float = 0.5) -> None:
         """Create a blob-and-line strategy.
