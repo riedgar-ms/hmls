@@ -57,10 +57,15 @@ target-version = "py314"
 [tool.ruff.lint]
 select = [
     "A",
+    "ANN",
+    "ASYNC",
     "B",
+    "BLE",
     "C",
     "E",
+    "EM",
     "F",
+    "FAST",
     "G",
     "F401",  # unused-import
     "I", # unsorted-import
