@@ -57,10 +57,30 @@ class GameConfig(BaseModel, frozen=True, extra="forbid"):
         patch_size: Side length of visibility patches (must be odd, ≥ 3).
     """
 
-    games_per_map: int = Field(default=10, ge=1)
-    total_maps: int = Field(default=100, ge=1)
-    max_turns: int = Field(default=200, ge=1)
-    patch_size: int = Field(default=9, ge=3)
+    games_per_map: int = Field(
+        default=10,
+        ge=1,
+        title="Games Per Map",
+        description="Number of games played on each map before regenerating.",
+    )
+    total_maps: int = Field(
+        default=100,
+        ge=1,
+        title="Total Maps",
+        description="Total number of maps to generate over the training run.",
+    )
+    max_turns: int = Field(
+        default=200,
+        ge=1,
+        title="Max Turns",
+        description="Maximum turns per game before declaring a draw.",
+    )
+    patch_size: int = Field(
+        default=9,
+        ge=3,
+        title="Patch Size",
+        description="Side length of visibility patches (must be odd, ≥ 3).",
+    )
 
     @model_validator(mode="after")
     def _check_patch_size_odd(self) -> GameConfig:
@@ -99,9 +119,23 @@ class OutputConfig(BaseModel, frozen=True, extra="forbid"):
         save_weights_interval: Save model weights every N games.
     """
 
-    sample_game_dir: Path = Path("sample_games")
-    sample_game_interval: int = Field(default=50, ge=1)
-    save_weights_interval: int = Field(default=100, ge=1)
+    sample_game_dir: Path = Field(
+        default=Path("sample_games"),
+        title="Sample Game Directory",
+        description="Directory to save sample game replays (unix-style path in JSON).",
+    )
+    sample_game_interval: int = Field(
+        default=50,
+        ge=1,
+        title="Sample Game Interval",
+        description="Save a sample game replay every N games.",
+    )
+    save_weights_interval: int = Field(
+        default=100,
+        ge=1,
+        title="Save Weights Interval",
+        description="Save model weights every N games.",
+    )
 
 
 class LethargyConfig(BaseModel, frozen=True, extra="forbid"):
@@ -155,13 +189,61 @@ class HyperparameterConfig(BaseModel, frozen=True, extra="forbid"):
             as outlier episodes can produce very large gradients.
     """
 
-    learning_rate: float = Field(default=1e-3, gt=0.0)
-    gamma: float = Field(default=0.99, gt=0.0, le=1.0)
-    seed: int | None = None
-    baseline_alpha: float = Field(default=0.99, gt=0.0, lt=1.0)
-    entropy_coeff: float = Field(default=0.01, ge=0.0)
-    loss_reduction: Literal["sum", "mean"] = "sum"
-    max_grad_norm: float | None = Field(default=None, gt=0.0)
+    learning_rate: float = Field(
+        default=1e-3,
+        gt=0.0,
+        title="Learning Rate",
+        description="Adam optimizer learning rate.",
+    )
+    gamma: float = Field(
+        default=0.99,
+        gt=0.0,
+        le=1.0,
+        title="Discount Factor (Gamma)",
+        description="Discount factor for computing returns.",
+    )
+    seed: int | None = Field(
+        default=None,
+        title="Random Seed",
+        description="Optional random seed for reproducibility. None means non-deterministic.",
+    )
+    baseline_alpha: float = Field(
+        default=0.99,
+        gt=0.0,
+        lt=1.0,
+        title="Baseline Alpha",
+        description=(
+            "EMA decay for the cross-episode return baseline. "
+            "Higher values adapt more slowly; 0.99 averages roughly the last 100 episodes."
+        ),
+    )
+    entropy_coeff: float = Field(
+        default=0.01,
+        ge=0.0,
+        title="Entropy Coefficient",
+        description=(
+            "Weight of the entropy bonus in the policy gradient loss. "
+            "Encourages exploration across all actions. 0.0 disables the bonus."
+        ),
+    )
+    loss_reduction: Literal["sum", "mean"] = Field(
+        default="sum",
+        title="Loss Reduction",
+        description=(
+            "How to aggregate per-step policy gradient loss across time steps. "
+            "'sum' matches Williams (1992) REINFORCE; 'mean' provides more stable "
+            "gradients when episode lengths vary."
+        ),
+    )
+    max_grad_norm: float | None = Field(
+        default=None,
+        gt=0.0,
+        title="Max Gradient Norm",
+        description=(
+            "Maximum gradient norm for clipping via clip_grad_norm_. "
+            "None disables clipping. Especially important with loss_reduction='sum'."
+        ),
+    )
 
 
 class TrainerConfig(BaseModel, frozen=True, extra="forbid"):

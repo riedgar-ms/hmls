@@ -57,13 +57,52 @@ class ActionsRewardConfig(BaseModel, frozen=True, extra="forbid"):
             Set to ``0.0`` (the default) to disable.
     """
 
-    move_forward: float = 0.0
-    turn_left: float = 0.0
-    turn_right: float = 0.0
-    fire: float = 0.0
-    pass_action: float = -0.02
-    consecutive_turn: float = 0.0
-    consecutive_pass: float = 0.0
+    move_forward: float = Field(
+        default=0.0,
+        title="Move Forward Reward",
+        description="Reward for choosing to move forward.",
+    )
+    turn_left: float = Field(
+        default=0.0,
+        title="Turn Left Reward",
+        description="Reward for choosing to turn left.",
+    )
+    turn_right: float = Field(
+        default=0.0,
+        title="Turn Right Reward",
+        description="Reward for choosing to turn right.",
+    )
+    fire: float = Field(
+        default=0.0,
+        title="Fire Reward",
+        description=("Reward for choosing to fire, independent of hit/miss outcome."),
+    )
+    pass_action: float = Field(
+        default=-0.02,
+        title="Pass Action Reward",
+        description=(
+            "Reward for deliberately choosing to pass a turn. "
+            "Not applied when an invalid action is converted to pass."
+        ),
+    )
+    consecutive_turn: float = Field(
+        default=0.0,
+        title="Consecutive Turn Penalty Multiplier",
+        description=(
+            "Escalating reward multiplier for consecutive turn actions. "
+            "The Nth consecutive turn incurs an additional reward of this value × N. "
+            "Streak resets on a hit or valid move forward. Set to 0.0 to disable."
+        ),
+    )
+    consecutive_pass: float = Field(
+        default=0.0,
+        title="Consecutive Pass Penalty Multiplier",
+        description=(
+            "Escalating reward multiplier for consecutive deliberate passes. "
+            "The Nth consecutive pass incurs an additional reward of this value × N. "
+            "Streak resets on a hit or valid move forward. Set to 0.0 to disable."
+        ),
+    )
 
 
 class FiringRewardConfig(BaseModel, frozen=True, extra="forbid"):
@@ -86,10 +125,33 @@ class FiringRewardConfig(BaseModel, frozen=True, extra="forbid"):
             Set to ``0.0`` (the default) to disable.
     """
 
-    hit: float = 0.5
-    miss: float = -0.05
-    neglect: float = -0.1
-    consecutive_miss: float = 0.0
+    hit: float = Field(
+        default=0.5,
+        title="Hit Reward",
+        description="Reward for hitting an enemy tank.",
+    )
+    miss: float = Field(
+        default=-0.05,
+        title="Miss Penalty",
+        description="Penalty for firing and missing.",
+    )
+    neglect: float = Field(
+        default=-0.1,
+        title="Neglect Penalty",
+        description=(
+            "Penalty for not firing when an alive enemy tank is directly "
+            "ahead and could have been hit."
+        ),
+    )
+    consecutive_miss: float = Field(
+        default=0.0,
+        title="Consecutive Miss Penalty Multiplier",
+        description=(
+            "Escalating penalty multiplier for consecutive fire misses. "
+            "The Nth consecutive miss incurs an additional reward of this value × N. "
+            "Streak resets on a hit or valid move forward. Set to 0.0 to disable."
+        ),
+    )
 
 
 class GameStateRewardConfig(BaseModel, frozen=True, extra="forbid"):
@@ -103,11 +165,31 @@ class GameStateRewardConfig(BaseModel, frozen=True, extra="forbid"):
         death: Reward (negative) when the player's tank dies.
     """
 
-    win: float = 1.0
-    loss: float = -1.0
-    invalid_move: float = -0.1
-    step: float = -0.01
-    death: float = -1.0
+    win: float = Field(
+        default=1.0,
+        title="Win Reward",
+        description="Reward for winning the game.",
+    )
+    loss: float = Field(
+        default=-1.0,
+        title="Loss Penalty",
+        description="Penalty for losing the game.",
+    )
+    invalid_move: float = Field(
+        default=-0.1,
+        title="Invalid Move Penalty",
+        description="Penalty for attempting an invalid action.",
+    )
+    step: float = Field(
+        default=-0.01,
+        title="Per-Step Cost",
+        description="Per-step reward (typically negative to encourage faster play).",
+    )
+    death: float = Field(
+        default=-1.0,
+        title="Death Penalty",
+        description="Penalty when the player's tank dies.",
+    )
 
 
 class ExplorationRewardConfig(BaseModel, frozen=True, extra="forbid"):
@@ -120,8 +202,22 @@ class ExplorationRewardConfig(BaseModel, frozen=True, extra="forbid"):
             physically moves onto for the first time).
     """
 
-    see_cell: float = 0.02
-    occupy_cell: float = 0.0
+    see_cell: float = Field(
+        default=0.02,
+        title="See Cell Reward",
+        description=(
+            "Reward per newly seen cell in the visibility patch "
+            "(visible but not necessarily stepped on)."
+        ),
+    )
+    occupy_cell: float = Field(
+        default=0.0,
+        title="Occupy Cell Reward",
+        description=(
+            "Reward per newly occupied cell (cells the tank physically "
+            "moves onto for the first time)."
+        ),
+    )
 
 
 class SituationalRewardConfig(BaseModel, frozen=True, extra="forbid"):
@@ -139,8 +235,23 @@ class SituationalRewardConfig(BaseModel, frozen=True, extra="forbid"):
             Values below ``1.0`` make distant enemies worth less.
     """
 
-    enemy_in_cone: float = 0.01
-    enemy_in_cone_distance_discount: float = 1.0
+    enemy_in_cone: float = Field(
+        default=0.01,
+        title="Enemy In Cone Reward",
+        description=(
+            "Per-enemy reward for each alive enemy tank visible in the "
+            "forward cone of the egocentric patch."
+        ),
+    )
+    enemy_in_cone_distance_discount: float = Field(
+        default=1.0,
+        title="Enemy In Cone Distance Discount",
+        description=(
+            "Discount factor per unit of Manhattan distance to the enemy. "
+            "Each enemy's contribution is enemy_in_cone × discount^distance. "
+            "1.0 disables discounting; values below 1.0 reduce distant enemy reward."
+        ),
+    )
 
 
 class RewardConfig(BaseModel, frozen=True, extra="forbid"):
@@ -159,11 +270,31 @@ class RewardConfig(BaseModel, frozen=True, extra="forbid"):
         situational: Situational rewards (enemy in cone).
     """
 
-    actions: ActionsRewardConfig = Field(default_factory=ActionsRewardConfig)
-    firing: FiringRewardConfig = Field(default_factory=FiringRewardConfig)
-    game_state: GameStateRewardConfig = Field(default_factory=GameStateRewardConfig)
-    exploration: ExplorationRewardConfig = Field(default_factory=ExplorationRewardConfig)
-    situational: SituationalRewardConfig = Field(default_factory=SituationalRewardConfig)
+    actions: ActionsRewardConfig = Field(
+        default_factory=ActionsRewardConfig,
+        title="Action Rewards",
+        description="Per-action rewards (move, turn, fire, pass, consecutive penalties).",
+    )
+    firing: FiringRewardConfig = Field(
+        default_factory=FiringRewardConfig,
+        title="Firing Rewards",
+        description="Firing-outcome rewards (hit, miss, neglect, consecutive miss).",
+    )
+    game_state: GameStateRewardConfig = Field(
+        default_factory=GameStateRewardConfig,
+        title="Game State Rewards",
+        description="Game-state rewards (win, loss, invalid move, per-step cost, death).",
+    )
+    exploration: ExplorationRewardConfig = Field(
+        default_factory=ExplorationRewardConfig,
+        title="Exploration Rewards",
+        description="Exploration rewards (see cell, occupy cell).",
+    )
+    situational: SituationalRewardConfig = Field(
+        default_factory=SituationalRewardConfig,
+        title="Situational Rewards",
+        description="Situational rewards (enemy in cone).",
+    )
 
 
 # ── Reward function ──────────────────────────────────────────────────
