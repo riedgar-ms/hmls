@@ -26,6 +26,14 @@ from hmls.mapgenerator.generators.base import (
     generate_map,
     register_strategy,
 )
+from hmls.mapgenerator.generators.blob_and_line import (
+    BlobAndLineConfig,
+    BlobAndLineStrategy,
+)
+from hmls.mapgenerator.generators.perlin import (
+    PerlinNoiseConfig,
+    PerlinNoiseStrategy,
+)
 
 # Auto-import all sibling modules in this package so that their
 # @register_strategy decorators execute and populate STRATEGY_REGISTRY.
@@ -34,16 +42,6 @@ from hmls.mapgenerator.generators.base import (
 for _info in pkgutil.iter_modules(__path__, __name__ + "."):
     importlib.import_module(_info.name)
 del _info
-
-# Explicit imports for type-checking convenience and IDE support.
-from hmls.mapgenerator.generators.blob_and_line import (  # noqa: E402
-    BlobAndLineConfig,
-    BlobAndLineStrategy,
-)
-from hmls.mapgenerator.generators.perlin import (  # noqa: E402
-    PerlinNoiseConfig,
-    PerlinNoiseStrategy,
-)
 
 # ── Discriminated union of all strategy configs ───────────────────────
 
