@@ -34,12 +34,14 @@ from __future__ import annotations
 import json
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Generic, Literal, TypeVar
 
 import torch
 
 from hmls.nncore.model import TankModelBase, TankModelConfig
+from hmls.nncore.player import NNPlayerBase
 from hmls.nncore.reward import RewardConfig
 
 MODEL_CONFIG_FILENAME = "model_config.json"
@@ -155,7 +157,7 @@ class ModelPersistence(ABC, Generic[ConfigT, ModelT]):
         team: str,
         model: ModelT,
         mode: Literal["play", "learn"],
-    ) -> Any:  # noqa: ANN401
+    ) -> NNPlayerBase:
         """Create a player instance for the given model.
 
         Args:
@@ -165,8 +167,7 @@ class ModelPersistence(ABC, Generic[ConfigT, ModelT]):
                 for stochastic sampling with trajectory recording.
 
         Returns:
-            A player instance (typically an
-            :class:`~hmls.nncore.player.NNPlayerBase` subclass).
+            An :class:`~hmls.nncore.player.NNPlayerBase` instance.
         """
         ...
 
@@ -213,7 +214,9 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
         self,
         config_cls: type[ConfigT],
         model_cls: type[ModelT],
-        player_factory: Any | None = None,  # noqa: ANN401
+        player_factory: (
+            Callable[[str, ModelT, Literal["play", "learn"]], NNPlayerBase] | None
+        ) = None,
     ) -> None:
         self._config_cls = config_cls
         self._model_cls = model_cls
@@ -306,7 +309,7 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
         team: str,
         model: ModelT,
         mode: Literal["play", "learn"],
-    ) -> Any:  # noqa: ANN401
+    ) -> NNPlayerBase:
         """Create an NNPlayer (or custom player) for the given model."""
         if self._player_factory is not None:
             return self._player_factory(team, model, mode)
@@ -486,7 +489,7 @@ def create_player(
     team: str,
     model: TankModelBase,
     mode: Literal["play", "learn"],
-) -> Any:  # noqa: ANN401
+) -> NNPlayerBase:
     """Create a player instance using the model registry.
 
     Each model's ``PERSISTENCE`` instance must implement
