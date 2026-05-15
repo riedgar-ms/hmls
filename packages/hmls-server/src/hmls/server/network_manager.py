@@ -86,7 +86,8 @@ class NetworkManager:
         self._game_started: bool = False
         self._last_state: StateUpdatedEvent | None = None
 
-        # Will be set by the orchestrator once both players connect.
+        # Set by this manager when both players join; shared with the
+        # orchestrator in app.py so it can await the same event.
         self.both_connected: asyncio.Event = asyncio.Event()
 
         # Subscribe to events.

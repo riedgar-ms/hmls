@@ -98,8 +98,8 @@ def run_game(
         train_b: Whether player B is in learn mode.
         max_turns: Maximum turns before the game is a draw.
         patch_size: Side length of visibility patches for the game engine.
-        reward_fn_a: Reward function for player A (defaults to BasicReward).
-        reward_fn_b: Reward function for player B (defaults to BasicReward).
+        reward_fn_a: Reward function for player A (defaults to RewardFunction()).
+        reward_fn_b: Reward function for player B (defaults to RewardFunction()).
         lethargy_policy: Optional policy for detecting degenerate play
             (e.g. spinning in place).  If triggered, the offending tank's
             team loses immediately.

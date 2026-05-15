@@ -1,7 +1,7 @@
 """Interactive player for the TUI test harness.
 
-Provides a concrete :class:`~hmls.core.player.Player` subclass that
-the TUI drives by pre-loading an action before each engine step.
+Provides a concrete :class:`~hmls.core.player.PendingActionPlayer` subclass
+that the TUI drives by pre-loading an action before each engine step.
 """
 
 from __future__ import annotations

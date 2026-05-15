@@ -41,9 +41,9 @@ class HistoryEntry(BaseModel, extra="forbid"):
         valid: Whether the requested action was legal.
         reason: Explanation when the action is invalid (empty string
             when valid).
-        hit: Whether a fire action hit an enemy tank.  ``True`` if a
-            tank was destroyed, ``False`` if the shot missed, ``None``
-            for non-fire actions.
+        hit: Whether a fire action hit another tank.  ``True`` if an
+            alive tank was destroyed (friendly fire included),
+            ``False`` if the shot missed, ``None`` for non-fire actions.
         state_after: The full game state *after* the action was applied.
     """
 
@@ -249,7 +249,7 @@ class GameEngine:
             *tanks*.
         max_turns: Maximum number of individual turns before the game ends.
         patch_size: Side length of the egocentric visibility patches
-            (must be odd, ≥ 3).  Defaults to ``7``.
+            (must be odd, ≥ 3).  Defaults to ``9``.
 
     Raises:
         ValueError: If the inputs are inconsistent (see validation).

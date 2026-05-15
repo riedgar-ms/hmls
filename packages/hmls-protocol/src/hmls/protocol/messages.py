@@ -176,7 +176,7 @@ ServerMessage = Annotated[
     | StateUpdateMessage,
     Field(discriminator="type"),
 ]
-"""Union of all messages the server can send to a client."""
+"""Union of all messages the server can send to a client or observer."""
 
 
 # ── Client → Server messages ─────────────────────────────────────────

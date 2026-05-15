@@ -60,8 +60,8 @@ class RandomTankModel(TankModelBase):
     to satisfy the :class:`~hmls.nncore.model.TankModelBase` interface
     required by the persistence and dispatch infrastructure.
 
-    The ``forward`` method returns uniform logits and a zero hidden
-    state.  In practice it is never called — the
+    The ``forward`` method returns uniform logits and an unchanged
+    hidden state.  In practice it is never called — the
     :class:`~hmls.randomtank.player.RandomTankPlayer` overrides
     ``choose_action`` to bypass the neural-network forward pass
     entirely.

@@ -253,7 +253,7 @@ class TestHarnessApp(LogTabMixin, LogStatusMixin, App[None]):
             await region.refresh_patches(self._state, active_id)
 
     def _show_game_over(self) -> None:
-        """Show the game-over dialog."""
+        """Prompt the user to save game history when the game ends."""
         self.push_screen(SaveDialog(), callback=self._on_save_result)
 
     def _on_save_result(self, path_str: str | None) -> None:

@@ -126,7 +126,7 @@ class NNPlayerModelPersistence[ConfigT: TankModelConfig, ModelT: TankModelBase](
 
         Reconstructs the model from the saved config dict and loads
         trained weights.  If a ``reward_config`` was saved, it is
-        rehydrated into a :class:`BasicRewardConfig` and placed in
+        rehydrated into a :class:`RewardConfig` and placed in
         ``metadata["reward_config"]`` for provenance/auditing purposes.
         Trainers do **not** consume this value — they always use the
         reward configuration from their own run config.

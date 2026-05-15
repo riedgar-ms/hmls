@@ -1,9 +1,11 @@
 """Typed game events and async event bus for decoupled server components.
 
-Events are simple dataclasses emitted by the :class:`~hmls.server.orchestrator.GameOrchestrator`
-and consumed by the :class:`~hmls.server.network_manager.NetworkManager` (and
-potentially other subscribers).  The :class:`EventBus` provides the pub/sub
-wiring.
+Events are simple dataclasses exchanged between the
+:class:`~hmls.server.orchestrator.GameOrchestrator` and the
+:class:`~hmls.server.network_manager.NetworkManager` via the
+:class:`EventBus`.  Most events flow from orchestrator to network
+manager, but :class:`PlayerDisconnectedEvent` flows in the opposite
+direction.
 """
 
 from __future__ import annotations

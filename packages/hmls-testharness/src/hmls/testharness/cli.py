@@ -19,7 +19,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         argv: Argument list (defaults to ``sys.argv[1:]``).
 
     Returns:
-        Parsed namespace with ``map_file`` and ``tanks_per_player``.
+        Parsed namespace with ``map_file``, ``tanks_per_player``,
+            ``patch_size``, ``max_turns``, and ``seed``.
     """
     parser = argparse.ArgumentParser(
         prog="hmls-testharness",

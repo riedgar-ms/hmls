@@ -28,17 +28,11 @@ class GameWebSocketSession:
 
     Handles connecting, sending an identity message, parsing incoming
     server messages, and sending outbound messages. Designed to be used
-    as an async context manager::
+    via the :meth:`connect` async context manager::
 
         async with GameWebSocketSession.connect(url, identity_msg) as session:
             async for msg in session.receive_messages():
                 ...
-
-    Attributes:
-        url: The WebSocket server URL.
-        identity_message: The initial message to send on connect
-            (e.g. :class:`~hmls.protocol.JoinMessage` or
-            :class:`~hmls.protocol.ObserveMessage`).
     """
 
     def __init__(self, ws: ClientConnection, url: str) -> None:

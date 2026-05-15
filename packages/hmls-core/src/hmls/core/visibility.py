@@ -244,9 +244,9 @@ def extract_patch(
 
     The patch is an ``patch_size × patch_size`` grid centred on the
     tank, rotated so the tank's forward direction is "up" (row 0).
-    Cells outside the visibility mask or outside the map are
-    :class:`FogCell`.  Cells within the mask but outside the map
-    boundary are :class:`BoundaryCell`.
+    Cells outside the visibility mask are :class:`FogCell`.  Cells
+    within the mask but outside the map boundary are
+    :class:`BoundaryCell`.
 
     Args:
         game_state: Current game state (tanks and turn info).

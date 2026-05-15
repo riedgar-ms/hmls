@@ -1,7 +1,7 @@
 """Tests that turn_result messages are only sent to the acting player's team.
 
-Verifies that both players receive every turn_result is prevented — only the
-acting team gets it, while observers receive all turn_results.
+Verifies that turn_result is sent only to the acting team (not both
+players), while observers receive all turn_results.
 """
 
 from __future__ import annotations
