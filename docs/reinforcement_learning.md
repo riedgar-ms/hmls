@@ -47,6 +47,9 @@ Progress is printed to stdout.
 The trainer can be run on a previously trained model.
 This will further refine the model's behaviour (although be careful of overfitting).
 
+In order to make sure that the tanks don't get stuck spinning in one place, there is a 'lethargy' policy which will result in a loss if a tank makes too many consecutive turns without moving forward or (successfully) firing.
+This does _not_ credit the other tank with a win, though.
+
 ### Key configuration sections
 
 The configuration file is JSON with several sections. The full reference is in
