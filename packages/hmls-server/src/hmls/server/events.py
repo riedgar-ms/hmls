@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
-from typing import Any, Callable, Coroutine
+from typing import Any
 
 from hmls.core.engine import HistoryEntry
 from hmls.core.game_state import GameState

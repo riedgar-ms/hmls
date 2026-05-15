@@ -145,7 +145,7 @@ class GameOrchestrator:
             # Wait for the client's response.
             try:
                 await asyncio.wait_for(player.wait_for_action(), timeout=300.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 logger.warning("Team %s timed out. Ending game.", team)
                 self.game_over = True
                 break

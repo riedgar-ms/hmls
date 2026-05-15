@@ -48,7 +48,7 @@ class _StubModel(TankModelBase):
 # ── Shared fixture ────────────────────────────────────────────────────
 
 
-@pytest.fixture()
+@pytest.fixture
 def persistence() -> NNPlayerModelPersistence[_StubConfig, _StubModel]:
     """Return an NNPlayerModelPersistence for the stub types."""
     return NNPlayerModelPersistence(_StubConfig, _StubModel)

@@ -35,7 +35,7 @@ class ModelRegistryError(Exception):
     """Raised when a model package cannot be found or is invalid."""
 
 
-def discover_models() -> dict[str, "ModelPersistence[Any, Any]"]:
+def discover_models() -> dict[str, ModelPersistence[Any, Any]]:
     """Discover all registered model packages via entry points.
 
     Scans installed packages for entry points in the ``hmls.models``
@@ -95,7 +95,7 @@ def discover_models() -> dict[str, "ModelPersistence[Any, Any]"]:
     return registry
 
 
-def list_available_models() -> dict[str, "ModelPersistence[Any, Any]"]:
+def list_available_models() -> dict[str, ModelPersistence[Any, Any]]:
     """Return all installed model packages.
 
     This is useful for CLI help text, validation error messages, and
@@ -108,7 +108,7 @@ def list_available_models() -> dict[str, "ModelPersistence[Any, Any]"]:
     return discover_models()
 
 
-def resolve_model_id(model_id: str) -> "ModelPersistence[Any, Any]":
+def resolve_model_id(model_id: str) -> ModelPersistence[Any, Any]:
     """Resolve a ``model_id`` string to a ``ModelPersistence`` instance.
 
     Resolution order:

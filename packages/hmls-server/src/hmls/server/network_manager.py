@@ -168,7 +168,7 @@ class NetworkManager:
             while not self.game_over:
                 try:
                     await asyncio.wait_for(websocket.receive_text(), timeout=1.0)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     continue
         except WebSocketDisconnect:
             pass
