@@ -95,7 +95,7 @@ class TestValidateAction:
         result = validate_action(state, game_map, "a1", Action.MOVE_FORWARD)
         assert not result.valid
         assert "occupied" in result.reason.lower() or "wreckage" in result.reason.lower()
-        """Turning is always valid."""
+        # But turning is always valid
         state = _make_state()
         assert validate_action(state, game_map, "a1", Action.TURN_LEFT).valid
         assert validate_action(state, game_map, "a1", Action.TURN_RIGHT).valid
