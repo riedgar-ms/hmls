@@ -216,6 +216,7 @@ class MapGeneratorApp(App[None]):
         margin-top: 0;
         color: $text-disabled;
         text-style: italic;
+        width: 100%;
     }
 
     #map-area {
