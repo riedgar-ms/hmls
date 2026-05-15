@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import random
 from pathlib import Path
 
-from hmls.mapgenerator import BlobAndLineConfig
+from hmls.core.engine import GameResult
+from hmls.mapgenerator import BlobAndLineConfig, PerlinNoiseConfig
 from hmls.reinforcetrainer._testing.stub_model import StubModelConfig, StubTankModel
+from hmls.reinforcetrainer._testing.stub_player import StubNNPlayer
 from hmls.reinforcetrainer.game_runner import (
     GameOutcome,
     create_map,
@@ -25,8 +28,6 @@ class TestCreateMap:
 
     def test_perlin_strategy_config(self) -> None:
         """A PerlinNoiseConfig strategy produces a valid map."""
-        from hmls.mapgenerator import PerlinNoiseConfig
-
         game_map = create_map(10, 10, 0.3, PerlinNoiseConfig(), seed=42)
         assert game_map.width == 10
         assert game_map.height == 10
@@ -43,8 +44,6 @@ class TestRunGame:
 
     def test_runs_game_to_completion(self) -> None:
         """A game runs and produces a valid outcome."""
-        import random
-
         model_a = StubTankModel(StubModelConfig())
         model_b = StubTankModel(StubModelConfig())
         game_map = create_map(10, 10, 0.2, BlobAndLineConfig(), seed=1)
@@ -65,8 +64,6 @@ class TestRunGame:
 
     def test_frozen_player_has_empty_episode(self) -> None:
         """A frozen player does not record trajectory steps."""
-        import random
-
         model_a = StubTankModel(StubModelConfig())
         model_b = StubTankModel(StubModelConfig())
         game_map = create_map(10, 10, 0.2, BlobAndLineConfig(), seed=2)
@@ -86,8 +83,6 @@ class TestRunGame:
 
     def test_learning_player_has_trajectory(self) -> None:
         """A learning player accumulates trajectory steps."""
-        import random
-
         model_a = StubTankModel(StubModelConfig())
         model_b = StubTankModel(StubModelConfig())
         game_map = create_map(10, 10, 0.2, BlobAndLineConfig(), seed=3)
@@ -112,10 +107,6 @@ class TestSaveSampleGame:
 
     def test_saves_json_file(self, tmp_path: Path) -> None:
         """Sample game is saved as a valid JSON file."""
-        import random
-
-        from hmls.core.engine import GameResult
-
         model_a = StubTankModel(StubModelConfig())
         model_b = StubTankModel(StubModelConfig())
         game_map = create_map(10, 10, 0.2, BlobAndLineConfig(), seed=5)
@@ -144,10 +135,6 @@ class TestRunGameWithStubRecording:
 
     def test_learning_player_receives_correct_patch_size(self) -> None:
         """All patches received by a learning player have the configured patch_size."""
-        import random
-
-        from hmls.reinforcetrainer._testing.stub_player import StubNNPlayer
-
         model_a = StubTankModel(StubModelConfig())
         model_b = StubTankModel(StubModelConfig())
         game_map = create_map(10, 10, 0.2, BlobAndLineConfig(), seed=10)
@@ -174,10 +161,6 @@ class TestRunGameWithStubRecording:
 
     def test_learning_player_records_in_learn_mode(self) -> None:
         """Action records from a learning player are all in 'learn' mode."""
-        import random
-
-        from hmls.reinforcetrainer._testing.stub_player import StubNNPlayer
-
         model_a = StubTankModel(StubModelConfig())
         model_b = StubTankModel(StubModelConfig())
         game_map = create_map(10, 10, 0.2, BlobAndLineConfig(), seed=11)
@@ -204,10 +187,6 @@ class TestRunGameWithStubRecording:
 
     def test_episode_length_matches_action_records(self) -> None:
         """Episode length matches the number of action records for learning player."""
-        import random
-
-        from hmls.reinforcetrainer._testing.stub_player import StubNNPlayer
-
         model_a = StubTankModel(StubModelConfig())
         model_b = StubTankModel(StubModelConfig())
         game_map = create_map(10, 10, 0.2, BlobAndLineConfig(), seed=12)
@@ -235,8 +214,6 @@ class TestRunGameWithStubRecording:
 
     def test_rewards_assigned_to_correct_steps(self) -> None:
         """Each episode step has a reward assigned (non-None after game)."""
-        import random
-
         model_a = StubTankModel(StubModelConfig())
         model_b = StubTankModel(StubModelConfig())
         game_map = create_map(10, 10, 0.2, BlobAndLineConfig(), seed=13)
@@ -259,8 +236,6 @@ class TestRunGameWithStubRecording:
 
     def test_log_prob_tensors_match_episode_length(self) -> None:
         """Number of log_prob_tensors matches the episode length."""
-        import random
-
         model_a = StubTankModel(StubModelConfig())
         model_b = StubTankModel(StubModelConfig())
         game_map = create_map(10, 10, 0.2, BlobAndLineConfig(), seed=14)

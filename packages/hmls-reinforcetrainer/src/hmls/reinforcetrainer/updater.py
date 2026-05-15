@@ -11,6 +11,7 @@ normalisation used in earlier versions.
 
 from __future__ import annotations
 
+import math
 from typing import Literal
 
 import torch
@@ -72,8 +73,6 @@ class ReturnBaseline:
         """Current EMA of std of returns, or ``None`` before first update."""
         if self._var is None:
             return None
-        import math
-
         return math.sqrt(self._var if self._var > 1e-8 else 1e-8)
 
     def update(self, returns: torch.Tensor) -> None:

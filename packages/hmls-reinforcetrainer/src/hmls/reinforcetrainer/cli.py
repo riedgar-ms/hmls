@@ -148,6 +148,7 @@ def load_config(config_path: Path) -> TrainerConfig:
 
 def main() -> None:
     """Parse CLI arguments, configure logging, and run the training loop."""
+    # Lazy import: defer heavy torch/training imports for fast --help
     from hmls.reinforcetrainer.training_loop import train
 
     result = parse_args()

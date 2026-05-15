@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 import pytest
 
+from hmls.core.map import GameMap
 from hmls.server.events import (
     EventBus,
     GameOverEvent,
@@ -177,8 +178,6 @@ class TestEventDataclasses:
 
     def test_game_started_event(self) -> None:
         """GameStartedEvent should hold all game setup fields."""
-        from hmls.core.map import GameMap
-
         event = GameStartedEvent(
             game_map=GameMap(width=5, height=5),
             tanks=[],

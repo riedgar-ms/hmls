@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch as mock_patch
 
 import pytest
+import torch
 
-from hmls.mapgenerator import BlobAndLineConfig
+from hmls.mapgenerator import BlobAndLineConfig, PerlinNoiseConfig
 from hmls.nncore.persistence import load_or_create_model
 from hmls.nncore.reward_config import ExplorationRewardConfig, FiringRewardConfig, RewardConfig
 from hmls.reinforcetrainer._testing.persistence import PERSISTENCE as STUB_PERSISTENCE
-from hmls.reinforcetrainer._testing.stub_model import StubModelConfig
+from hmls.reinforcetrainer._testing.stub_model import StubModelConfig, StubTankModel
 from hmls.reinforcetrainer.config import (
     GameConfig,
     HyperparameterConfig,
@@ -19,6 +21,7 @@ from hmls.reinforcetrainer.config import (
     OutputConfig,
     TrainerConfig,
 )
+from hmls.reinforcetrainer.game_runner import GameOutcome, create_map
 from hmls.reinforcetrainer.training_loop import (
     TrainingSession,
     _validate_game_patch_size,
@@ -56,9 +59,8 @@ class TestLoadOrCreateModel:
 
     def test_loads_existing_model(self, tmp_path: Path) -> None:
         """A directory with model.pt loads the saved model."""
-        from hmls.reinforcetrainer._testing.stub_model import StubTankModel
-
         model_dir = tmp_path / "model"
+
         config = StubModelConfig(hidden_size=8)
         _setup_model_dir(model_dir, model_config=config)
 
@@ -274,11 +276,8 @@ class TestTrainIntegration:
 
     def test_frozen_model_weights_unchanged(self, tmp_path: Path) -> None:
         """A frozen model's parameters should not change during training."""
-        import torch
-
-        from hmls.reinforcetrainer._testing.stub_model import StubTankModel
-
         trainee_dir = tmp_path / "trainee"
+
         frozen_dir = tmp_path / "frozen"
         _setup_model_dir(trainee_dir)
         _setup_model_dir(frozen_dir)
@@ -396,9 +395,8 @@ class TestTrainingSession:
 
     def test_train_one_game_increments_total_games(self, tmp_path: Path) -> None:
         """train_one_game increments total_games and returns a GameOutcome."""
-        from hmls.reinforcetrainer.game_runner import GameOutcome, create_map
-
         model_a_dir = tmp_path / "model_a"
+
         model_b_dir = tmp_path / "model_b"
         _setup_model_dir(model_a_dir)
         _setup_model_dir(model_b_dir)
@@ -422,9 +420,8 @@ class TestTrainingSession:
 
     def test_stats_tracking_across_multiple_games(self, tmp_path: Path) -> None:
         """Stats are accumulated correctly across multiple games."""
-        from hmls.reinforcetrainer.game_runner import create_map
-
         model_a_dir = tmp_path / "model_a"
+
         model_b_dir = tmp_path / "model_b"
         _setup_model_dir(model_a_dir)
         _setup_model_dir(model_b_dir)
@@ -460,9 +457,8 @@ class TestTrainingSession:
 
     def test_save_weights_if_due_respects_interval(self, tmp_path: Path) -> None:
         """Weights are only saved at the configured interval."""
-        from hmls.reinforcetrainer.game_runner import create_map
-
         model_a_dir = tmp_path / "model_a"
+
         model_b_dir = tmp_path / "model_b"
         _setup_model_dir(model_a_dir)
         _setup_model_dir(model_b_dir)
@@ -499,9 +495,8 @@ class TestTrainingSession:
 
     def test_save_sample_if_due_respects_interval(self, tmp_path: Path) -> None:
         """Sample games are only saved at the configured interval."""
-        from hmls.reinforcetrainer.game_runner import create_map
-
         model_a_dir = tmp_path / "model_a"
+
         model_b_dir = tmp_path / "model_b"
         _setup_model_dir(model_a_dir)
         _setup_model_dir(model_b_dir)
@@ -560,11 +555,8 @@ class TestStrategyCycling:
 
     def test_strategies_cycle_round_robin(self, tmp_path: Path) -> None:
         """Maps cycle through the strategies list using modulo indexing."""
-        from unittest.mock import patch as mock_patch
-
-        from hmls.mapgenerator import BlobAndLineConfig, PerlinNoiseConfig
-
         model_dir_a = tmp_path / "model_a"
+
         model_dir_b = tmp_path / "model_b"
         _setup_model_dir(model_dir_a)
         _setup_model_dir(model_dir_b)
