@@ -66,4 +66,4 @@ class GameState(BaseModel, extra="forbid"):
         for t in self.tanks:
             if t.id == tank_id:
                 return t
-        raise KeyError(f"No tank with id {tank_id!r}")
+        raise KeyError(f"No tank with id {tank_id!r}")  # noqa: EM102

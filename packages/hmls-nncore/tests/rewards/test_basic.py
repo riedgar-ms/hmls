@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from hmls.core.types import Action, Position
 from hmls.nncore.reward import (
     ActionsRewardConfig,
@@ -188,8 +190,5 @@ def test_reward_config_json_round_trip() -> None:
 def test_reward_config_is_frozen() -> None:
     """Config should be immutable."""
     config = RewardConfig()
-    try:
+    with pytest.raises((TypeError, ValueError, AttributeError)):
         config.actions = ActionsRewardConfig()  # type: ignore[misc]
-        assert False, "Should have raised"
-    except TypeError, ValueError, AttributeError:
-        pass

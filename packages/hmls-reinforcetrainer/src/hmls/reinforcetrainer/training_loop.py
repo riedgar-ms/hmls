@@ -11,7 +11,9 @@ import random
 from pathlib import Path
 
 import torch
+from torch.optim import Optimizer
 
+from hmls.core.map import GameMap
 from hmls.nncore.model import TankModelBase, TankModelConfig
 from hmls.nncore.persistence import (
     load_model_config,
@@ -55,7 +57,8 @@ def _create_lethargy_policy(config: LethargyConfig) -> LethargyPolicy:
             max_consecutive_turns=config.max_consecutive_turns,
         )
     else:
-        raise ValueError(f"Unknown lethargy policy: {config.policy!r}")
+        msg = f"Unknown lethargy policy: {config.policy!r}"
+        raise ValueError(msg)
 
 
 def _validate_model_configs(config_a: TankModelConfig, config_b: TankModelConfig) -> None:
@@ -73,11 +76,12 @@ def _validate_model_configs(config_a: TankModelConfig, config_b: TankModelConfig
         ValueError: If configurations are incompatible.
     """
     if config_a.patch_size != config_b.patch_size:
-        raise ValueError(
+        msg = (
             f"Model configurations are incompatible: patch_size differs "
             f"(A={config_a.patch_size}, B={config_b.patch_size}). "
             f"Both models must use the same patch_size."
         )
+        raise ValueError(msg)
 
 
 def _validate_game_patch_size(
@@ -96,17 +100,19 @@ def _validate_game_patch_size(
         ValueError: If the game patch_size doesn't match a model's patch_size.
     """
     if game_patch_size != model_config_a.patch_size:
-        raise ValueError(
+        msg = (
             f"GameConfig patch_size ({game_patch_size}) does not match "
             f"model A patch_size ({model_config_a.patch_size}). "
             f"The game and model configurations must agree on patch_size."
         )
+        raise ValueError(msg)
     if game_patch_size != model_config_b.patch_size:
-        raise ValueError(
+        msg = (
             f"GameConfig patch_size ({game_patch_size}) does not match "
             f"model B patch_size ({model_config_b.patch_size}). "
             f"The game and model configurations must agree on patch_size."
         )
+        raise ValueError(msg)
 
 
 def _save_weights(
@@ -128,8 +134,16 @@ def _save_weights(
     )
 
 
-def train(config: TrainerConfig) -> None:
-    """Run the full training loop.
+class TrainingSession:
+    """Encapsulates the state and logic for a single REINFORCE training run.
+
+    Holds models, optimizers, baselines, reward functions, lethargy policy,
+    cumulative statistics, and the RNG.  The :meth:`train_one_game` method
+    executes a single game on a given map, updates statistics, and performs
+    the policy gradient update for trainable models.
+
+    This class is the primary unit of work within :func:`train`, which
+    handles map generation and delegates per-game logic here.
 
     Args:
         config: Training configuration.
@@ -138,257 +152,336 @@ def train(config: TrainerConfig) -> None:
         FileNotFoundError: If model directories lack required config files.
         ValueError: If model configurations are incompatible.
     """
-    # Seed
-    rng = random.Random(config.hyperparameters.seed)
-    if config.hyperparameters.seed is not None:
-        torch.manual_seed(config.hyperparameters.seed)
 
-    # Load model configs and validate compatibility
-    model_config_a = load_model_config(config.model_a.dir)
-    model_config_b = load_model_config(config.model_b.dir)
-    logger.info(
-        "Model A config: model_id=%s, dir=%s",
-        model_config_a.model_id,
-        config.model_a.dir,
+    def __init__(self, config: TrainerConfig) -> None:
+        self.config = config
+
+        # Seed
+        self.rng = random.Random(config.hyperparameters.seed)
+        if config.hyperparameters.seed is not None:
+            torch.manual_seed(config.hyperparameters.seed)
+
+        # Load model configs and validate compatibility
+        model_config_a = load_model_config(config.model_a.dir)
+        model_config_b = load_model_config(config.model_b.dir)
+        logger.info(
+            "Model A config: model_id=%s, dir=%s",
+            model_config_a.model_id,
+            config.model_a.dir,
+        )
+        logger.info(
+            "Model B config: model_id=%s, dir=%s",
+            model_config_b.model_id,
+            config.model_b.dir,
+        )
+        _validate_model_configs(model_config_a, model_config_b)
+        _validate_game_patch_size(config.game.patch_size, model_config_a, model_config_b)
+
+        # Create reward functions from training config
+        self.reward_fn_a: RewardFunction = RewardFunction(config.model_a.reward)
+        self.reward_fn_b: RewardFunction = RewardFunction(config.model_b.reward)
+
+        # Instantiate lethargy policy
+        self.lethargy_policy: LethargyPolicy = _create_lethargy_policy(config.lethargy)
+
+        # Load or create models
+        self.model_a: TankModelBase = load_or_create_model(config.model_a.dir)
+        self.model_b: TankModelBase = load_or_create_model(config.model_b.dir)
+
+        params_a = sum(p.numel() for p in self.model_a.parameters())
+        params_b = sum(p.numel() for p in self.model_b.parameters())
+        logger.info("Model A trainable weights: %d", params_a)
+        logger.info("Model B trainable weights: %d", params_b)
+
+        # NOTE (REINFORCE_AUDIT item C): If future models use dropout or
+        # batch normalisation, call model_a.train() / model_b.train() for
+        # trainable models and model_a.eval() / model_b.eval() for frozen
+        # ones here (and in game_runner.py where players are created).
+        # Currently unnecessary because no model uses these layers.
+
+        # Set up optimizers for models that are training
+        self.optimizer_a: Optimizer | None = (
+            torch.optim.Adam(self.model_a.parameters(), lr=config.hyperparameters.learning_rate)
+            if config.model_a.train
+            else None
+        )
+        self.optimizer_b: Optimizer | None = (
+            torch.optim.Adam(self.model_b.parameters(), lr=config.hyperparameters.learning_rate)
+            if config.model_b.train
+            else None
+        )
+
+        # Cross-episode baselines (one per trainable player)
+        self.baseline_a: ReturnBaseline | None = (
+            ReturnBaseline(alpha=config.hyperparameters.baseline_alpha)
+            if config.model_a.train
+            else None
+        )
+        self.baseline_b: ReturnBaseline | None = (
+            ReturnBaseline(alpha=config.hyperparameters.baseline_alpha)
+            if config.model_b.train
+            else None
+        )
+
+        # Training stats
+        self.total_games: int = 0
+        self.wins_a: int = 0
+        self.wins_b: int = 0
+        self.draws: int = 0
+        self.lethargy_a: int = 0
+        self.lethargy_b: int = 0
+        self.total_loss_a: float = 0.0
+        self.total_loss_b: float = 0.0
+
+        self.total_games_planned: int = config.game.total_maps * config.game.games_per_map
+
+    def train_one_game(self, game_map: GameMap) -> GameOutcome:
+        """Run a single training game on the given map.
+
+        Executes the game, updates cumulative statistics (wins, draws,
+        lethargy losses), and performs REINFORCE policy gradient updates
+        for any trainable models.
+
+        Args:
+            game_map: The map to play on.
+
+        Returns:
+            The outcome of the game.
+        """
+        self.total_games += 1
+
+        outcome: GameOutcome = run_game(
+            game_map,
+            self.model_a,
+            self.model_b,
+            train_a=self.config.model_a.train,
+            train_b=self.config.model_b.train,
+            max_turns=self.config.game.max_turns,
+            patch_size=self.config.game.patch_size,
+            reward_fn_a=self.reward_fn_a,
+            reward_fn_b=self.reward_fn_b,
+            lethargy_policy=self.lethargy_policy,
+            rng=self.rng,
+        )
+
+        self._update_stats(outcome)
+        self._policy_update(outcome)
+
+        return outcome
+
+    def _update_stats(self, outcome: GameOutcome) -> None:
+        """Update win/draw/lethargy counters from a game outcome."""
+        winner = outcome.result.winner
+        if outcome.lethargy_loser == "A":
+            self.lethargy_a += 1
+        elif outcome.lethargy_loser == "B":
+            self.lethargy_b += 1
+        elif winner == "A":
+            self.wins_a += 1
+        elif winner == "B":
+            self.wins_b += 1
+        else:
+            self.draws += 1
+
+        logger.debug(
+            "Game %d: winner=%s, turns=%d, lethargy=%s",
+            self.total_games,
+            winner or "draw",
+            outcome.result.turns_played,
+            outcome.lethargy_loser or "none",
+        )
+
+    def _policy_update(self, outcome: GameOutcome) -> None:
+        """Perform REINFORCE policy gradient updates for trainable models."""
+        if self.config.model_a.train and self.optimizer_a is not None:
+            loss_a = reinforce_update(
+                outcome.player_a.episode,
+                self.optimizer_a,
+                self.config.hyperparameters.gamma,
+                log_prob_tensors=outcome.player_a.log_prob_tensors,
+                entropy_tensors=outcome.player_a.entropy_tensors,
+                entropy_coeff=self.config.hyperparameters.entropy_coeff,
+                baseline=self.baseline_a,
+                reduction=self.config.hyperparameters.loss_reduction,
+                max_grad_norm=self.config.hyperparameters.max_grad_norm,
+            )
+            self.total_loss_a += loss_a
+            logger.debug("Game %d: loss_a=%.6f", self.total_games, loss_a)
+
+        if self.config.model_b.train and self.optimizer_b is not None:
+            loss_b = reinforce_update(
+                outcome.player_b.episode,
+                self.optimizer_b,
+                self.config.hyperparameters.gamma,
+                log_prob_tensors=outcome.player_b.log_prob_tensors,
+                entropy_tensors=outcome.player_b.entropy_tensors,
+                entropy_coeff=self.config.hyperparameters.entropy_coeff,
+                baseline=self.baseline_b,
+                reduction=self.config.hyperparameters.loss_reduction,
+                max_grad_norm=self.config.hyperparameters.max_grad_norm,
+            )
+            self.total_loss_b += loss_b
+            logger.debug("Game %d: loss_b=%.6f", self.total_games, loss_b)
+
+    def save_sample_if_due(self, outcome: GameOutcome) -> None:
+        """Save a sample game replay if the current game is at the configured interval.
+
+        Args:
+            outcome: The game outcome to potentially save.
+        """
+        if self.total_games % self.config.output.sample_game_interval == 0:
+            save_sample_game(
+                outcome.result,
+                self.config.output.sample_game_dir,
+                self.total_games,
+            )
+            logger.debug(
+                "Saved sample game %d to %s",
+                self.total_games,
+                self.config.output.sample_game_dir,
+            )
+
+    def save_weights_if_due(self) -> None:
+        """Save model weights if the current game is at the configured interval."""
+        if self.total_games % self.config.output.save_weights_interval == 0:
+            if self.config.model_a.train:
+                _save_weights(self.model_a, self.config.model_a.dir, self.total_games)
+                logger.info("Saved model A weights at game %d", self.total_games)
+            if self.config.model_b.train:
+                _save_weights(self.model_b, self.config.model_b.dir, self.total_games)
+                logger.info("Saved model B weights at game %d", self.total_games)
+
+    def log_progress_if_due(self, map_idx: int) -> None:
+        """Log a progress summary if a full map's worth of games has been played.
+
+        Args:
+            map_idx: Zero-based index of the current map.
+        """
+        if self.total_games % self.config.game.games_per_map == 0:
+            _log_progress(
+                self.total_games,
+                self.total_games_planned,
+                map_idx + 1,
+                self.wins_a,
+                self.wins_b,
+                self.draws,
+                self.lethargy_a,
+                self.lethargy_b,
+                self.total_loss_a,
+                self.total_loss_b,
+                self.config.model_a.train,
+                self.config.model_b.train,
+            )
+
+    def save_final_weights(self) -> None:
+        """Save model weights at the end of training for all trainable models."""
+        if self.config.model_a.train:
+            _save_weights(self.model_a, self.config.model_a.dir, self.total_games)
+        if self.config.model_b.train:
+            _save_weights(self.model_b, self.config.model_b.dir, self.total_games)
+
+    def log_training_start(self) -> None:
+        """Log a summary of the training configuration at INFO level."""
+        logger.info(
+            "Starting training: %d maps × %d games/map = %d total games",
+            self.config.game.total_maps,
+            self.config.game.games_per_map,
+            self.total_games_planned,
+        )
+        logger.info(
+            "  Train A: %s, Train B: %s",
+            self.config.model_a.train,
+            self.config.model_b.train,
+        )
+        logger.info(
+            "  Map size: %d–%d (random), impassable: %.0f%%",
+            self.config.map.min_size,
+            self.config.map.max_size,
+            self.config.map.impassable_fraction * 100,
+        )
+        logger.info(
+            "  Max turns/game: %d, γ=%s, lr=%s",
+            self.config.game.max_turns,
+            self.config.hyperparameters.gamma,
+            self.config.hyperparameters.learning_rate,
+        )
+
+    def log_training_complete(self) -> None:
+        """Log a summary of training results at INFO level."""
+        logger.info("Training complete. %d games played.", self.total_games)
+        logger.info(
+            "  Final record: A wins=%d, B wins=%d, draws=%d, lethargy_a=%d, lethargy_b=%d",
+            self.wins_a,
+            self.wins_b,
+            self.draws,
+            self.lethargy_a,
+            self.lethargy_b,
+        )
+
+
+def _generate_map(
+    config: TrainerConfig,
+    rng: random.Random,
+    map_idx: int,
+) -> GameMap:
+    """Generate a random map for the training loop.
+
+    Args:
+        config: Training configuration (map size/strategy settings).
+        rng: Random number generator for map dimensions and seed.
+        map_idx: Zero-based map index (used for logging).
+
+    Returns:
+        A newly generated GameMap.
+    """
+    map_seed = rng.randint(0, 2**31)
+    map_width = rng.randint(config.map.min_size, config.map.max_size)
+    map_height = rng.randint(config.map.min_size, config.map.max_size)
+    game_map = create_map(
+        map_width,
+        map_height,
+        config.map.impassable_fraction,
+        config.map.strategy,
+        seed=map_seed,
     )
-    logger.info(
-        "Model B config: model_id=%s, dir=%s",
-        model_config_b.model_id,
-        config.model_b.dir,
-    )
-    _validate_model_configs(model_config_a, model_config_b)
-    _validate_game_patch_size(config.game.patch_size, model_config_a, model_config_b)
-
-    # Create reward functions from training config
-    reward_fn_a: RewardFunction = RewardFunction(config.model_a.reward)
-    reward_fn_b: RewardFunction = RewardFunction(config.model_b.reward)
-
-    # Instantiate lethargy policy
-    lethargy_policy = _create_lethargy_policy(config.lethargy)
-
-    # Load or create models
-    model_a = load_or_create_model(config.model_a.dir)
-    model_b = load_or_create_model(config.model_b.dir)
-
-    params_a = sum(p.numel() for p in model_a.parameters())
-    params_b = sum(p.numel() for p in model_b.parameters())
-    logger.info("Model A trainable weights: %d", params_a)
-    logger.info("Model B trainable weights: %d", params_b)
-
-    # NOTE (REINFORCE_AUDIT item C): If future models use dropout or
-    # batch normalisation, call model_a.train() / model_b.train() for
-    # trainable models and model_a.eval() / model_b.eval() for frozen
-    # ones here (and in game_runner.py where players are created).
-    # Currently unnecessary because no model uses these layers.
-
-    # Set up optimizers for models that are training
-    optimizer_a = (
-        torch.optim.Adam(model_a.parameters(), lr=config.hyperparameters.learning_rate)
-        if config.model_a.train
-        else None
-    )
-    optimizer_b = (
-        torch.optim.Adam(model_b.parameters(), lr=config.hyperparameters.learning_rate)
-        if config.model_b.train
-        else None
-    )
-
-    # ── Cross-episode baselines ──────────────────────────────────
-    #
-    # One baseline per trainable player.  Each tracks a running mean
-    # of discounted returns across episodes so that advantages reflect
-    # how good an episode was *relative to the long-run average*,
-    # rather than being normalised within each episode (which destroys
-    # the signal on degenerate episodes — see ReturnBaseline docstring).
-    #
-    baseline_a = (
-        ReturnBaseline(alpha=config.hyperparameters.baseline_alpha)
-        if config.model_a.train
-        else None
-    )
-    baseline_b = (
-        ReturnBaseline(alpha=config.hyperparameters.baseline_alpha)
-        if config.model_b.train
-        else None
-    )
-
-    # Training stats
-    total_games = 0
-    wins_a = 0
-    wins_b = 0
-    draws = 0
-    lethargy_a = 0
-    lethargy_b = 0
-    total_loss_a = 0.0
-    total_loss_b = 0.0
-
-    total_games_planned = config.game.total_maps * config.game.games_per_map
-    logger.info(
-        "Starting training: %d maps × %d games/map = %d total games",
+    logger.debug(
+        "Map %d/%d: %dx%d, seed=%d, strategy=%s",
+        map_idx + 1,
         config.game.total_maps,
-        config.game.games_per_map,
-        total_games_planned,
+        map_width,
+        map_height,
+        map_seed,
+        config.map.strategy,
     )
-    logger.info("  Train A: %s, Train B: %s", config.model_a.train, config.model_b.train)
-    logger.info(
-        "  Map size: %d–%d (random), impassable: %.0f%%",
-        config.map.min_size,
-        config.map.max_size,
-        config.map.impassable_fraction * 100,
-    )
-    logger.info(
-        "  Max turns/game: %d, γ=%s, lr=%s",
-        config.game.max_turns,
-        config.hyperparameters.gamma,
-        config.hyperparameters.learning_rate,
-    )
+    return game_map
+
+
+def train(config: TrainerConfig) -> None:
+    """Run the full training loop.
+
+    Instantiates a :class:`TrainingSession`, generates maps, and
+    delegates per-game logic to the session object.
+
+    Args:
+        config: Training configuration.
+
+    Raises:
+        FileNotFoundError: If model directories lack required config files.
+        ValueError: If model configurations are incompatible.
+    """
+    session = TrainingSession(config)
+    session.log_training_start()
 
     for map_idx in range(config.game.total_maps):
-        # Generate a new map
-        map_seed = rng.randint(0, 2**31)
-        map_width = rng.randint(config.map.min_size, config.map.max_size)
-        map_height = rng.randint(config.map.min_size, config.map.max_size)
-        game_map = create_map(
-            map_width,
-            map_height,
-            config.map.impassable_fraction,
-            config.map.strategy,
-            seed=map_seed,
-        )
-        logger.debug(
-            "Map %d/%d: %dx%d, seed=%d, strategy=%s",
-            map_idx + 1,
-            config.game.total_maps,
-            map_width,
-            map_height,
-            map_seed,
-            config.map.strategy,
-        )
+        game_map = _generate_map(config, session.rng, map_idx)
+        for _ in range(config.game.games_per_map):
+            outcome = session.train_one_game(game_map)
+            session.save_sample_if_due(outcome)
+            session.save_weights_if_due()
+            session.log_progress_if_due(map_idx)
 
-        for game_idx in range(config.game.games_per_map):
-            total_games += 1
-
-            # Run game
-            outcome: GameOutcome = run_game(
-                game_map,
-                model_a,
-                model_b,
-                train_a=config.model_a.train,
-                train_b=config.model_b.train,
-                max_turns=config.game.max_turns,
-                patch_size=config.game.patch_size,
-                reward_fn_a=reward_fn_a,
-                reward_fn_b=reward_fn_b,
-                lethargy_policy=lethargy_policy,
-                rng=rng,
-            )
-
-            # Track wins and lethargy losses
-            winner = outcome.result.winner
-            if outcome.lethargy_loser == "A":
-                lethargy_a += 1
-            elif outcome.lethargy_loser == "B":
-                lethargy_b += 1
-            elif winner == "A":
-                wins_a += 1
-            elif winner == "B":
-                wins_b += 1
-            else:
-                draws += 1
-
-            logger.debug(
-                "Game %d: winner=%s, turns=%d, lethargy=%s",
-                total_games,
-                winner or "draw",
-                outcome.result.turns_played,
-                outcome.lethargy_loser or "none",
-            )
-
-            # Policy gradient updates
-            if config.model_a.train and optimizer_a is not None:
-                loss_a = reinforce_update(
-                    outcome.player_a.episode,
-                    optimizer_a,
-                    config.hyperparameters.gamma,
-                    log_prob_tensors=outcome.player_a.log_prob_tensors,
-                    entropy_tensors=outcome.player_a.entropy_tensors,
-                    entropy_coeff=config.hyperparameters.entropy_coeff,
-                    baseline=baseline_a,
-                    reduction=config.hyperparameters.loss_reduction,
-                    max_grad_norm=config.hyperparameters.max_grad_norm,
-                )
-                total_loss_a += loss_a
-                logger.debug("Game %d: loss_a=%.6f", total_games, loss_a)
-
-            if config.model_b.train and optimizer_b is not None:
-                loss_b = reinforce_update(
-                    outcome.player_b.episode,
-                    optimizer_b,
-                    config.hyperparameters.gamma,
-                    log_prob_tensors=outcome.player_b.log_prob_tensors,
-                    entropy_tensors=outcome.player_b.entropy_tensors,
-                    entropy_coeff=config.hyperparameters.entropy_coeff,
-                    baseline=baseline_b,
-                    reduction=config.hyperparameters.loss_reduction,
-                    max_grad_norm=config.hyperparameters.max_grad_norm,
-                )
-                total_loss_b += loss_b
-                logger.debug("Game %d: loss_b=%.6f", total_games, loss_b)
-
-            # Save sample game
-            if total_games % config.output.sample_game_interval == 0:
-                save_sample_game(
-                    outcome.result,
-                    config.output.sample_game_dir,
-                    total_games,
-                )
-                logger.debug(
-                    "Saved sample game %d to %s",
-                    total_games,
-                    config.output.sample_game_dir,
-                )
-
-            # Save weights periodically
-            if total_games % config.output.save_weights_interval == 0:
-                if config.model_a.train:
-                    _save_weights(model_a, config.model_a.dir, total_games)
-                    logger.info("Saved model A weights at game %d", total_games)
-                if config.model_b.train:
-                    _save_weights(model_b, config.model_b.dir, total_games)
-                    logger.info("Saved model B weights at game %d", total_games)
-
-            # Progress logging
-            if total_games % config.game.games_per_map == 0:
-                _log_progress(
-                    total_games,
-                    total_games_planned,
-                    map_idx + 1,
-                    wins_a,
-                    wins_b,
-                    draws,
-                    lethargy_a,
-                    lethargy_b,
-                    total_loss_a,
-                    total_loss_b,
-                    config.model_a.train,
-                    config.model_b.train,
-                )
-
-    # Final save
-    if config.model_a.train:
-        _save_weights(model_a, config.model_a.dir, total_games)
-    if config.model_b.train:
-        _save_weights(model_b, config.model_b.dir, total_games)
-
-    logger.info("Training complete. %d games played.", total_games)
-    logger.info(
-        "  Final record: A wins=%d, B wins=%d, draws=%d, lethargy_a=%d, lethargy_b=%d",
-        wins_a,
-        wins_b,
-        draws,
-        lethargy_a,
-        lethargy_b,
-    )
+    session.save_final_weights()
+    session.log_training_complete()
 
 
 def _log_progress(

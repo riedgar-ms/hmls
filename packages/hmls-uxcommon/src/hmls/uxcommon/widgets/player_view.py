@@ -43,7 +43,7 @@ class PlayerViewRegion(Horizontal):
         patch_size: int = 9,
         active_tank_id: TankId = "",
         *,
-        id: str | None = None,
+        id: str | None = None,  # noqa: A002 -- matches Textual Widget API
     ) -> None:
         super().__init__(id=id)
         self._team = team

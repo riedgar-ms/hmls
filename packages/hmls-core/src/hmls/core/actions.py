@@ -109,6 +109,37 @@ def _replace_tank(tanks: list[Tank], updated: Tank) -> list[Tank]:
     return [updated if t.id == updated.id else t for t in tanks]
 
 
+def _apply_fire(state: GameState, tank: Tank) -> tuple[list[Tank], bool]:
+    """Resolve a FIRE action for *tank* and return the updated tank list and hit flag.
+
+    Checks the single cell directly ahead of *tank*.  If an alive enemy
+    occupies that cell, it is destroyed (friendly fire included).  Firing
+    into wreckage (a dead tank) or an empty cell counts as a miss.
+
+    Args:
+        state: Current game state.
+        tank: The tank performing the fire action.
+
+    Returns:
+        A tuple of (new_tanks, hit) where *hit* is ``True`` if an alive
+        enemy was destroyed.
+    """
+    new_tanks = list(state.tanks)
+    hit = False
+    dx, dy = tank.direction.forward_delta()
+    target_pos = Position(tank.position.x + dx, tank.position.y + dy)
+    occupied = state.tank_positions
+    if target_pos in occupied:
+        target_id = occupied[target_pos]
+        if target_id != tank.id:
+            target_tank = state.get_tank(target_id)
+            if target_tank.alive:
+                destroyed = target_tank.model_copy(update={"alive": False})
+                new_tanks = _replace_tank(new_tanks, destroyed)
+                hit = True
+    return new_tanks, hit
+
+
 def apply_action(
     state: GameState, game_map: GameMap, tank_id: TankId, action: Action
 ) -> ApplyResult:
@@ -143,9 +174,10 @@ def apply_action(
     """
     tank = state.get_tank(tank_id)
     if not tank.alive:
-        raise ValueError(f"Tank {tank_id!r} is not alive")
+        raise ValueError(f"Tank {tank_id!r} is not alive")  # noqa: EM102
     if state.current_tank_id != tank_id:
-        raise ValueError(f"It is not tank {tank_id!r}'s turn (current: {state.current_tank_id!r})")
+        msg = f"It is not tank {tank_id!r}'s turn (current: {state.current_tank_id!r})"
+        raise ValueError(msg)
 
     new_tanks = list(state.tanks)
     hit: bool | None = None
@@ -169,18 +201,7 @@ def apply_action(
         new_tanks = _replace_tank(new_tanks, turned)
 
     elif action == Action.FIRE:
-        hit = False
-        dx, dy = tank.direction.forward_delta()
-        target_pos = Position(tank.position.x + dx, tank.position.y + dy)
-        occupied = state.tank_positions
-        if target_pos in occupied:
-            target_id = occupied[target_pos]
-            if target_id != tank_id:
-                target_tank = state.get_tank(target_id)
-                if target_tank.alive:
-                    destroyed = target_tank.model_copy(update={"alive": False})
-                    new_tanks = _replace_tank(new_tanks, destroyed)
-                    hit = True
+        new_tanks, hit = _apply_fire(state, tank)
 
     # PASS: nothing to do
 

@@ -51,7 +51,7 @@ class Player(ABC):
         """
         ...
 
-    def notify_invalid_action(self, tank_id: TankId, action: Action, reason: str) -> None:
+    def notify_invalid_action(self, tank_id: TankId, action: Action, reason: str) -> None:  # noqa: B027
         """Called when a chosen action is invalid.
 
         The default implementation is a no-op.  Override to log or

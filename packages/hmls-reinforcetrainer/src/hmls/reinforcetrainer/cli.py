@@ -138,7 +138,8 @@ def load_config(config_path: Path) -> TrainerConfig:
         pydantic.ValidationError: If the JSON content is invalid.
     """
     if not config_path.exists():
-        raise FileNotFoundError(f"Config file not found: {config_path}")
+        msg = f"Config file not found: {config_path}"
+        raise FileNotFoundError(msg)
 
     json_bytes = config_path.read_bytes()
     config = TrainerConfig.model_validate_json(json_bytes)

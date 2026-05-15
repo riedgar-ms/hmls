@@ -46,5 +46,5 @@ class TextualLogHandler(logging.Handler):
             msg = self.format(record)
             open_tag, close_tag = self._LEVEL_STYLES.get(record.levelno, ("", ""))
             self._widget.write(f"{open_tag}{msg}{close_tag}")
-        except Exception:
+        except Exception:  # noqa: BLE001
             self.handleError(record)

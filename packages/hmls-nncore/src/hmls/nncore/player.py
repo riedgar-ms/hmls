@@ -156,10 +156,11 @@ class NNPlayerBase(Player):
 
         grid_size = len(patch.grid)
         if grid_size != self.patch_size:
-            raise ValueError(
+            msg = (
                 f"Patch size mismatch: expected {self.patch_size}, got {grid_size}. "
                 f"The model was trained for patch_size={self.patch_size}."
             )
+            raise ValueError(msg)
 
         if self._mode == "play":
             action_idx = self._forward_play(patch)

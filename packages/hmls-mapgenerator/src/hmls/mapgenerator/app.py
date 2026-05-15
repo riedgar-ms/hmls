@@ -48,7 +48,7 @@ class MapDisplay(Static):
         self,
         renderable: str = "",
         *,
-        id: str | None = None,
+        id: str | None = None,  # noqa: A002 -- matches Textual Widget API
     ) -> None:
         super().__init__(renderable, id=id)
         self._game_map: GameMap | None = None
@@ -358,7 +358,7 @@ class MapGeneratorApp(App[None]):
                     val = min(param.max_val, val)
 
                 kwargs[param.name] = val
-            except Exception:
+            except Exception:  # noqa: BLE001
                 logger.debug(
                     "Failed to parse parameter '%s', using default %r",
                     param.name,
@@ -398,7 +398,7 @@ class MapGeneratorApp(App[None]):
                 encoding="utf-8",
             )
             status.update(f"Saved to {path.resolve()}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             status.update(f"Save error: {e}")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -425,7 +425,7 @@ class MapGeneratorApp(App[None]):
                 f"Seed: {params['seed'] or 'random'}"
             )
             self.query_one("#stats", Static).update(stats)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self.query_one("#stats", Static).update(f"Error: {e}")
 
 

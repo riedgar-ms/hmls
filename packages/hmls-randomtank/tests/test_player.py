@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import random
-from typing import Any
 
 from hmls.core.map import CellType
 from hmls.core.tank import Tank
@@ -11,6 +10,7 @@ from hmls.core.types import Action, Direction, Position
 from hmls.core.visibility import (
     BoundaryCell,
     FogCell,
+    PatchCell,
     PlayerView,
     TankInfo,
     TankPatch,
@@ -23,7 +23,7 @@ from hmls.randomtank.player import RandomTankPlayer
 
 
 def _make_patch(
-    front_cell: Any,
+    front_cell: PatchCell,
     patch_size: int = 9,
     tank_id: str = "A1",
 ) -> TankPatch:
@@ -33,9 +33,9 @@ def _make_patch(
     the tank, which is set to ``front_cell``.
     """
     half = patch_size // 2
-    grid: list[list[Any]] = []
+    grid: list[list[PatchCell]] = []
     for r in range(patch_size):
-        row: list[Any] = []
+        row: list[PatchCell] = []
         for c in range(patch_size):
             if r == half and c == half:
                 # The tank itself

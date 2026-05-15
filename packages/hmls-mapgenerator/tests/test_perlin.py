@@ -37,11 +37,11 @@ class TestPerlinNoiseStrategy:
 
     def test_seed_reproducibility(self) -> None:
         """Same seed and parameters should produce identical maps."""
-        kwargs: dict[str, object] = dict(
-            impassable_fraction=0.3,
-            strategy=PerlinNoiseStrategy(scale=0.08, octaves=3),
-            seed=123,
-        )
+        kwargs: dict[str, object] = {
+            "impassable_fraction": 0.3,
+            "strategy": PerlinNoiseStrategy(scale=0.08, octaves=3),
+            "seed": 123,
+        }
         gm1 = generate_map(15, 15, **kwargs)  # type: ignore[arg-type]
         gm2 = generate_map(15, 15, **kwargs)  # type: ignore[arg-type]
         for pos in gm1.all_positions():
@@ -86,7 +86,8 @@ class TestPerlinNoiseStrategy:
             strategy=PerlinNoiseStrategy(),
             seed=42,
         )
-        assert gm.width == 3 and gm.height == 3
+        assert gm.width == 3
+        assert gm.height == 3
 
     def test_1x1_grid(self) -> None:
         """A 1×1 grid should not crash."""
@@ -150,22 +151,22 @@ class TestPerlinStrategyValidation:
 
     def test_invalid_scale_zero(self) -> None:
         """Scale of 0.0 raises ValueError."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"scale must be positive"):
             PerlinNoiseStrategy(scale=0.0)
 
     def test_invalid_scale_negative(self) -> None:
         """Negative scale raises ValueError."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"scale must be positive"):
             PerlinNoiseStrategy(scale=-0.1)
 
     def test_invalid_octaves_zero(self) -> None:
         """Zero octaves raises ValueError."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"octaves must be >= 1"):
             PerlinNoiseStrategy(octaves=0)
 
     def test_invalid_octaves_negative(self) -> None:
         """Negative octaves raises ValueError."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"octaves must be >= 1"):
             PerlinNoiseStrategy(octaves=-1)
 
 

@@ -246,11 +246,11 @@ class TestReturnBaseline:
         """Alpha outside (0, 1) should raise ValueError."""
         import pytest
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"alpha must be in \(0, 1\)"):
             ReturnBaseline(alpha=0.0)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"alpha must be in \(0, 1\)"):
             ReturnBaseline(alpha=1.0)
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"alpha must be in \(0, 1\)"):
             ReturnBaseline(alpha=-0.5)
 
     def test_baseline_with_reinforce_update(self) -> None:
@@ -504,7 +504,9 @@ class TestGradientClipping:
 
         # Parameters should differ due to clipping
         any_differ = False
-        for (_, p1), (_, p2) in zip(model1.named_parameters(), model2.named_parameters()):
+        for (_, p1), (_, p2) in zip(
+            model1.named_parameters(), model2.named_parameters(), strict=True
+        ):
             if not torch.allclose(p1, p2):
                 any_differ = True
                 break

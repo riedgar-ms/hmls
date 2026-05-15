@@ -145,7 +145,7 @@ class GameOrchestrator:
             # Wait for the client's response.
             try:
                 await asyncio.wait_for(player.wait_for_action(), timeout=300.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 logger.warning("Team %s timed out. Ending game.", team)
                 self.game_over = True
                 break
@@ -209,5 +209,5 @@ class GameOrchestrator:
                 result = self.engine.make_result()
                 self.history_file.write_text(result.model_dump_json(indent=2), encoding="utf-8")
                 logger.info("Game history saved to %s", self.history_file.resolve())
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.error("Failed to save game history: %s", exc)

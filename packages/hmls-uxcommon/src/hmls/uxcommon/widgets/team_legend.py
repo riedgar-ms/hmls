@@ -32,7 +32,7 @@ class TeamLegend(Static):
         self,
         team_styles: dict[str, str],
         *,
-        id: str | None = None,
+        id: str | None = None,  # noqa: A002 -- matches Textual Widget API
     ) -> None:
         super().__init__(id=id)
         self._team_styles = team_styles

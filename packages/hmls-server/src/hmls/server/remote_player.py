@@ -76,7 +76,7 @@ class RemotePlayer(PendingActionPlayer):
             RuntimeError: If no turn is pending.
         """
         if self._action_future is None:
-            raise RuntimeError("No pending turn to wait for")
+            raise RuntimeError("No pending turn to wait for")  # noqa: EM101
         action = await self._action_future
         self._pending_action = action
         return action
@@ -91,7 +91,8 @@ class RemotePlayer(PendingActionPlayer):
             RuntimeError: If no turn is pending or action already submitted.
         """
         if self._action_future is None or self._action_future.done():
-            raise RuntimeError("No pending turn or action already submitted")
+            msg = "No pending turn or action already submitted"
+            raise RuntimeError(msg)
         self._action_future.set_result(action)
 
     def _no_action_message(self) -> str:

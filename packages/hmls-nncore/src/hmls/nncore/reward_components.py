@@ -67,7 +67,7 @@ class RewardComponent(ABC):
             The reward value (may be positive, negative, or zero).
         """
 
-    def reset(self) -> None:
+    def reset(self) -> None:  # noqa: B027
         """Reset per-episode state.  Default: no-op."""
 
 

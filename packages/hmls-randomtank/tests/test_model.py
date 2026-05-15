@@ -49,12 +49,12 @@ class TestRandomTankModelConfig:
 
     def test_negative_probability_rejected(self) -> None:
         """Negative probabilities should be rejected."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"greater than or equal to 0"):
             RandomTankModelConfig(prob_forward_on_passable=-0.1)
 
     def test_probability_above_one_rejected(self) -> None:
         """Probabilities above 1.0 should be rejected."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r"less than or equal to 1"):
             RandomTankModelConfig(prob_turn_left_on_blocked=1.5)
 
     def test_json_round_trip(self) -> None:

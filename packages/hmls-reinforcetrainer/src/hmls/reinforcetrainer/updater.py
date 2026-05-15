@@ -57,7 +57,7 @@ class ReturnBaseline:
 
     def __init__(self, alpha: float = 0.99) -> None:
         if not 0.0 < alpha < 1.0:
-            raise ValueError(f"alpha must be in (0, 1), got {alpha}")
+            raise ValueError(f"alpha must be in (0, 1), got {alpha}")  # noqa: EM102
         self._alpha = alpha
         self._mean: float | None = None
         self._var: float | None = None

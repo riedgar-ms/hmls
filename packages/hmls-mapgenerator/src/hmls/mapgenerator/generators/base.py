@@ -173,10 +173,11 @@ def register_strategy(cls: type[MapStrategy]) -> type[MapStrategy]:
         TypeError: If *cls* does not define a ``display_name`` class variable.
     """
     if not hasattr(cls, "display_name") or not isinstance(cls.display_name, str):
-        raise TypeError(
+        msg = (
             f"{cls.__name__} must define a 'display_name' class variable "
             f"(str) to be registered as a map strategy."
         )
+        raise TypeError(msg)
     STRATEGY_REGISTRY[cls.display_name] = cls
     return cls
 
@@ -227,14 +228,16 @@ def generate_map(
     from hmls.mapgenerator.generators.blob_and_line import BlobAndLineStrategy
 
     if not 0.0 <= impassable_fraction <= 1.0:
-        raise ValueError(f"impassable_fraction must be 0.0–1.0, got {impassable_fraction}")
+        msg = f"impassable_fraction must be 0.0–1.0, got {impassable_fraction}"
+        raise ValueError(msg)
 
     # Handle deprecated ``shape`` parameter
     if shape is not None and strategy is not None:
-        raise TypeError(
+        msg = (
             "Cannot pass both 'shape' and 'strategy'. "
             "Use strategy=BlobAndLineStrategy(shape=X) instead."
         )
+        raise TypeError(msg)
     if shape is not None:
         warnings.warn(
             "The 'shape' parameter is deprecated. "

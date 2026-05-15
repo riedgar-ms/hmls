@@ -56,7 +56,7 @@ class PatchView(Static):
         patch: TankPatch,
         *,
         is_active: bool = False,
-        id: str | None = None,
+        id: str | None = None,  # noqa: A002 -- matches Textual Widget API
     ) -> None:
         super().__init__(id=id)
         self._tank_id = tank_id

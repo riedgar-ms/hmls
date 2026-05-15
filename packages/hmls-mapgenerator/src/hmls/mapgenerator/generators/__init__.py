@@ -35,11 +35,11 @@ from hmls.mapgenerator.generators.blob_and_line import BlobAndLineStrategy  # no
 from hmls.mapgenerator.generators.perlin import PerlinNoiseStrategy  # noqa: E402
 
 __all__ = [
-    "generate_map",
-    "MapStrategy",
-    "StrategyParam",
     "STRATEGY_REGISTRY",
-    "register_strategy",
     "BlobAndLineStrategy",
+    "MapStrategy",
     "PerlinNoiseStrategy",
+    "StrategyParam",
+    "generate_map",
+    "register_strategy",
 ]

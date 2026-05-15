@@ -40,7 +40,7 @@ class MapView(Static):
         game_map: GameMap,
         state: GameState,
         *,
-        id: str | None = None,
+        id: str | None = None,  # noqa: A002 -- matches Textual Widget API
     ) -> None:
         super().__init__(id=id)
         self._game_map = game_map

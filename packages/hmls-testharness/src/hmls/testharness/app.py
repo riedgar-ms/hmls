@@ -266,7 +266,7 @@ class TestHarnessApp(LogTabMixin, LogStatusMixin, App[None]):
             result = self._engine.make_result()
             path.write_text(result.model_dump_json(indent=2), encoding="utf-8")
             status.update(self._build_status_text() + f"\nSaved to {path.resolve()}")
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.debug("Failed to save history to %s", path, exc_info=True)
             status.update(self._build_status_text() + f"\nSave error: {exc}")
 

@@ -20,7 +20,7 @@ from pydantic import BaseModel
 
 from hmls.core.actions import apply_action, validate_action
 from hmls.core.game_state import GameState
-from hmls.core.map import GameMap
+from hmls.core.map import CellType, GameMap
 from hmls.core.player import Player
 from hmls.core.tank import Tank, TankId
 from hmls.core.types import Action
@@ -123,7 +123,7 @@ def _next_alive_tank(state: GameState, team: str, cursor: int) -> tuple[TankId, 
         idx = (cursor + i) % n
         if team_tanks[idx].alive:
             return team_tanks[idx].id, (idx + 1) % n
-    raise StopIteration(f"No alive tanks for team {team!r}")
+    raise StopIteration(f"No alive tanks for team {team!r}")  # noqa: EM102
 
 
 def _set_current_tank(state: GameState, tank_id: TankId) -> GameState:
@@ -148,6 +148,75 @@ def _determine_winner(state: GameState) -> str | None:
     max_count = max(alive_counts.values())
     leaders = [t for t, c in alive_counts.items() if c == max_count]
     return leaders[0] if len(leaders) == 1 else None
+
+
+# ── Input-validation helpers ──────────────────────────────────────────
+
+
+def _validate_basic_params(max_turns: int, patch_size: int) -> None:
+    """Check that *patch_size* and *max_turns* are sensible.
+
+    Raises:
+        ValueError: If *patch_size* is not odd or < 3, or *max_turns* < 1.
+    """
+    if patch_size < 3 or patch_size % 2 == 0:
+        msg = f"patch_size must be odd and >= 3, got {patch_size}"
+        raise ValueError(msg)
+    if max_turns < 1:
+        raise ValueError(f"max_turns must be >= 1, got {max_turns}")  # noqa: EM102
+
+
+def _validate_tanks(tanks: list[Tank], game_map: GameMap) -> None:
+    """Validate the tank list against the game map.
+
+    Checks that *tanks* is non-empty, all IDs are unique, no two tanks
+    share a position, and every tank is in bounds on a passable cell.
+
+    Raises:
+        ValueError: On any invalid tank configuration.
+    """
+    if not tanks:
+        raise ValueError("Must provide at least one tank")  # noqa: EM101
+
+    ids = [t.id for t in tanks]
+    if len(set(ids)) != len(ids):
+        raise ValueError("Tank IDs must be unique")  # noqa: EM101
+
+    positions = [t.position for t in tanks]
+    if len(set(positions)) != len(positions):
+        raise ValueError("Tanks must not share starting positions")  # noqa: EM101
+
+    for t in tanks:
+        if not game_map.in_bounds(t.position.x, t.position.y):
+            msg = f"Tank {t.id!r} is out of bounds at {t.position}"
+            raise ValueError(msg)
+        if game_map[t.position.x, t.position.y] != CellType.PASSABLE:
+            msg = f"Tank {t.id!r} starts on an impassable cell at {t.position}"
+            raise ValueError(msg)
+
+
+def _validate_teams(tanks: list[Tank], players: dict[str, Player]) -> None:
+    """Validate team/player consistency.
+
+    Checks exactly 2 teams exist, every team has a corresponding player,
+    and each player's ``team`` attribute matches its registration key.
+
+    Raises:
+        ValueError: On any team/player mismatch.
+    """
+    team_names = {t.team for t in tanks}
+    if len(team_names) != 2:
+        msg = f"Exactly 2 teams required, got {len(team_names)}: {team_names}"
+        raise ValueError(msg)
+
+    for team in team_names:
+        if team not in players:
+            raise ValueError(f"No player provided for team {team!r}")  # noqa: EM102
+
+    for name, player in players.items():
+        if player.team != name:
+            msg = f"Player registered under {name!r} has team {player.team!r}"
+            raise ValueError(msg)
 
 
 # ── Engine ────────────────────────────────────────────────────────────
@@ -207,7 +276,7 @@ class GameEngine:
         # Teams sorted alphabetically for deterministic alternation.
         self._team_order: list[str] = sorted({t.team for t in tanks})
         # Per-team cursors for cycling through tanks.
-        self._cursors: dict[str, int] = {t: 0 for t in self._team_order}
+        self._cursors: dict[str, int] = dict.fromkeys(self._team_order, 0)
         # Global turn counter (indexes into team_order for alternation).
         self._global_turn: int = 0
         self._turns_taken: int = 0
@@ -262,7 +331,8 @@ class GameEngine:
         """
         tank_id = self._state.current_tank_id
         if tank_id is None:
-            raise RuntimeError("No current tank (game may be over or not started)")
+            msg = "No current tank (game may be over or not started)"
+            raise RuntimeError(msg)
         return tank_id
 
     @property
@@ -305,48 +375,9 @@ class GameEngine:
         Raises:
             ValueError: On any invalid configuration.
         """
-        if patch_size < 3 or patch_size % 2 == 0:
-            raise ValueError(f"patch_size must be odd and >= 3, got {patch_size}")
-
-        if max_turns < 1:
-            raise ValueError(f"max_turns must be >= 1, got {max_turns}")
-
-        if not tanks:
-            raise ValueError("Must provide at least one tank")
-
-        # Unique IDs.
-        ids = [t.id for t in tanks]
-        if len(set(ids)) != len(ids):
-            raise ValueError("Tank IDs must be unique")
-
-        # Exactly 2 teams.
-        team_names = {t.team for t in tanks}
-        if len(team_names) != 2:
-            raise ValueError(f"Exactly 2 teams required, got {len(team_names)}: {team_names}")
-
-        # Every team has a player.
-        for team in team_names:
-            if team not in players:
-                raise ValueError(f"No player provided for team {team!r}")
-
-        # Player teams match.
-        for name, player in players.items():
-            if player.team != name:
-                raise ValueError(f"Player registered under {name!r} has team {player.team!r}")
-
-        # No overlapping positions.
-        positions = [t.position for t in tanks]
-        if len(set(positions)) != len(positions):
-            raise ValueError("Tanks must not share starting positions")
-
-        # All tanks in bounds and on passable cells.
-        for t in tanks:
-            if not game_map.in_bounds(t.position.x, t.position.y):
-                raise ValueError(f"Tank {t.id!r} is out of bounds at {t.position}")
-            from hmls.core.map import CellType
-
-            if game_map[t.position.x, t.position.y] != CellType.PASSABLE:
-                raise ValueError(f"Tank {t.id!r} starts on an impassable cell at {t.position}")
+        _validate_basic_params(max_turns, patch_size)
+        _validate_tanks(tanks, game_map)
+        _validate_teams(tanks, players)
 
     # ── Turn management ───────────────────────────────────────────
 
@@ -385,7 +416,7 @@ class GameEngine:
             RuntimeError: If the game is already over.
         """
         if self.game_over:
-            raise RuntimeError("Game is already over")
+            raise RuntimeError("Game is already over")  # noqa: EM101
 
         tank_id = self.current_tank_id
         team = self.current_team

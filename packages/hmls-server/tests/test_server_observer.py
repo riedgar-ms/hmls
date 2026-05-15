@@ -170,7 +170,7 @@ class TestObserverBroadcast:
             """Fake WebSocket that raises on send."""
 
             async def send_text(self, msg: str) -> None:
-                raise ConnectionError("Gone")
+                raise ConnectionError("Gone")  # noqa: EM101
 
         good = GoodWebSocket()
         bad = BadWebSocket()

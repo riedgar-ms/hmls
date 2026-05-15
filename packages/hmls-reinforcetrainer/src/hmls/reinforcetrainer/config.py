@@ -36,13 +36,14 @@ class MapConfig(BaseModel, frozen=True, extra="forbid"):
     strategy: str = "Blob & Line"
 
     @model_validator(mode="after")
-    def _check_size_bounds(self) -> "MapConfig":
+    def _check_size_bounds(self) -> MapConfig:
         """Ensure max_size >= min_size."""
         if self.max_size < self.min_size:
-            raise ValueError(
+            msg = (
                 f"max_size ({self.max_size}) must be greater than or equal to "
                 f"min_size ({self.min_size})"
             )
+            raise ValueError(msg)
         return self
 
 
@@ -62,10 +63,11 @@ class GameConfig(BaseModel, frozen=True, extra="forbid"):
     patch_size: int = Field(default=9, ge=3)
 
     @model_validator(mode="after")
-    def _check_patch_size_odd(self) -> "GameConfig":
+    def _check_patch_size_odd(self) -> GameConfig:
         """Ensure patch_size is odd."""
         if self.patch_size % 2 == 0:
-            raise ValueError(f"patch_size must be odd, got {self.patch_size}")
+            msg = f"patch_size must be odd, got {self.patch_size}"
+            raise ValueError(msg)
         return self
 
 

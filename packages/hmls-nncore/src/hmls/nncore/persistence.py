@@ -34,26 +34,24 @@ from __future__ import annotations
 import json
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Generic, Literal, TypeVar
+from typing import Any, Literal
 
 import torch
 
 from hmls.nncore.model import TankModelBase, TankModelConfig
+from hmls.nncore.player import NNPlayerBase
 from hmls.nncore.reward import RewardConfig
 
 MODEL_CONFIG_FILENAME = "model_config.json"
 
 logger = logging.getLogger(__name__)
 
-ModelT = TypeVar("ModelT", bound=TankModelBase)
-ConfigT = TypeVar("ConfigT", bound=TankModelConfig)
-
-
 # ── Persistence ABC ──────────────────────────────────────────────────
 
 
-class ModelPersistence(ABC, Generic[ConfigT, ModelT]):
+class ModelPersistence[ConfigT: TankModelConfig, ModelT: TankModelBase](ABC):
     """Abstract base class for model persistence and factory operations.
 
     Every model package must provide a concrete implementation of this
@@ -155,7 +153,7 @@ class ModelPersistence(ABC, Generic[ConfigT, ModelT]):
         team: str,
         model: ModelT,
         mode: Literal["play", "learn"],
-    ) -> Any:
+    ) -> NNPlayerBase:
         """Create a player instance for the given model.
 
         Args:
@@ -165,8 +163,7 @@ class ModelPersistence(ABC, Generic[ConfigT, ModelT]):
                 for stochastic sampling with trajectory recording.
 
         Returns:
-            A player instance (typically an
-            :class:`~hmls.nncore.player.NNPlayerBase` subclass).
+            An :class:`~hmls.nncore.player.NNPlayerBase` instance.
         """
         ...
 
@@ -174,7 +171,9 @@ class ModelPersistence(ABC, Generic[ConfigT, ModelT]):
 # ── NNPlayer-based concrete implementation ────────────────────────────
 
 
-class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
+class NNPlayerModelPersistence[ConfigT: TankModelConfig, ModelT: TankModelBase](
+    ModelPersistence[ConfigT, ModelT],
+):
     """Persistence implementation for NNPlayer-based models.
 
     Handles the common pattern shared by all models that use:
@@ -213,7 +212,9 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
         self,
         config_cls: type[ConfigT],
         model_cls: type[ModelT],
-        player_factory: Any | None = None,
+        player_factory: (
+            Callable[[str, ModelT, Literal["play", "learn"]], NNPlayerBase] | None
+        ) = None,
     ) -> None:
         self._config_cls = config_cls
         self._model_cls = model_cls
@@ -261,7 +262,7 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
         reward configuration from their own run config.
         """
         if not path.exists():
-            raise FileNotFoundError(f"Model file not found: {path}")
+            raise FileNotFoundError(f"Model file not found: {path}")  # noqa: EM102
 
         save_data: dict[str, Any] = torch.load(path, weights_only=True)
 
@@ -287,11 +288,12 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
         """Load a model config from ``model_config.json``."""
         path = directory / MODEL_CONFIG_FILENAME
         if not path.exists():
-            raise FileNotFoundError(
+            msg = (
                 f"Model configuration file not found: {path}. "
                 f"Each model directory must contain a "
                 f"'{MODEL_CONFIG_FILENAME}'."
             )
+            raise FileNotFoundError(msg)
         return self._config_cls.model_validate_json(path.read_text())
 
     # ── Factory methods ───────────────────────────────────────────────
@@ -305,7 +307,7 @@ class NNPlayerModelPersistence(ModelPersistence[ConfigT, ModelT]):
         team: str,
         model: ModelT,
         mode: Literal["play", "learn"],
-    ) -> Any:
+    ) -> NNPlayerBase:
         """Create an NNPlayer (or custom player) for the given model."""
         if self._player_factory is not None:
             return self._player_factory(team, model, mode)
@@ -357,16 +359,18 @@ def read_model_id(directory: Path) -> str:
     """
     config_path = directory / MODEL_CONFIG_FILENAME
     if not config_path.exists():
-        raise FileNotFoundError(
+        msg = (
             f"Model configuration file not found: {config_path}. "
             f"Each model directory must contain a '{MODEL_CONFIG_FILENAME}'."
         )
+        raise FileNotFoundError(msg)
     data = json.loads(config_path.read_text())
     if "model_id" not in data:
-        raise KeyError(
+        msg = (
             f"'model_id' field missing from {config_path}. "
             f"Each model_config.json must specify the model identifier."
         )
+        raise KeyError(msg)
     model_id: str = data["model_id"]
     return model_id
 
@@ -483,7 +487,7 @@ def create_player(
     team: str,
     model: TankModelBase,
     mode: Literal["play", "learn"],
-) -> Any:
+) -> NNPlayerBase:
     """Create a player instance using the model registry.
 
     Each model's ``PERSISTENCE`` instance must implement

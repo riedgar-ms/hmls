@@ -48,7 +48,7 @@ class _StubModel(TankModelBase):
 # ── Shared fixture ────────────────────────────────────────────────────
 
 
-@pytest.fixture()
+@pytest.fixture
 def persistence() -> NNPlayerModelPersistence[_StubConfig, _StubModel]:
     """Return an NNPlayerModelPersistence for the stub types."""
     return NNPlayerModelPersistence(_StubConfig, _StubModel)
@@ -78,7 +78,9 @@ class TestModelData:
         assert loaded.config.hidden_size == model.config.hidden_size
 
         # Check weights match
-        for (k1, v1), (k2, v2) in zip(model.state_dict().items(), loaded.state_dict().items()):
+        for (k1, v1), (k2, v2) in zip(
+            model.state_dict().items(), loaded.state_dict().items(), strict=True
+        ):
             assert k1 == k2
             assert torch.equal(v1, v2)
 

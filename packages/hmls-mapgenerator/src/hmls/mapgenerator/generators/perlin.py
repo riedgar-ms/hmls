@@ -192,9 +192,9 @@ class PerlinNoiseStrategy(MapStrategy):
             ValueError: If parameters are out of range.
         """
         if not 0.0 < scale:
-            raise ValueError(f"scale must be positive, got {scale}")
+            raise ValueError(f"scale must be positive, got {scale}")  # noqa: EM102
         if not 1 <= octaves:
-            raise ValueError(f"octaves must be >= 1, got {octaves}")
+            raise ValueError(f"octaves must be >= 1, got {octaves}")  # noqa: EM102
         self.scale = scale
         self.octaves = octaves
 
