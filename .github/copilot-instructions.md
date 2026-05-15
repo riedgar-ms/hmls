@@ -11,7 +11,7 @@ This is an early-stage experimental repo. Keep experiments self-contained in the
 - **Type annotations**: All function signatures must be fully type-annotated (parameters and return types). Variables with non-obvious types should also be annotated.
 - **Documentation**: All modules, classes, and public functions must have docstrings. Prefer clarity over brevity.
 - **Code clarity over micro-optimisation**: Prioritise readable, well-documented code. Always choose efficient algorithms, but do not sacrifice clarity for low-level performance tricks.
-- **Serialisation**: Use Pydantic models when serialisation/deserialisation is needed.
+- **Serialisation**: Use Pydantic models when serialisation/deserialisation is needed. When a Pydantic class has both a Python docstring and Pydantic annotations (e.g. `name`, `description`), they must be kept consistent.
 - **File paths**: Prefer `pathlib.Path` over `os.path`.
 - **Tooling**: Use `uv` for project and dependency management. Use `pyproject.toml` (not `requirements.txt` or `setup.py`). When providing commands to run code, use `uv run` (e.g., `uv run python script.py`, `uv run mypy .`) rather than plain `python` invocations.
 - **TUI**: Use the `textual` package for all terminal user interface implementations.
