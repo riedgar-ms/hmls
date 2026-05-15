@@ -7,13 +7,13 @@ from typing import TYPE_CHECKING
 import pytest
 
 from hmls.core.types import Action, Position
-from hmls.nncore.reward import (
+from hmls.nncore.reward import RewardFunction
+from hmls.nncore.reward_config import (
     ActionsRewardConfig,
     ExplorationRewardConfig,
     FiringRewardConfig,
     GameStateRewardConfig,
     RewardConfig,
-    RewardFunction,
     SituationalRewardConfig,
 )
 

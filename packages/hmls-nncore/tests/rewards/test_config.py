@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from hmls.nncore.reward import (
+from hmls.nncore.reward_config import (
     ActionsRewardConfig,
     ExplorationRewardConfig,
     FiringRewardConfig,

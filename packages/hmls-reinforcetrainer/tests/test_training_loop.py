@@ -10,7 +10,7 @@ import torch
 
 from hmls.mapgenerator import BlobAndLineConfig, PerlinNoiseConfig
 from hmls.nncore.persistence import load_or_create_model
-from hmls.nncore.reward import ExplorationRewardConfig, FiringRewardConfig, RewardConfig
+from hmls.nncore.reward_config import ExplorationRewardConfig, FiringRewardConfig, RewardConfig
 from hmls.reinforcetrainer._testing.persistence import PERSISTENCE as STUB_PERSISTENCE
 from hmls.reinforcetrainer._testing.stub_model import StubModelConfig, StubTankModel
 from hmls.reinforcetrainer.config import (

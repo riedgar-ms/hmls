@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from hmls.core.types import Action, Position
-from hmls.nncore.reward import (
+from hmls.nncore.reward import RewardFunction
+from hmls.nncore.reward_config import (
     ActionsRewardConfig,
     ExplorationRewardConfig,
     RewardConfig,
-    RewardFunction,
 )
 
 if TYPE_CHECKING:

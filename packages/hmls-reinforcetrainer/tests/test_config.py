@@ -9,7 +9,7 @@ import pytest
 from pydantic import ValidationError
 
 from hmls.mapgenerator import BlobAndLineConfig, PerlinNoiseConfig
-from hmls.nncore.reward import FiringRewardConfig, GameStateRewardConfig, RewardConfig
+from hmls.nncore.reward_config import FiringRewardConfig, GameStateRewardConfig, RewardConfig
 from hmls.reinforcetrainer.config import (
     GameConfig,
     HyperparameterConfig,

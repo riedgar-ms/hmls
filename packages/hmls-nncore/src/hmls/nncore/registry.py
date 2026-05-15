@@ -21,10 +21,9 @@ from __future__ import annotations
 import importlib
 import logging
 from importlib.metadata import entry_points
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:
-    from hmls.nncore.persistence import ModelPersistence
+from hmls.nncore.persistence_base import ModelPersistence
 
 logger = logging.getLogger(__name__)
 
@@ -50,9 +49,6 @@ def discover_models() -> dict[str, ModelPersistence[Any, Any]]:
         ModelRegistryError: If duplicate entry-point names are detected
             among installed packages.
     """
-    # Lazy import: circular dependency with persistence.py
-    from hmls.nncore.persistence import ModelPersistence
-
     eps = entry_points(group=ENTRY_POINT_GROUP)
     registry: dict[str, ModelPersistence[Any, Any]] = {}
 
@@ -136,9 +132,6 @@ def resolve_model_id(model_id: str) -> ModelPersistence[Any, Any]:
             method, or if the resolved object is not a valid
             ``ModelPersistence`` instance.
     """
-    # Lazy import: circular dependency with persistence.py
-    from hmls.nncore.persistence import ModelPersistence
-
     # Step 1: Try as a short entry-point name
     registry = discover_models()
     if model_id in registry:
@@ -188,7 +181,7 @@ def resolve_model_id(model_id: str) -> ModelPersistence[Any, Any]:
         msg = (
             f"'{module_name}.PERSISTENCE' is not a ModelPersistence "
             f"instance (got {type(obj).__name__}). It must be an "
-            f"instance of hmls.nncore.persistence.ModelPersistence."
+            f"instance of hmls.nncore.persistence_base.ModelPersistence."
         )
         raise ModelRegistryError(msg)
 

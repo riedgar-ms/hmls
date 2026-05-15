@@ -1,24 +1,15 @@
-"""Model persistence with entry-point-based package registry.
+"""Concrete model persistence and registry-based dispatch.
 
-Provides model-agnostic save/load infrastructure that discovers the
-correct concrete persistence implementation at runtime via the
-``hmls.models`` entry-point registry (see :mod:`hmls.nncore.registry`).
-The ``model_id`` field in ``model_config.json`` may be either a
-short entry-point name (e.g. ``"singlemki"``) or a full Python import
-path (e.g. ``"hmls.singlemki"``).
+Provides :class:`NNPlayerModelPersistence`, a generic concrete
+implementation of :class:`~hmls.nncore.persistence_base.ModelPersistence`
+for models that use the standard torch checkpoint format (``model.pt``),
+JSON configuration files, and
+:class:`~hmls.nncore.player.NNPlayer` instances.
 
-Architecture
-~~~~~~~~~~~~
-
-:class:`ModelPersistence`
-    Abstract base class defining the full persistence + factory contract
-    that every model package must satisfy.
-
-:class:`NNPlayerModelPersistence`
-    A generic concrete implementation for models that use the standard
-    torch checkpoint format (``model.pt``), JSON configuration files,
-    and :class:`~hmls.nncore.player.NNPlayer` instances.  Parameterised
-    by the concrete config and model classes.
+Also provides registry-based dispatch helpers (:func:`load_model`,
+:func:`save_model`, etc.) that discover the correct persistence
+implementation at runtime via the ``hmls.models`` entry-point registry
+(see :mod:`hmls.nncore.registry`).
 
 Each model package (e.g. ``hmls.singlemki``) must expose a
 ``PERSISTENCE`` attribute — either via a ``persistence`` submodule or
@@ -33,7 +24,6 @@ from __future__ import annotations
 
 import json
 import logging
-from abc import ABC, abstractmethod
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal
@@ -41,132 +31,12 @@ from typing import Any, Literal
 import torch
 
 from hmls.nncore.model import TankModelBase, TankModelConfig
+from hmls.nncore.persistence_base import MODEL_CONFIG_FILENAME, ModelPersistence
 from hmls.nncore.player import NNPlayer, NNPlayerBase
-from hmls.nncore.reward import RewardConfig
-
-MODEL_CONFIG_FILENAME = "model_config.json"
+from hmls.nncore.registry import resolve_model_id
+from hmls.nncore.reward_config import RewardConfig
 
 logger = logging.getLogger(__name__)
-
-# ── Persistence ABC ──────────────────────────────────────────────────
-
-
-class ModelPersistence[ConfigT: TankModelConfig, ModelT: TankModelBase](ABC):
-    """Abstract base class for model persistence and factory operations.
-
-    Every model package must provide a concrete implementation of this
-    class and expose it as ``PERSISTENCE``, either in a ``persistence``
-    submodule or via an entry point registered under the ``hmls.models``
-    group.  The registry-based dispatch functions in this module
-    (:func:`load_model`, :func:`save_model`, etc.) look up the
-    ``PERSISTENCE`` instance and delegate to its methods.
-
-    Type parameters:
-        ConfigT: The concrete :class:`TankModelConfig` subclass.
-        ModelT: The concrete :class:`TankModelBase` subclass.
-    """
-
-    @abstractmethod
-    def save_model(
-        self,
-        model: ModelT,
-        path: Path,
-        reward_config: RewardConfig | None = None,
-        metadata: dict[str, Any] | None = None,
-    ) -> None:
-        """Save a trained model to disk.
-
-        Args:
-            model: The model to save.
-            path: Destination file path (typically ``.pt`` extension).
-            reward_config: Optional reward configuration to store as
-                **informational metadata only**.  This records which
-                reward shaping was in effect when the weights were
-                produced, but it is never read back or used by any
-                trainer on reload.  Trainers always derive their active
-                reward configuration from their own run config (e.g.
-                :class:`~hmls.reinforcetrainer.config.TrainerConfig`).
-            metadata: Optional dictionary of extra information.
-        """
-        ...
-
-    @abstractmethod
-    def load_model(self, path: Path) -> tuple[ModelT, dict[str, Any]]:
-        """Load a model from disk.
-
-        Args:
-            path: Path to the saved model file.
-
-        Returns:
-            A tuple of ``(model, metadata)`` where *metadata* is the
-            dict stored at save time (empty dict if none was provided).
-            If a ``reward_config`` was saved alongside the weights, it
-            is included in the metadata dict under the key
-            ``"reward_config"`` for **informational/auditing purposes
-            only** — trainers never consume it from here.
-
-        Raises:
-            FileNotFoundError: If *path* does not exist.
-        """
-        ...
-
-    @abstractmethod
-    def save_model_config(self, config: ConfigT, directory: Path) -> None:
-        """Save a model configuration to a directory.
-
-        Args:
-            config: The model configuration to save.
-            directory: Target directory (created if it does not exist).
-        """
-        ...
-
-    @abstractmethod
-    def load_model_config(self, directory: Path) -> ConfigT:
-        """Load a model configuration from a directory.
-
-        Args:
-            directory: Directory containing the config file.
-
-        Returns:
-            The loaded config instance.
-
-        Raises:
-            FileNotFoundError: If the config file is missing.
-        """
-        ...
-
-    @abstractmethod
-    def create_model(self, config: ConfigT) -> ModelT:
-        """Create a new model instance from configuration.
-
-        Args:
-            config: The model configuration.
-
-        Returns:
-            A freshly initialised model.
-        """
-        ...
-
-    @abstractmethod
-    def create_player(
-        self,
-        team: str,
-        model: ModelT,
-        mode: Literal["play", "learn"],
-    ) -> NNPlayerBase:
-        """Create a player instance for the given model.
-
-        Args:
-            team: The team this player controls.
-            model: The model to use for action selection.
-            mode: ``"play"`` for deterministic inference, ``"learn"``
-                for stochastic sampling with trajectory recording.
-
-        Returns:
-            An :class:`~hmls.nncore.player.NNPlayerBase` instance.
-        """
-        ...
-
 
 # ── NNPlayer-based concrete implementation ────────────────────────────
 
@@ -337,9 +207,6 @@ def _get_persistence(model_id: str) -> ModelPersistence[Any, Any]:
         ModelRegistryError: If the model cannot be resolved or does
             not provide a valid ``ModelPersistence`` instance.
     """
-    # Lazy import: circular dependency with registry.py
-    from hmls.nncore.registry import resolve_model_id
-
     return resolve_model_id(model_id)
 
 
