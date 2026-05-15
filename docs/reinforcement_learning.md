@@ -91,10 +91,10 @@ Reward values should generally be between -1 and 1, to keep all the neural netwo
 
 Why do we have so many different rewards?
 Well, while we care most about wins and losses, that is a very sparse signal - effectively one bit of information per game played.
-By adding more rewards (but will smaller values than the win/loss signal) we can encourage the model to behave in ways which we think will be useful.
+By adding more rewards (but with smaller values than the win/loss signal) we can encourage the model to behave in ways which we think will be useful.
 Of course, adding too many rewards and making their values too large will impose a method of play on the neural network.
 That is not what we want - we want to uncover the optimal strategy.
-Hence, getting rewards right is hard.
+Hence, _getting rewards right is hard_.
 
 #### Hyperparameters
 
