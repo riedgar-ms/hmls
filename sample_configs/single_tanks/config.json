@@ -1,6 +1,6 @@
 {
   "model_a": {
-    "dir": "weights/model_a",
+    "dir": "weights/model_b",
     "train": true,
     "reward": {
       "actions": {

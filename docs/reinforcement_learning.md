@@ -1,17 +1,18 @@
 # Reinforcement Learning in hmls
 
 This guide explains how to train a neural network to play the hmls tank game.
+At the current time, only single tanks are supported.
 
 The game's fog-of-war mechanic means a tank can only see a small patch of the map around it.
 It must make sequential decisions — move, turn, fire, or wait — based on partial information, and it must *remember* what it saw on previous turns.
-This makes the game a natural fit for reinforcement learning (RL), where an agent learns a policy by playing many games and receiving reward signals that tell it how well it's doing.
+This makes the game a natural fit for [reinforcement learning (RL)](https://en.wikipedia.org/wiki/Reinforcement_learning), where an agent learns a policy by playing many games and receiving reward signals that tell it how well it's doing.
 
-Several pre-built neural network architectures (called "tanks") are provided.
+Several pre-built neural network architectures are provided.
 You can train them against each other or against a rule-based opponent, and you can implement your own tank architectures.
 
 ## What is reinforcement learning
 
-In reinforcement learning an agent interacts with an environment over a sequence of time steps (an *episode*).
+In [reinforcement learning](https://en.wikipedia.org/wiki/Reinforcement_learning) an agent (for us, a player controlling a tank) interacts with an environment (the map and the opposing tank) over a sequence of time steps (an *episode*).
 At each step the agent observes the state of the world, takes an action, and receives a numeric *reward*.
 The goal is to learn a *policy* — a mapping from observations to actions — that maximises the total discounted reward over an episode:
 
@@ -29,7 +30,7 @@ A baseline (running average of returns) reduces variance.
 
 In practice, training involves playing thousands of games on randomly generated maps.
 Each game is one episode.
-The agent starts knowing nothing and gradually learns to explore, avoid walls, and (eventually) fight.
+The agent starts knowing nothing and gradually learns to explore, avoid impassable terrain, and (eventually) fight.
 
 ## Running the trainer
 
@@ -81,8 +82,19 @@ They are configured per-model in a `"reward"` block with categories:
 | **exploration** | `see_cell`, `occupy_cell` | Reward discovering new terrain |
 | **situational** | `enemy_in_cone` | Reward positioning relative to enemies |
 
+Note that rewards can be negative - for example, the 'reward' for a loss is actually a penalty.
+We use 'reward' for everything to match convention, and make penalties into negative rewards.
+
 Getting rewards right is the hardest part of training.
 Start with the sample config's values and adjust based on observed behaviour in the replay viewer.
+Reward values should generally be between -1 and 1, to keep all the neural network internals to a reasonable magnitude.
+
+Why do we have so many different rewards?
+Well, while we care most about wins and losses, that is a very sparse signal - effectively one bit of information per game played.
+By adding more rewards (but will smaller values than the win/loss signal) we can encourage the model to behave in ways which we think will be useful.
+Of course, adding too many rewards and making their values too large will impose a method of play on the neural network.
+That is not what we want - we want to uncover the optimal strategy.
+Hence, getting rewards right is hard.
 
 #### Hyperparameters
 
