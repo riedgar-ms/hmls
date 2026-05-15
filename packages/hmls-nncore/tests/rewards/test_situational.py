@@ -8,9 +8,9 @@ from hmls.core.map import CellType
 from hmls.core.tank import Tank
 from hmls.core.types import Action, Direction, Position
 from hmls.core.visibility import VisibleCell
-from hmls.nncore.reward import (
+from hmls.nncore.reward import RewardFunction
+from hmls.nncore.reward_config import (
     RewardConfig,
-    RewardFunction,
     SituationalRewardConfig,
 )
 

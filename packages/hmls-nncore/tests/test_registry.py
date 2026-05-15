@@ -6,7 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from hmls.nncore.persistence import ModelPersistence, NNPlayerModelPersistence
+from hmls.nncore.persistence import NNPlayerModelPersistence
+from hmls.nncore.persistence_base import ModelPersistence
 from hmls.nncore.registry import (
     ModelRegistryError,
     discover_models,

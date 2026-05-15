@@ -9,7 +9,7 @@ import torch
 
 from hmls.nncore.model import TankModelBase, TankModelConfig
 from hmls.nncore.persistence import NNPlayerModelPersistence
-from hmls.nncore.reward import FiringRewardConfig, RewardConfig
+from hmls.nncore.reward_config import FiringRewardConfig, RewardConfig
 
 # ── Minimal stub model for testing ────────────────────────────────────
 

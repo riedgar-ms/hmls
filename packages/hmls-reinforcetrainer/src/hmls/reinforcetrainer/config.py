@@ -17,7 +17,7 @@ from hmls.mapgenerator import (
     BlobAndLineConfig,
     PerlinNoiseConfig,
 )
-from hmls.nncore.reward import RewardConfig
+from hmls.nncore.reward_config import RewardConfig
 
 StrategyConfigField = Annotated[
     BlobAndLineConfig | PerlinNoiseConfig,
