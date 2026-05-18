@@ -78,7 +78,6 @@ select = [
 [tool.mypy]
 plugins = ["pydantic.mypy"]
 strict = true
-explicit_package_bases = true
 python_version = "3.14"
 
 [tool.pytest.ini_options]

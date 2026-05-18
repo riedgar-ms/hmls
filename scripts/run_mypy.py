@@ -1,11 +1,34 @@
 """Run mypy with auto-discovered source roots for all workspace packages.
 
-This script eliminates the need for a manually-maintained mypy_path in
-pyproject.toml by dynamically computing source roots from the workspace
-structure. It runs mypy once per package, passing MYPYPATH so that each
-package's src/ and test files are correctly resolved.
+Why this script exists
+---------------------
+mypy has no native monorepo/workspace mode. In a uv workspace where multiple
+packages each have their own tests/ directory, running ``mypy .`` globally
+fails with "Duplicate module named 'tests'" (and similarly for identically-named
+test files like test_player.py across packages). This is a long-standing mypy
+limitation (https://github.com/python/mypy/issues/4008, open since 2018) with
+no upstream fix planned.
 
-Usage:
+The standard workaround — used by projects like Apache Airflow — is to invoke
+mypy separately per package. This script automates that:
+
+1. Auto-discovers all packages under packages/ (no manual list to maintain).
+2. Builds MYPYPATH from all packages' src/ directories so cross-package
+   hmls.* imports resolve correctly.
+3. Runs mypy once per package (src + tests together) to avoid name collisions.
+
+Alternatives considered
+-----------------------
+- ``files = ["packages/*/src"]`` in pyproject.toml: The ``files`` option supports
+  globs and works for source code, but cannot include test directories without
+  hitting the duplicate-module problem.
+- ``packages = ["hmls.core", ...]`` in pyproject.toml: Works for installed
+  source packages, but cannot type-check test files (they aren't installed).
+- **pyright**: Does not have this limitation and handles monorepos natively.
+  It may be worth evaluating as a replacement or complement to mypy in future.
+
+Usage
+-----
     uv run python scripts/run_mypy.py [mypy-args...]
 
 If no arguments are given, checks all packages. Pass specific paths or
@@ -99,4 +122,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
