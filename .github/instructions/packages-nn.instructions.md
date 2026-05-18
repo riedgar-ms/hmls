@@ -15,24 +15,27 @@ applyTo: "packages/hmls-singlemk*/**,packages/hmls-nncore/**,packages/hmls-rando
 | `hmls-randomtank` | Rule-based (deterministic fire, random movement) |
 | `hmls-reinforcetrainer` | REINFORCE policy-gradient trainer |
 
-## Tank Package Structure
+## Tank Package Requirements
 
-Every neural network tank package follows this structure:
+Every tank package must provide four semantic components:
+
+1. **Model config** — a frozen Pydantic `TankModelConfig` subclass defining architecture hyperparameters, serialised as `model_config.json`.
+2. **Model class** — a `TankModelBase` subclass (PyTorch `nn.Module`) implementing the forward pass.
+3. **Player** — an `NNPlayerBase` subclass supporting both `"play"` mode (inference) and `"learn"` mode (records log-probs for training). The generic `NNPlayer` from `hmls-nncore` handles this for standard NN tanks; a custom player is only needed for non-standard action logic (e.g. rule-based `hmls-randomtank`).
+4. **Persistence** — a `PERSISTENCE` constant (an `NNPlayerModelPersistence` instance) exposing load/save/create operations, registered via an entry point.
+
+The existing packages generally follow this file layout, though it is not prescribed:
 
 ```
 packages/hmls-singlemkX/
 ├── pyproject.toml          # Must include entry point
 ├── src/hmls/singlemkX/
 │   ├── __init__.py
-│   ├── model.py            # Frozen Pydantic config + PyTorch nn.Module
+│   ├── model.py            # Config class + model class
 │   ├── persistence.py      # PERSISTENCE constant
-│   └── player.py           # (optional) Custom NNPlayerBase subclass
+│   └── player.py           # (only if custom player needed)
 └── tests/
 ```
-
-The config class and model class are defined together in `model.py`.
-A custom `player.py` is only needed when the generic `NNPlayer` from
-`hmls-nncore` is insufficient (e.g. rule-based logic in `hmls-randomtank`).
 
 ## Entry Point Registration
 
