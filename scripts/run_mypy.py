@@ -103,6 +103,7 @@ def main() -> int:
     failed: list[str] = []
 
     for name, paths in targets:
+        print(f"Checking {name}...", flush=True)  # noqa: T201
         result = subprocess.run(
             ["mypy", "--explicit-package-bases", *paths],
             env=env,
