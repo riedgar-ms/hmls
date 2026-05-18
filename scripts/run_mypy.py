@@ -82,31 +82,38 @@ def main() -> int:
 
     # Default: run per-package to avoid duplicate module name conflicts
     # across packages (each package has its own tests/ directory).
+    # We check src/ and tests/ separately because without __init__.py in
+    # test directories (which would break pytest fixture resolution), mypy
+    # needs different source root configuration for each.
     workspace_tests = workspace_root / "tests"
-    targets: list[tuple[str, list[str]]] = []
+    targets: list[tuple[str, list[str], list[str]]] = []  # (name, paths, extra_mypy_path)
 
     for pkg_dir in package_dirs:
         src_dir = pkg_dir / "src"
         tests_dir = pkg_dir / "tests"
-        pkg_targets: list[str] = []
         if src_dir.is_dir():
-            pkg_targets.append(str(src_dir))
+            # For source: standard MYPYPATH is sufficient
+            targets.append((pkg_dir.name, [str(src_dir)], []))
         if tests_dir.is_dir():
-            pkg_targets.append(str(tests_dir))
-        if pkg_targets:
-            targets.append((pkg_dir.name, pkg_targets))
+            # For tests: add the package root so mypy resolves test imports
+            # relative to the package directory (avoids "found twice" errors)
+            targets.append((f"{pkg_dir.name} tests", [str(tests_dir)], [str(pkg_dir)]))
 
     # Also include workspace-level tests
     if workspace_tests.is_dir():
-        targets.append(("workspace tests", [str(workspace_tests)]))
+        targets.append(("workspace tests", [str(workspace_tests)], []))
 
     failed: list[str] = []
 
-    for name, paths in targets:
+    for name, paths, extra_paths in targets:
         print(f"Checking {name}...", flush=True)  # noqa: T201
+        pkg_env = env
+        if extra_paths:
+            combined = mypy_path + os.pathsep + os.pathsep.join(extra_paths)
+            pkg_env = {**env, "MYPYPATH": combined}
         result = subprocess.run(
             ["mypy", "--explicit-package-bases", *paths],
-            env=env,
+            env=pkg_env,
             cwd=str(workspace_root),
         )
         if result.returncode != 0:
