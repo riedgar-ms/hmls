@@ -12,7 +12,7 @@ Key package groups:
 - **Networking**: `hmls-protocol`, `hmls-networking`, `hmls-server`, `hmls-client`, `hmls-observer`
 - **UX (Textual TUI)**: `hmls-uxcommon`, `hmls-mapgenerator`, `hmls-testharness`, `hmls-replayviewer`
 
-When adding a new package, register it in the root `pyproject.toml` under both `[dependency-groups] dev` and `[tool.uv.sources]`, and add its src path to `[tool.mypy] mypy_path`.
+When adding a new package, register it in the root `pyproject.toml` under both `[dependency-groups] dev` and `[tool.uv.sources]`. The mypy configuration auto-discovers packages via `scripts/run_mypy.py`, so no manual path updates are needed.
 
 Neural network tank packages provide 4 semantic components (config, model, player, persistence) and register via `[project.entry-points."hmls.models"]` in their `pyproject.toml`. In practice, the config class and model class live together in `model.py`, and the player is typically the generic `NNPlayer` from `hmls-nncore` (a custom `player.py` is only needed for non-standard action logic). See `docs/reinforcement_learning.md` for details.
 
@@ -38,7 +38,7 @@ All code must pass the following before merging:
 ```shell
 ruff format --check .
 ruff check .
-mypy .
+uv run python scripts/run_mypy.py
 ```
 
 To auto-fix formatting: `ruff format .`
@@ -73,7 +73,7 @@ uv run pytest packages/hmls-core/tests/
 | Format code | `uv run ruff format .` |
 | Check formatting | `uv run ruff format --check .` |
 | Lint | `uv run ruff check .` |
-| Type check | `uv run mypy .` |
+| Type check | `uv run python scripts/run_mypy.py` |
 | Run tests | `uv run pytest` |
 | Run map generator | `uv run hmls-mapgenerator` |
 | Run test harness | `uv run hmls-testharness <map.json> <tanks>` |

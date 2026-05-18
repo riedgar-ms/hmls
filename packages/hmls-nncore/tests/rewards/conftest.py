@@ -119,34 +119,34 @@ def _make_patch_at(pos: Position, size: int = 9) -> TankPatch:
 @pytest.fixture
 def make_entry() -> MakeEntryFactory:
     """Fixture returning a factory for HistoryEntry objects."""
-    return _make_entry  # type: ignore[return-value]
+    return _make_entry
 
 
 @pytest.fixture
 def make_empty_patch() -> MakePatchFactory:
     """Fixture returning a factory for empty TankPatch objects."""
-    return _make_empty_patch  # type: ignore[return-value]
+    return _make_empty_patch
 
 
 @pytest.fixture
 def make_patch_with_enemy_ahead() -> MakePatchFactory:
     """Fixture returning a factory for patches with enemy directly ahead."""
-    return _make_patch_with_enemy_ahead  # type: ignore[return-value]
+    return _make_patch_with_enemy_ahead
 
 
 @pytest.fixture
 def make_patch_with_enemy_in_cone() -> MakePatchFactory:
     """Fixture returning a factory for patches with enemy in cone."""
-    return _make_patch_with_enemy_in_cone  # type: ignore[return-value]
+    return _make_patch_with_enemy_in_cone
 
 
 @pytest.fixture
 def make_patch_with_fogged_enemy() -> MakePatchFactory:
     """Fixture returning a factory for patches with fogged enemy."""
-    return _make_patch_with_fogged_enemy  # type: ignore[return-value]
+    return _make_patch_with_fogged_enemy
 
 
 @pytest.fixture
 def make_patch_at() -> MakePatchAtFactory:
     """Fixture returning a factory for patches at a specific position."""
-    return _make_patch_at  # type: ignore[return-value]
+    return _make_patch_at

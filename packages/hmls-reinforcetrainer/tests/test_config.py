@@ -250,7 +250,7 @@ class TestTrainerConfig:
     def test_invalid_loss_reduction_raises(self) -> None:
         """Invalid loss_reduction value raises ValidationError."""
         with pytest.raises(ValidationError):
-            HyperparameterConfig(loss_reduction="max")  # type: ignore[arg-type]
+            HyperparameterConfig(loss_reduction="max")
 
     def test_default_max_grad_norm_is_none(self, tmp_path: Path) -> None:
         """Default max_grad_norm is None (no clipping)."""
