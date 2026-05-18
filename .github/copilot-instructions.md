@@ -23,7 +23,7 @@ Neural network tank packages provide 4 semantic components (config, model, playe
 - **Code clarity over micro-optimisation**: Prioritise readable, well-documented code. Always choose efficient algorithms, but do not sacrifice clarity for low-level performance tricks.
 - **Serialisation**: Use Pydantic models when serialisation/deserialisation is needed. When a Pydantic class has both a Python docstring and Pydantic annotations (e.g. `name`, `description`), they must be kept consistent.
 - **File paths**: Prefer `pathlib.Path` over `os.path`.
-- **Tooling**: Use `uv` for project and dependency management. Use `pyproject.toml` (not `requirements.txt` or `setup.py`). When providing commands to run code, use `uv run` (e.g., `uv run python script.py`, `uv run mypy .`) rather than plain `python` invocations.
+- **Tooling**: Use `uv` for project and dependency management. Use `pyproject.toml` (not `requirements.txt` or `setup.py`). When providing commands to run code, use `uv run` (e.g., `uv run python script.py`, `uv run pytest`) rather than plain `python` invocations.
 - **TUI**: Use the `textual` package for all terminal user interface implementations.
 
 ## Git
