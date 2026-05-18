@@ -12,18 +12,20 @@ Create a new neural network tank architecture for the hmls game.
 
 3. **Rename the namespace** — the Python package is `hmls.<tankname>` under `src/hmls/<tankname>/`.
 
-4. **Define the model config** (`config.py`):
-   - Create a frozen Pydantic `BaseModel` with architecture hyperparameters.
+4. **Define the model config** (`model.py`):
+   - Create a frozen Pydantic `BaseModel` subclassing `TankModelConfig` with architecture hyperparameters.
    - Include a `model_id` class variable matching your entry point key.
 
 5. **Implement the model** (`model.py`):
-   - Subclass `torch.nn.Module`.
+   - In the same file as the config, subclass `torch.nn.Module` via `TankModelBase`.
    - Input: encoded patch tensor of shape `[5, patch_size, patch_size]`.
    - Output: 5 action logits (MOVE_FORWARD, TURN_LEFT, TURN_RIGHT, FIRE, PASS).
    - If using temporal memory (GRU/LSTM), expose hidden state management.
 
-6. **Implement the player** (`player.py`):
-   - Subclass `hmls.nncore.player.NNPlayerBase`.
+6. **Implement the player** (`player.py`, optional):
+   - Only needed if the generic `NNPlayer` from `hmls-nncore` is insufficient
+     (e.g. rule-based action logic as in `hmls-randomtank`).
+   - If needed, subclass `hmls.nncore.player.NNPlayerBase`.
    - Handle both `"play"` mode (argmax/sample from logits) and `"learn"` mode (record log-probs).
 
 7. **Create persistence** (`persistence.py`):

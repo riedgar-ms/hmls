@@ -24,12 +24,15 @@ packages/hmls-singlemkX/
 ├── pyproject.toml          # Must include entry point
 ├── src/hmls/singlemkX/
 │   ├── __init__.py
-│   ├── config.py           # Frozen Pydantic model config
-│   ├── model.py            # PyTorch nn.Module
-│   ├── player.py           # NNPlayerBase subclass
-│   └── persistence.py      # PERSISTENCE constant
+│   ├── model.py            # Frozen Pydantic config + PyTorch nn.Module
+│   ├── persistence.py      # PERSISTENCE constant
+│   └── player.py           # (optional) Custom NNPlayerBase subclass
 └── tests/
 ```
+
+The config class and model class are defined together in `model.py`.
+A custom `player.py` is only needed when the generic `NNPlayer` from
+`hmls-nncore` is insufficient (e.g. rule-based logic in `hmls-randomtank`).
 
 ## Entry Point Registration
 

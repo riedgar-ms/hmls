@@ -14,7 +14,7 @@ Key package groups:
 
 When adding a new package, register it in the root `pyproject.toml` under both `[dependency-groups] dev` and `[tool.uv.sources]`, and add its src path to `[tool.mypy] mypy_path`.
 
-Neural network tank packages follow a standard 4-component structure (config, model, player, persistence) and register via `[project.entry-points."hmls.models"]` in their `pyproject.toml`. See `docs/reinforcement_learning.md` for details.
+Neural network tank packages provide 4 semantic components (config, model, player, persistence) and register via `[project.entry-points."hmls.models"]` in their `pyproject.toml`. In practice, the config class and model class live together in `model.py`, and the player is typically the generic `NNPlayer` from `hmls-nncore` (a custom `player.py` is only needed for non-standard action logic). See `docs/reinforcement_learning.md` for details.
 
 ## Conventions
 
