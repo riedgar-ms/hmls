@@ -27,7 +27,10 @@ The trainer takes a JSON config file. Key sections:
     "min_size": 10,
     "max_size": 15,
     "impassable_fraction": 0.1,
-    "strategies": ["Blob", "Line"]
+    "strategies": [
+      { "type": "blob_and_line", "shape": 0.5 },
+      { "type": "perlin_noise", "scale": 0.08, "octaves": 3 }
+    ]
   }
 }
 ```
@@ -36,9 +39,12 @@ The trainer takes a JSON config file. Key sections:
 
 ```json
 {
-  "total_maps": 100,
-  "games_per_map": 10,
-  "max_turns": 400
+  "game": {
+    "total_maps": 200,
+    "games_per_map": 10,
+    "max_turns": 500,
+    "patch_size": 9
+  }
 }
 ```
 
