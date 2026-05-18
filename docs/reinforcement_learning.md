@@ -189,18 +189,23 @@ The easiest approach is to copy an existing tank package (e.g. `hmls-singlemkiii
 
 ### Required components
 
-1. **Model config** — a frozen Pydantic model defining the architecture
-   parameters. Serialised as `model_config.json`.
+1. **Model config** — a frozen Pydantic model (subclassing `TankModelConfig`)
+   defining the architecture parameters. Serialised as `model_config.json`.
 
-2. **Model class** — wraps the PyTorch `nn.Module`. Must implement the forward
-   pass and expose a `config` property.
+2. **Model class** — a `TankModelBase` subclass wrapping the PyTorch `nn.Module`.
+   Must implement the forward pass and expose a `config` property.
 
-3. **Player class** — inherits from `hmls.nncore.player.NNPlayerBase`. Handles
-   action selection in both `"play"` mode (inference only) and `"learn"` mode
-   (records log-probabilities for training).
+3. **Player** — the component that selects actions during gameplay. For most
+   neural network tanks, the generic `NNPlayer` from `hmls-nncore` handles
+   this automatically. Only create a custom player (subclassing
+   `hmls.nncore.player.NNPlayerBase`) if you need non-standard action logic
+   (see `hmls-randomtank` for an example).
 
-4. **Persistence object** — a module-level constant that the trainer discovers
-   via entry points. It tells the system how to load/save your model.
+4. **Persistence object** — a module-level `PERSISTENCE` constant that the
+   trainer discovers via entry points. It tells the system how to load/save
+   your model and create players. For standard NN tanks, use
+   `NNPlayerModelPersistence(YourConfig, YourModel)`. If you have a custom
+   player, pass a `player_factory` argument.
 
 ### Entry point registration
 
@@ -220,10 +225,13 @@ packages/hmls-mytank/
 ├── pyproject.toml
 └── src/hmls/mytank/
     ├── __init__.py
-    ├── config.py          # Pydantic model config
-    ├── model.py           # PyTorch model
-    ├── player.py          # NNPlayerBase subclass
-    └── persistence.py     # PERSISTENCE constant
+    ├── model.py           # Pydantic model config + PyTorch model
+    ├── persistence.py     # PERSISTENCE constant
+    └── player.py          # (optional) Custom NNPlayerBase subclass
 ```
+
+The config class and model class are conventionally defined together in
+`model.py`. A separate `player.py` is only needed if the generic `NNPlayer`
+from `hmls-nncore` is insufficient (e.g. rule-based action logic).
 
 See the existing tank packages for working examples of each component.

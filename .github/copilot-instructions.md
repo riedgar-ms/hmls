@@ -1,10 +1,20 @@
 # Copilot Instructions
 
-This repository contains assorted experiments in AI. It is Python-oriented (see `.gitignore`).
+A tank game and AI training framework, written in Python.
 
 ## Project structure
 
-This is an early-stage experimental repo. Keep experiments self-contained in their own directories with their own `pyproject.toml`.
+This is a `uv` workspace (see root `pyproject.toml`). All packages live under `packages/` and share a single lockfile. The namespace is `hmls.*` (e.g. `hmls.core`, `hmls.protocol`).
+
+Key package groups:
+- **Core**: `hmls-core` — game types, map, engine, visibility
+- **Neural networks**: `hmls-nncore` (base classes), `hmls-singlemki/ii/iii` (architectures), `hmls-randomtank` (rule-based), `hmls-reinforcetrainer`
+- **Networking**: `hmls-protocol`, `hmls-networking`, `hmls-server`, `hmls-client`, `hmls-observer`
+- **UX (Textual TUI)**: `hmls-uxcommon`, `hmls-mapgenerator`, `hmls-testharness`, `hmls-replayviewer`
+
+When adding a new package, register it in the root `pyproject.toml` under both `[dependency-groups] dev` and `[tool.uv.sources]`, and add its src path to `[tool.mypy] mypy_path`.
+
+Neural network tank packages provide 4 semantic components (config, model, player, persistence) and register via `[project.entry-points."hmls.models"]` in their `pyproject.toml`. In practice, the config class and model class live together in `model.py`, and the player is typically the generic `NNPlayer` from `hmls-nncore` (a custom `player.py` is only needed for non-standard action logic). See `docs/reinforcement_learning.md` for details.
 
 ## Conventions
 
@@ -40,3 +50,34 @@ When a ruff rule fires but the code is intentional, use inline `# noqa` comments
 - **EM101/EM102** (string/f-string in exception): If the `raise` statement (from `raise` to closing paren) is ≤60 characters, suppress with `# noqa: EM101` or `# noqa: EM102`. If longer, extract the message to a `msg` variable on the preceding line.
 - **BLE001** (blind `except Exception`): Suppress with `# noqa: BLE001` only when the caught exception is logged or otherwise reported to the user. Never silently swallow exceptions.
 - **ANN401** (`Any` type): Suppress with `# noqa: ANN401` only where `Any` is genuinely unavoidable (e.g. external library types, generic factory callables).
+
+## Testing
+
+Tests live in `packages/*/tests/` (per-package) and `tests/` (workspace-level). Run all tests:
+
+```shell
+uv run pytest
+```
+
+Run a specific package's tests:
+
+```shell
+uv run pytest packages/hmls-core/tests/
+```
+
+## Common commands
+
+| Task | Command |
+|------|---------|
+| Install all packages | `uv sync --all-packages` |
+| Format code | `uv run ruff format .` |
+| Check formatting | `uv run ruff format --check .` |
+| Lint | `uv run ruff check .` |
+| Type check | `uv run mypy .` |
+| Run tests | `uv run pytest` |
+| Run map generator | `uv run hmls-mapgenerator` |
+| Run test harness | `uv run hmls-testharness <map.json> <tanks>` |
+| Run replay viewer | `uv run hmls-replayviewer <history.json>` |
+| Train models | `uv run hmls-reinforcetrainer <config.json>` |
+| Start game server | `uv run hmls-server <map.json> <tanks>` |
+| Connect client | `uv run hmls-client ws://localhost:8765/ws --name <Name>` |
