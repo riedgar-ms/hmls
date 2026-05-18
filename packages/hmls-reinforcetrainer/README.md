@@ -82,24 +82,27 @@ Both model directories must contain `model_config.json`. If no `model.pt` exists
     "dir": "models/player_a",
     "train": true,
     "reward": {
-      "reward_type": "basic",
-      "fire_hit_reward": 0.5,
-      "exploration_reward": 0.05
+      "actions": { "move_forward": 0.03, "pass_action": -0.02 },
+      "firing": { "hit": 0.5, "miss": -0.05, "neglect": -0.3 },
+      "game_state": { "win": 1.0, "loss": -1.0, "step": -0.01 },
+      "exploration": { "see_cell": 0.02, "occupy_cell": 0.1 },
+      "situational": { "enemy_in_cone": 0.4 }
     }
   },
   "model_b": {
     "dir": "models/player_b",
     "train": true,
     "reward": {
-      "reward_type": "basic",
-      "fire_hit_reward": 0.3
+      "firing": { "hit": 0.3 }
     }
   },
   "map": {
     "min_size": 15,
     "max_size": 25,
     "impassable_fraction": 0.25,
-    "strategy": "Blob & Line"
+    "strategies": [
+      { "type": "blob_and_line", "shape": 0.5 }
+    ]
   },
   "game": {
     "games_per_map": 20,
@@ -146,28 +149,52 @@ The configuration file is a JSON object with the following sections. All section
 
 #### `reward` (nested in `model_a` / `model_b`)
 
-Each model can have its own reward shaping parameters. The `reward_type` field selects which reward function to use (currently only `"basic"` is supported). All fields have sensible defaults and may be omitted.
+Each model can have its own reward shaping parameters. The reward object has five nested sections, all optional (sensible defaults are provided).
+
+**`reward.actions`** — per-action rewards:
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `reward_type` | string | `"basic"` | Discriminator for the reward function type |
-| `fire_hit_reward` | float | `0.5` | Reward for hitting an enemy tank |
-| `death_reward` | float | `-1.0` | Reward (negative) when the player's tank dies |
-| `win_reward` | float | `1.0` | Reward for winning the game |
-| `loss_reward` | float | `-1.0` | Reward (negative) for losing the game |
-| `step_reward` | float | `-0.01` | Per-step reward (negative to encourage faster play) |
-| `exploration_reward` | float | `0.02` | Reward per newly discovered cell |
-| `invalid_move_reward` | float | `-0.1` | Reward (negative) for attempting an invalid action |
-| `fire_miss_reward` | float | `-0.05` | Reward (negative) for firing and missing |
-| `fire_neglect_reward` | float | `-0.1` | Reward (negative) for not firing when an enemy is directly ahead |
-| `consecutive_miss_reward` | float | `0.0` | Escalating reward multiplier for consecutive fire misses (typically negative) |
-| `pass_reward` | float | `-0.02` | Reward (negative) for deliberately choosing to pass |
-| `enemy_in_cone_reward` | float | `0.01` | Per-enemy reward for visible enemies in the forward cone |
-| `turn_left_reward` | float | `0.0` | Reward for choosing to turn left |
-| `turn_right_reward` | float | `0.0` | Reward for choosing to turn right |
-| `move_forward_reward` | float | `0.0` | Reward for choosing to move forward |
-| `consecutive_turn_reward` | float | `0.0` | Escalating reward multiplier for consecutive turns (typically negative) |
-| `consecutive_pass_reward` | float | `0.0` | Escalating reward multiplier for consecutive passes (typically negative) |
+| `move_forward` | float | `0.0` | Reward for choosing to move forward |
+| `turn_left` | float | `0.0` | Reward for choosing to turn left |
+| `turn_right` | float | `0.0` | Reward for choosing to turn right |
+| `fire` | float | `0.0` | Reward for choosing to fire (independent of hit/miss) |
+| `pass_action` | float | `-0.02` | Reward for deliberately choosing to pass |
+| `consecutive_turn` | float | `0.0` | Escalating multiplier for consecutive turns (× N) |
+| `consecutive_pass` | float | `0.0` | Escalating multiplier for consecutive passes (× N) |
+
+**`reward.firing`** — firing-outcome rewards:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `hit` | float | `0.5` | Reward for hitting an enemy tank |
+| `miss` | float | `-0.05` | Penalty for firing and missing |
+| `neglect` | float | `-0.1` | Penalty for not firing when an enemy is directly ahead |
+| `consecutive_miss` | float | `0.0` | Escalating multiplier for consecutive misses (× N) |
+
+**`reward.game_state`** — terminal and per-step rewards:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `win` | float | `1.0` | Reward for winning the game |
+| `loss` | float | `-1.0` | Penalty for losing the game |
+| `invalid_move` | float | `-0.1` | Penalty for attempting an invalid action |
+| `step` | float | `-0.01` | Per-step cost (encourages faster play) |
+| `death` | float | `-1.0` | Penalty when the player's tank dies |
+
+**`reward.exploration`** — discovery rewards:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `see_cell` | float | `0.02` | Reward per newly seen cell |
+| `occupy_cell` | float | `0.0` | Reward per newly occupied cell |
+
+**`reward.situational`** — positional rewards:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `enemy_in_cone` | float | `0.01` | Per-enemy reward for enemies visible in forward cone |
+| `enemy_in_cone_distance_discount` | float | `1.0` | Discount per Manhattan distance unit (1.0 = no discount) |
 
 ### `map`
 
@@ -176,7 +203,11 @@ Each model can have its own reward shaping parameters. The `reward_type` field s
 | `min_size` | int | `15` | Minimum width/height of generated maps (≥5) |
 | `max_size` | int | `25` | Maximum width/height of generated maps (≥ min_size) |
 | `impassable_fraction` | float | `0.3` | Fraction of cells that are impassable (0.0–0.8) |
-| `strategy` | string | `"Blob & Line"` | Map generation strategy name |
+| `strategies` | list | `[{"type": "blob_and_line"}]` | List of strategy configs (discriminated on `type`); trainer cycles round-robin |
+
+Available strategy types:
+- `blob_and_line` — fields: `shape` (float, default 0.5)
+- `perlin_noise` — fields: `scale` (float), `octaves` (int)
 
 Each time a new map is generated, the width and height are chosen independently and uniformly at random from the inclusive range [`min_size`, `max_size`].
 
@@ -206,6 +237,17 @@ The `patch_size` must match the `patch_size` in both models' `model_config.json`
 | `learning_rate` | float | `0.001` | Adam optimizer learning rate (>0) |
 | `gamma` | float | `0.99` | Discount factor for return computation (0–1] |
 | `seed` | int \| null | `null` | Random seed for reproducibility |
+| `baseline_alpha` | float | `0.99` | EMA decay for the return baseline (higher = adapts more slowly) |
+| `entropy_coeff` | float | `0.01` | Weight of entropy bonus (encourages exploration; 0.0 disables) |
+| `loss_reduction` | `"sum"` \| `"mean"` | `"sum"` | How to aggregate per-step loss (`"mean"` is more stable with varying episode lengths) |
+| `max_grad_norm` | float \| null | `null` | Gradient clipping threshold (null disables) |
+
+### `lethargy`
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `policy` | `"none"` \| `"consecutive_turn_limit"` | `"consecutive_turn_limit"` | Lethargy detection policy |
+| `max_consecutive_turns` | int | `5` | Threshold for consecutive turns before forced loss (≥2) |
 
 ## Output
 

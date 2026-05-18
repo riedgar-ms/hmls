@@ -35,7 +35,7 @@ directory is created automatically.
 | Section          | Key choices                              |
 |------------------|------------------------------------------|
 | Models           | Both models train; basic reward shaping  |
-| Maps             | 10–15 cells, 10% impassable, Blob & Line|
+| Maps             | 10–15 cells, 10% impassable, blob_and_line & perlin_noise |
 | Games            | 10 games/map × 100 maps, 400 turn limit |
 | Hyperparameters  | lr=0.001, γ=0.995, entropy bonus, grad clip |
 | Lethargy         | Consecutive-turn limit (10)              |
