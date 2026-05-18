@@ -24,7 +24,7 @@ from hmls.mapgenerator.generators.perlin import (
 )
 
 # TypeAdapter for parsing the discriminated union from JSON.
-_strategy_adapter: TypeAdapter[StrategyConfig] = TypeAdapter(StrategyConfig)  # type: ignore[type-var]
+_strategy_adapter: TypeAdapter[StrategyConfig] = TypeAdapter(StrategyConfig)
 
 
 # ── BlobAndLineConfig ─────────────────────────────────────────────────

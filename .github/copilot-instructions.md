@@ -12,7 +12,7 @@ Key package groups:
 - **Networking**: `hmls-protocol`, `hmls-networking`, `hmls-server`, `hmls-client`, `hmls-observer`
 - **UX (Textual TUI)**: `hmls-uxcommon`, `hmls-mapgenerator`, `hmls-testharness`, `hmls-replayviewer`
 
-When adding a new package, register it in the root `pyproject.toml` under both `[dependency-groups] dev` and `[tool.uv.sources]`, and add its src path to `[tool.mypy] mypy_path`.
+When adding a new package, register it in the root `pyproject.toml` under both `[dependency-groups] dev` and `[tool.uv.sources]`. The mypy configuration auto-discovers packages via `scripts/run_mypy.py`, so no manual path updates are needed.
 
 Neural network tank packages provide 4 semantic components (config, model, player, persistence) and register via `[project.entry-points."hmls.models"]` in their `pyproject.toml`. In practice, the config class and model class live together in `model.py`, and the player is typically the generic `NNPlayer` from `hmls-nncore` (a custom `player.py` is only needed for non-standard action logic). See `docs/reinforcement_learning.md` for details.
 
@@ -23,7 +23,7 @@ Neural network tank packages provide 4 semantic components (config, model, playe
 - **Code clarity over micro-optimisation**: Prioritise readable, well-documented code. Always choose efficient algorithms, but do not sacrifice clarity for low-level performance tricks.
 - **Serialisation**: Use Pydantic models when serialisation/deserialisation is needed. When a Pydantic class has both a Python docstring and Pydantic annotations (e.g. `name`, `description`), they must be kept consistent.
 - **File paths**: Prefer `pathlib.Path` over `os.path`.
-- **Tooling**: Use `uv` for project and dependency management. Use `pyproject.toml` (not `requirements.txt` or `setup.py`). When providing commands to run code, use `uv run` (e.g., `uv run python script.py`, `uv run mypy .`) rather than plain `python` invocations.
+- **Tooling**: Use `uv` for project and dependency management. Use `pyproject.toml` (not `requirements.txt` or `setup.py`). When providing commands to run code, use `uv run` (e.g., `uv run python script.py`, `uv run pytest`) rather than plain `python` invocations.
 - **TUI**: Use the `textual` package for all terminal user interface implementations.
 
 ## Git
@@ -38,7 +38,7 @@ All code must pass the following before merging:
 ```shell
 ruff format --check .
 ruff check .
-mypy .
+uv run python scripts/run_mypy.py
 ```
 
 To auto-fix formatting: `ruff format .`
@@ -73,7 +73,7 @@ uv run pytest packages/hmls-core/tests/
 | Format code | `uv run ruff format .` |
 | Check formatting | `uv run ruff format --check .` |
 | Lint | `uv run ruff check .` |
-| Type check | `uv run mypy .` |
+| Type check | `uv run python scripts/run_mypy.py` |
 | Run tests | `uv run pytest` |
 | Run map generator | `uv run hmls-mapgenerator` |
 | Run test harness | `uv run hmls-testharness <map.json> <tanks>` |
