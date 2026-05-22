@@ -6,8 +6,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from hmls.core.engine import GameResult
 from hmls.core.game_state import GameState
+from hmls.core.results import GameResult
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:

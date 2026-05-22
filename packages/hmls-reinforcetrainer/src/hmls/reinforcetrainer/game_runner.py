@@ -11,9 +11,10 @@ import random
 from dataclasses import dataclass
 from pathlib import Path
 
-from hmls.core.engine import GameEngine, GameResult, HistoryEntry
+from hmls.core.engine import GameEngine
 from hmls.core.map import GameMap
 from hmls.core.placement import place_tanks
+from hmls.core.results import GameResult, HistoryEntry
 from hmls.mapgenerator import StrategyConfigBase, generate_map_from_config
 from hmls.nncore.model import TankModelBase
 from hmls.nncore.persistence import create_player

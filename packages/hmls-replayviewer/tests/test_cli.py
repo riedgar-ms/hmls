@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from hmls.core.engine import GameResult, HistoryEntry
 from hmls.core.game_state import GameState
 from hmls.core.map import GameMap
+from hmls.core.results import GameResult, HistoryEntry
 from hmls.core.tank import Tank
 from hmls.core.types import Action, Direction, Position
 from hmls.replayviewer.cli import build_state_timeline, load_game_result, parse_args

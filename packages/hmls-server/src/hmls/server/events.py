@@ -16,9 +16,9 @@ from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from typing import Any
 
-from hmls.core.engine import HistoryEntry
 from hmls.core.game_state import GameState
 from hmls.core.map import GameMap
+from hmls.core.results import HistoryEntry
 from hmls.core.tank import Tank, TankId
 from hmls.core.visibility import PlayerView
 
