@@ -10,6 +10,7 @@ to simulate two concurrent player connections.
 from __future__ import annotations
 
 import threading
+import time
 from typing import Any
 
 from fastapi.testclient import TestClient
@@ -296,15 +297,12 @@ class TestClientServerRoundTrip:
         with client:
             # Connect two players first.
             results: list[dict[str, Any]] = [{}] * 2
-            barrier = threading.Barrier(2, timeout=10)
 
             def first_two(idx: int, name: str) -> None:
                 with client.websocket_connect("/ws") as ws:
                     ws.send_json({"type": "join", "player_name": name})
                     data = ws.receive_json()
                     results[idx] = data
-                    # Wait until both players are connected before proceeding.
-                    barrier.wait()
                     # Play one turn if asked, then disconnect.
                     try:
                         data2 = ws.receive_json()
@@ -318,8 +316,18 @@ class TestClientServerRoundTrip:
             t1.start()
             t2.start()
 
-            # Wait for both to be connected.
-            barrier.wait()
+            # Poll server-side state rather than using a threading.Barrier.
+            # A Barrier(3) deadlocks because the worker threads call
+            # ws.receive_json() before reaching the barrier, and that
+            # receive can block indefinitely under Starlette's TestClient
+            # when other tests have run in the same process.  Polling the
+            # NetworkManager's dict is safe here: the dict is mutated by
+            # the ASGI event-loop thread and read (atomically under the
+            # GIL) by this thread, so no lock is needed.
+            deadline = time.monotonic() + 10
+            while len(nm.websockets) < 2 and time.monotonic() < deadline:
+                time.sleep(0.05)
+            assert len(nm.websockets) == 2
 
             # Third player should be rejected.
             with client.websocket_connect("/ws") as ws3:
