@@ -18,7 +18,7 @@ from hmls.core.results import GameResult, HistoryEntry
 from hmls.mapgenerator import StrategyConfigBase, generate_map_from_config
 from hmls.nncore.model import TankModelBase
 from hmls.nncore.persistence import create_player
-from hmls.nncore.player import NNPlayerBase
+from hmls.nncore.player_base import NNPlayerBase
 from hmls.nncore.reward import RewardFunction
 from hmls.reinforcetrainer.lethargy import LethargyPolicy
 

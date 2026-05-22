@@ -16,7 +16,10 @@ not essential if code simplification is achieved.
 | `map.py` | `CellType`, `GameMap` (grid-based terrain) |
 | `tank.py` | `Tank`, `TankId` |
 | `game_state.py` | `GameState` (mutable game world) |
-| `engine.py` | `GameEngine` (orchestrates a match), `GameResult`, `HistoryEntry` |
+| `engine.py` | `GameEngine` (orchestrates a match) |
+| `results.py` | `GameResult`, `HistoryEntry` |
+| `helpers.py` | Turn-management helpers (tank cycling, alive counts) |
+| `validation.py` | Engine input-validation helpers |
 | `visibility.py` | `build_player_view` (fog-of-war computation) |
 | `player.py` | `Player` protocol (interface for all tank controllers) |
 | `actions.py` | `apply_action`, `validate_action` |

@@ -15,7 +15,7 @@ from torch.distributions import Categorical
 
 from hmls.core.visibility import TankPatch
 from hmls.nncore.encoding import FiveChannelPatchEncoder
-from hmls.nncore.player import NNPlayerBase
+from hmls.nncore.player_base import NNPlayerBase
 from hmls.reinforcetrainer._testing.stub_model import StubTankModel
 
 

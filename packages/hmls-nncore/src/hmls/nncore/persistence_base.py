@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING, Any, Literal
 from hmls.nncore.model import TankModelBase, TankModelConfig
 
 if TYPE_CHECKING:
-    from hmls.nncore.player import NNPlayerBase
+    from hmls.nncore.player_base import NNPlayerBase
     from hmls.nncore.reward_config import RewardConfig
 
 MODEL_CONFIG_FILENAME = "model_config.json"

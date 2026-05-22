@@ -198,7 +198,7 @@ The easiest approach is to copy an existing tank package (e.g. `hmls-singlemkiii
 3. **Player** — the component that selects actions during gameplay. For most
    neural network tanks, the generic `NNPlayer` from `hmls-nncore` handles
    this automatically. Only create a custom player (subclassing
-   `hmls.nncore.player.NNPlayerBase`) if you need non-standard action logic
+   `hmls.nncore.player_base.NNPlayerBase`) if you need non-standard action logic
    (see `hmls-randomtank` for an example).
 
 4. **Persistence object** — a module-level `PERSISTENCE` constant that the

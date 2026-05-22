@@ -31,8 +31,8 @@ from hmls.protocol import (
     WaitingMessage,
     YourTurnMessage,
 )
-from hmls.server.events import (
-    EventBus,
+from hmls.server.event_bus import EventBus
+from hmls.server.event_types import (
     GameOverEvent,
     GameStartedEvent,
     PlayerDisconnectedEvent,

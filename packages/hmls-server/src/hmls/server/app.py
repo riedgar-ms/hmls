@@ -21,7 +21,7 @@ from hmls.core.map import GameMap, MapLoadError, load_map
 from hmls.core.placement import InsufficientPassableCellsError, place_tanks
 from hmls.core.tank import Tank
 from hmls.server.cli import parse_args
-from hmls.server.events import EventBus
+from hmls.server.event_bus import EventBus
 from hmls.server.network_manager import NetworkManager
 from hmls.server.orchestrator import GameOrchestrator
 from hmls.server.remote_player import RemotePlayer
