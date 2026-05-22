@@ -7,8 +7,8 @@ from dataclasses import dataclass
 import pytest
 
 from hmls.core.map import GameMap
-from hmls.server.events import (
-    EventBus,
+from hmls.server.event_bus import EventBus
+from hmls.server.event_types import (
     GameOverEvent,
     GameStartedEvent,
     PlayerDisconnectedEvent,

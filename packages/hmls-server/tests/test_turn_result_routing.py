@@ -15,7 +15,7 @@ import pytest
 from hmls.core.map import GameMap
 from hmls.core.tank import Tank
 from hmls.core.types import Action, Direction, Position
-from hmls.server.events import EventBus
+from hmls.server.event_bus import EventBus
 from hmls.server.network_manager import NetworkManager
 from hmls.server.orchestrator import GameOrchestrator
 from hmls.server.remote_player import RemotePlayer

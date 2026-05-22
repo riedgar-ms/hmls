@@ -16,7 +16,7 @@ from hmls.core.tank import Tank
 from hmls.core.types import Action, Direction, Position
 from hmls.core.visibility import build_player_view
 from hmls.server.cli import parse_args
-from hmls.server.events import EventBus
+from hmls.server.event_bus import EventBus
 from hmls.server.orchestrator import GameOrchestrator
 from hmls.server.remote_player import RemotePlayer
 

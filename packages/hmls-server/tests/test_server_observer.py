@@ -11,7 +11,7 @@ from hmls.core.tank import Tank
 from hmls.core.types import Direction, Position
 from hmls.protocol import StateUpdateMessage
 from hmls.server.app import create_fastapi_app
-from hmls.server.events import EventBus
+from hmls.server.event_bus import EventBus
 from hmls.server.network_manager import NetworkManager
 from hmls.server.remote_player import RemotePlayer
 
