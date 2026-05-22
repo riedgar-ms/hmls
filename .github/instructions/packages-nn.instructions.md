@@ -21,7 +21,7 @@ Every tank package must provide four semantic components:
 
 1. **Model config** — a frozen Pydantic `TankModelConfig` subclass defining architecture hyperparameters, serialised as `model_config.json`.
 2. **Model class** — a `TankModelBase` subclass (PyTorch `nn.Module`) implementing the forward pass.
-3. **Player** — an `NNPlayerBase` subclass supporting both `"play"` mode (inference) and `"learn"` mode (records log-probs for training). The generic `NNPlayer` from `hmls-nncore` handles this for standard NN tanks; a custom player is only needed for non-standard action logic (e.g. rule-based `hmls-randomtank`).
+3. **Player** — an `NNPlayerBase` subclass (defined in `player_base.py`) supporting both `"play"` mode (inference) and `"learn"` mode (records log-probs for training). The concrete `NNPlayer` (in `player.py`) from `hmls-nncore` handles this for standard NN tanks; a custom player is only needed for non-standard action logic (e.g. rule-based `hmls-randomtank`).
 4. **Persistence** — a `PERSISTENCE` constant (an `NNPlayerModelPersistence` instance) exposing load/save/create operations, registered via an entry point.
 
 The existing packages generally follow this file layout, though it is not prescribed:
@@ -33,9 +33,11 @@ packages/hmls-singlemkX/
 │   ├── __init__.py
 │   ├── model.py            # Config class + model class
 │   ├── persistence.py      # PERSISTENCE constant
-│   └── player.py           # (only if custom player needed)
+│   └── player.py           # (only if custom NNPlayerBase subclass needed)
 └── tests/
 ```
+
+Note: In `hmls-nncore` itself, `player_base.py` defines the abstract `NNPlayerBase` and `player.py` provides the concrete `NNPlayer`.
 
 ## Entry Point Registration
 

@@ -59,10 +59,11 @@ The server is composed of four main components, wired together in `app.py`:
                       └───────────────┘
 ```
 
-- **`EventBus`** (`events.py`) — A lightweight async pub/sub bus.  Subscribers
+- **`EventBus`** (`event_bus.py`) — A lightweight async pub/sub bus.  Subscribers
   register by event type; when an event is emitted, all matching callbacks are
   invoked sequentially.  This decouples the game logic from the networking
-  layer so neither depends on the other directly.
+  layer so neither depends on the other directly.  Event dataclasses (e.g.
+  `GameStartedEvent`, `YourTurnEvent`) are defined in `event_types.py`.
 
 - **`GameOrchestrator`** (`orchestrator.py`) — Owns the `GameEngine` and drives
   the turn-by-turn game loop.  It waits for both players to connect, then
