@@ -13,6 +13,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI, WebSocket
@@ -48,16 +50,29 @@ def _place_tanks_or_exit(
 # ── FastAPI application ───────────────────────────────────────────────
 
 
-def create_fastapi_app(network_manager: NetworkManager) -> FastAPI:
+def create_fastapi_app(
+    network_manager: NetworkManager,
+    orchestrator: GameOrchestrator | None = None,
+) -> FastAPI:
     """Create the FastAPI application with WebSocket endpoint.
 
     Args:
         network_manager: The network manager that handles all connections.
+        orchestrator: Optional game orchestrator. When provided, the game
+            is started automatically as a background task on application startup.
 
     Returns:
         Configured FastAPI app.
     """
-    app = FastAPI(title="HMLS Game Server")
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        """Manage application lifespan — start game on startup."""
+        if orchestrator is not None:
+            asyncio.create_task(orchestrator.run_game())
+        yield
+
+    app = FastAPI(title="HMLS Game Server", lifespan=lifespan)
 
     @app.websocket("/ws")
     async def websocket_endpoint(websocket: WebSocket) -> None:
@@ -118,11 +133,7 @@ def main() -> None:
     orchestrator.player_names = network_manager.player_names
 
     # Create FastAPI app.
-    fastapi_app = create_fastapi_app(network_manager)
-
-    @fastapi_app.on_event("startup")
-    async def start_game() -> None:
-        asyncio.create_task(orchestrator.run_game())
+    fastapi_app = create_fastapi_app(network_manager, orchestrator=orchestrator)
 
     logger.info("Starting HMLS Game Server on port %d", args.port)
 
