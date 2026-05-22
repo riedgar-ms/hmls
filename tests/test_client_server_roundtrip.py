@@ -9,7 +9,6 @@ to simulate two concurrent player connections.
 
 from __future__ import annotations
 
-import asyncio
 import threading
 from typing import Any
 
@@ -85,11 +84,7 @@ def _create_test_app(
     Returns:
         A TestClient ready for WebSocket connections.
     """
-    app = create_fastapi_app(network_manager)
-
-    @app.on_event("startup")
-    async def start_game() -> None:
-        asyncio.create_task(orchestrator.run_game())
+    app = create_fastapi_app(network_manager, orchestrator=orchestrator)
 
     return TestClient(app)
 
