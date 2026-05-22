@@ -13,7 +13,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from hmls.core.engine import HistoryEntry
+from hmls.core.results import HistoryEntry
 from hmls.core.types import Action, Position
 from hmls.core.visibility import TankPatch, VisibleCell, ego_to_world_position
 from hmls.nncore.reward_config import RewardConfig

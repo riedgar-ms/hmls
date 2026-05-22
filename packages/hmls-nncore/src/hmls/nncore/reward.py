@@ -11,7 +11,7 @@ its components via :meth:`~RewardFunction.reset` and
 
 from __future__ import annotations
 
-from hmls.core.engine import HistoryEntry
+from hmls.core.results import HistoryEntry
 from hmls.core.types import Action
 from hmls.core.visibility import TankPatch
 from hmls.nncore.reward_components import (

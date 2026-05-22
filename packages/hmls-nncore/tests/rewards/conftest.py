@@ -6,9 +6,9 @@ from typing import Protocol
 
 import pytest
 
-from hmls.core.engine import HistoryEntry
 from hmls.core.game_state import GameState
 from hmls.core.map import CellType
+from hmls.core.results import HistoryEntry
 from hmls.core.tank import Tank
 from hmls.core.types import Action, Direction, Position
 from hmls.core.visibility import FogCell, TankPatch, VisibleCell

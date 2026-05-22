@@ -18,11 +18,12 @@ from textual.events import Key
 from textual.screen import ModalScreen
 from textual.widgets import Footer, Header, Input, Label, RichLog, Static, TabbedContent, TabPane
 
-from hmls.core.engine import GameEngine, HistoryEntry
+from hmls.core.engine import GameEngine
 from hmls.core.game_state import GameState
 from hmls.core.map import GameMap, MapLoadError
 from hmls.core.placement import InsufficientPassableCellsError
 from hmls.core.player import Player
+from hmls.core.results import HistoryEntry
 from hmls.core.types import Action
 from hmls.testharness.cli import build_initial_state, load_map, parse_args, place_tanks
 from hmls.testharness.interactive_player import InteractivePlayer

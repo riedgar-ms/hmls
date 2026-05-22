@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from hmls.core.engine import GameEngine, GameResult, HistoryEntry
+from hmls.core.engine import GameEngine
 from hmls.core.game_state import GameState
 from hmls.core.map import CellType, GameMap
 from hmls.core.player import Player
+from hmls.core.results import GameResult, HistoryEntry
 from hmls.core.tank import Tank, TankId
 from hmls.core.types import Action, Direction, Position
 from hmls.core.visibility import PlayerView

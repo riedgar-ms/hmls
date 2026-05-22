@@ -5,7 +5,7 @@ from __future__ import annotations
 import random
 from pathlib import Path
 
-from hmls.core.engine import GameResult
+from hmls.core.results import GameResult
 from hmls.mapgenerator import BlobAndLineConfig, PerlinNoiseConfig
 from hmls.reinforcetrainer._testing.stub_model import StubModelConfig, StubTankModel
 from hmls.reinforcetrainer._testing.stub_player import StubNNPlayer

@@ -8,9 +8,10 @@ from pathlib import Path
 
 import pytest
 
-from hmls.core.engine import GameEngine, GameResult
+from hmls.core.engine import GameEngine
 from hmls.core.map import GameMap
 from hmls.core.player import Player
+from hmls.core.results import GameResult
 from hmls.core.tank import Tank
 from hmls.core.types import Action, Direction, Position
 from hmls.core.visibility import build_player_view

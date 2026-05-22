@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from hmls.core.engine import HistoryEntry
+from hmls.core.results import HistoryEntry
 from hmls.core.tank import TankId
 from hmls.core.types import Action
 
