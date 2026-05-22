@@ -23,7 +23,7 @@ from hmls.core.visibility import (
     VisibleCell,
 )
 from hmls.nncore.constants import ACTION_TO_INDEX
-from hmls.nncore.player import NNPlayerBase
+from hmls.nncore.player_base import NNPlayerBase
 from hmls.randomtank.model import RandomTankModel, RandomTankModelConfig
 
 

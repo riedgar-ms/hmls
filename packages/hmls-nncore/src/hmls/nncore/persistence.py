@@ -32,7 +32,8 @@ import torch
 
 from hmls.nncore.model import TankModelBase, TankModelConfig
 from hmls.nncore.persistence_base import MODEL_CONFIG_FILENAME, ModelPersistence
-from hmls.nncore.player import NNPlayer, NNPlayerBase
+from hmls.nncore.player import NNPlayer
+from hmls.nncore.player_base import NNPlayerBase
 from hmls.nncore.registry import resolve_model_id
 from hmls.nncore.reward_config import RewardConfig
 
