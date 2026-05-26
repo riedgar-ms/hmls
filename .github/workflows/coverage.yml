@@ -1,0 +1,86 @@
+name: Coverage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 8 * * 1" # Monday 08:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  per-package:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - hmls-client
+          - hmls-core
+          - hmls-mapgenerator
+          - hmls-networking
+          - hmls-nncore
+          - hmls-observer
+          - hmls-protocol
+          - hmls-randomtank
+          - hmls-reinforcetrainer
+          - hmls-replayviewer
+          - hmls-server
+          - hmls-singlemki
+          - hmls-singlemkii
+          - hmls-singlemkiii
+          - hmls-testharness
+          - hmls-uxcommon
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v8.1.0
+
+      - name: Install Python
+        run: uv python install 3.14
+
+      - name: Install dependencies
+        run: uv sync --all-packages
+
+      - name: Run tests with coverage
+        run: |
+          uv run pytest "packages/${{ matrix.package }}/tests/" \
+            --cov="packages/${{ matrix.package }}/src" \
+            --cov-report=term-missing \
+            --cov-report="xml:coverage-${{ matrix.package }}.xml"
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.package }}
+          path: coverage-${{ matrix.package }}.xml
+
+  combined:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v8.1.0
+
+      - name: Install Python
+        run: uv python install 3.14
+
+      - name: Install dependencies
+        run: uv sync --all-packages
+
+      - name: Run all tests with coverage
+        run: |
+          uv run pytest \
+            --cov \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage-all.xml
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-all
+          path: coverage-all.xml
