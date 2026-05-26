@@ -81,6 +81,9 @@ plugins = ["pydantic.mypy"]
 strict = true
 python_version = "3.14"
 
+[tool.coverage.run]
+omit = ["packages/*/tests/*", "tests/*"]
+
 [tool.pytest.ini_options]
 testpaths = ["packages", "tests"]
 addopts = ["--import-mode=importlib"]
