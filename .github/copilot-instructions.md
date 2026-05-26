@@ -12,7 +12,7 @@ Key package groups:
 - **Networking**: `hmls-protocol`, `hmls-networking`, `hmls-server`, `hmls-client`, `hmls-observer`
 - **UX (Textual TUI)**: `hmls-uxcommon`, `hmls-mapgenerator`, `hmls-testharness`, `hmls-replayviewer`
 
-When adding a new package, register it in the root `pyproject.toml` under both `[dependency-groups] dev` and `[tool.uv.sources]`. The mypy configuration auto-discovers packages via `scripts/run_mypy.py`, so no manual path updates are needed.
+When adding a new package, register it in the root `pyproject.toml` under both `[dependency-groups] dev` and `[tool.uv.sources]`. Also add the package to the matrix list in `.github/workflows/coverage.yml`. The mypy configuration auto-discovers packages via `scripts/run_mypy.py`, so no manual path updates are needed.
 
 Neural network tank packages provide 4 semantic components (config, model, player, persistence) and register via `[project.entry-points."hmls.models"]` in their `pyproject.toml`. In practice, the config class and model class live together in `model.py`, and the player is typically the generic `NNPlayer` from `hmls-nncore` (a custom `player.py` is only needed for non-standard action logic). See `docs/reinforcement_learning.md` for details.
 
