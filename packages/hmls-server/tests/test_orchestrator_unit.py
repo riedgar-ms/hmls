@@ -158,8 +158,13 @@ class TestOrchestratorRunGame:
         # Signal both connected.
         orchestrator.both_connected.set()
 
-        # Patch wait_for to raise TimeoutError immediately.
-        with patch("asyncio.wait_for", side_effect=TimeoutError):
+        # Patch wait_for to raise TimeoutError immediately, closing the
+        # coroutine argument to avoid "coroutine was never awaited" warnings.
+        def timeout_side_effect(coro: Any, *args: Any, **kwargs: Any) -> None:  # noqa: ANN401
+            coro.close()
+            raise TimeoutError
+
+        with patch("asyncio.wait_for", side_effect=timeout_side_effect):
             await orchestrator.run_game()
 
         assert orchestrator.game_over
@@ -172,8 +177,13 @@ class TestOrchestratorRunGame:
         # Signal both connected.
         orchestrator.both_connected.set()
 
-        # Patch wait_for to raise RuntimeError.
-        with patch("asyncio.wait_for", side_effect=RuntimeError("action error")):
+        # Patch wait_for to raise RuntimeError, closing the coroutine
+        # argument to avoid "coroutine was never awaited" warnings.
+        def error_side_effect(coro: Any, *args: Any, **kwargs: Any) -> None:  # noqa: ANN401
+            coro.close()
+            raise RuntimeError("action error")  # noqa: EM101
+
+        with patch("asyncio.wait_for", side_effect=error_side_effect):
             await orchestrator.run_game()
 
         assert orchestrator.game_over
