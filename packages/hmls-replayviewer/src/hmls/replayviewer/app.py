@@ -75,6 +75,67 @@ def _tank_panel_id(tank_id: TankId) -> str:
     return f"panel-tank-{tank_id}"
 
 
+def compute_tank_logs(
+    history: list[HistoryEntry],
+    current_step: int,
+    all_tank_ids: list[TankId],
+) -> dict[TankId, list[str]]:
+    """Compute formatted log lines per tank for entries up to the current step.
+
+    This is the pure-computation core of ``_rebuild_log``, factored out
+    for testability.
+
+    Args:
+        history: The full game history list.
+        current_step: Current replay step (entries ``[:current_step]`` are shown).
+        all_tank_ids: Ordered list of all tank IDs in the game.
+
+    Returns:
+        Mapping from tank ID to a list of formatted log-line strings
+        (most recent ``_MAX_LOG_LINES`` entries only).
+    """
+    per_tank: dict[TankId, list[HistoryEntry]] = defaultdict(list)
+    for entry in history[:current_step]:
+        per_tank[entry.tank_id].append(entry)
+
+    result: dict[TankId, list[str]] = {}
+    for tid in all_tank_ids:
+        entries = per_tank.get(tid, [])
+        lines: list[str] = []
+        for entry in entries[-_MAX_LOG_LINES:]:
+            status = format_turn_status(entry.valid, entry.reason, entry.hit)
+            lines.append(f"  {entry.applied_action.value} — {status}")
+        result[tid] = lines
+    return result
+
+
+def compute_toggle_play_state(
+    playing: bool,
+    current_step: int,
+    max_step: int,
+) -> tuple[bool, int | None]:
+    """Compute the new play state after a toggle-play action.
+
+    This is the pure-logic core of ``action_toggle_play``, factored out
+    for testability.
+
+    Args:
+        playing: Whether playback is currently active.
+        current_step: The current step index.
+        max_step: The maximum valid step index.
+
+    Returns:
+        A tuple of ``(new_playing, new_step)`` where *new_step* is ``None``
+        if the step should not change, or an integer if it should be reset.
+    """
+    if playing:
+        return (False, None)
+    # Starting playback: if at end, restart from beginning.
+    if current_step >= max_step:
+        return (True, 0)
+    return (True, None)
+
+
 class ReplayViewerApp(LogTabMixin, LogStatusMixin, App[None]):
     """TUI application for replaying HMLS tank game history files.
 
@@ -269,11 +330,7 @@ class ReplayViewerApp(LogTabMixin, LogStatusMixin, App[None]):
 
     def _rebuild_log(self) -> None:
         """Clear and rebuild per-tank log panels with entries up to the current step."""
-        # Bucket history entries by tank.
-        per_tank: dict[TankId, list[HistoryEntry]] = defaultdict(list)
-        for entry in self._history[: self._current_step]:
-            per_tank[entry.tank_id].append(entry)
-
+        tank_logs = compute_tank_logs(self._history, self._current_step, self._all_tank_ids)
         active_id = self._active_tank_id()
 
         for tid in self._all_tank_ids:
@@ -284,11 +341,8 @@ class ReplayViewerApp(LogTabMixin, LogStatusMixin, App[None]):
                 continue
 
             log_widget.clear()
-            entries = per_tank.get(tid, [])
-            # Show only the most recent entries to keep the display compact.
-            for entry in entries[-_MAX_LOG_LINES:]:
-                status = format_turn_status(entry.valid, entry.reason, entry.hit)
-                log_widget.write(f"  {entry.applied_action.value} — {status}")
+            for line in tank_logs.get(tid, []):
+                log_widget.write(line)
 
             # Highlight the panel of the tank that just acted.
             try:
@@ -350,16 +404,17 @@ class ReplayViewerApp(LogTabMixin, LogStatusMixin, App[None]):
 
     def action_toggle_play(self) -> None:
         """Toggle auto-play on/off."""
+        new_playing, new_step = compute_toggle_play_state(
+            self._playing, self._current_step, self._max_step
+        )
+        if new_step is not None:
+            self._current_step = new_step
+            self._update_display()
+        self._playing = new_playing
         if self._playing:
-            self._playing = False
-            self._stop_timer()
-        else:
-            if self._current_step >= self._max_step:
-                # At the end — restart from beginning.
-                self._current_step = 0
-                self._update_display()
-            self._playing = True
             self._start_timer()
+        else:
+            self._stop_timer()
         self._update_status_only()
 
     def action_step_back(self) -> None:
