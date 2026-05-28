@@ -63,10 +63,13 @@ class TestPlaceTanksOrExit:
     def test_exits_on_insufficient_cells(self) -> None:
         """Should call sys.exit(1) when placement fails."""
         game_map = _make_simple_map()
-        with patch(
-            "hmls.server.app.place_tanks",
-            side_effect=InsufficientPassableCellsError(needed=100, available=2),
-        ), pytest.raises(SystemExit) as exc_info:
+        with (
+            patch(
+                "hmls.server.app.place_tanks",
+                side_effect=InsufficientPassableCellsError(needed=100, available=2),
+            ),
+            pytest.raises(SystemExit) as exc_info,
+        ):
             _place_tanks_or_exit(game_map, 50)
         assert exc_info.value.code == 1
 
