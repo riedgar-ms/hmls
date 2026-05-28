@@ -6,6 +6,8 @@ import argparse
 import sys
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from hmls.core.game_state import GameState
 from hmls.core.results import GameResult
 
@@ -51,7 +53,7 @@ def load_game_result(path: Path) -> GameResult:
 
     try:
         return GameResult.model_validate_json(raw)
-    except Exception as exc:
+    except (ValidationError, ValueError) as exc:
         print(f"Error parsing {path}: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
 
