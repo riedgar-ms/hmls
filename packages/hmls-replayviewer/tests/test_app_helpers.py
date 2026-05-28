@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from hmls.core.game_state import GameState
-from hmls.core.map import GameMap
-from hmls.core.results import GameResult, HistoryEntry
-from hmls.core.tank import Tank
-from hmls.core.types import Action, Direction, Position
+import pytest
+
+from hmls.core.results import GameResult
 from hmls.replayviewer.app import (
     _DEFAULT_DELAY,
     _DELAY_STEP,
@@ -15,50 +13,16 @@ from hmls.replayviewer.app import (
     ReplayViewerApp,
     _tank_log_id,
     _tank_panel_id,
+    compute_clamped_step,
+    compute_new_delay,
 )
 
-# ── Fixtures ──────────────────────────────────────────────────────────
-
-
-def _two_tank_game_result(*, history_len: int = 3) -> GameResult:
-    """Build a GameResult with two tanks and *history_len* entries.
-
-    Alternates actions between tank "A1" and "B1" so that
-    different steps have different active tanks.
-    """
-    tank_a = Tank(id="A1", team="Alpha", position=Position(1, 1), direction=Direction.NORTH)
-    tank_b = Tank(id="B1", team="Bravo", position=Position(3, 3), direction=Direction.SOUTH)
-    initial = GameState(tanks=[tank_a, tank_b], current_tank_id="A1")
-    game_map = GameMap(width=5, height=5)
-
-    tanks = [tank_a, tank_b]
-    history: list[HistoryEntry] = []
-    for i in range(history_len):
-        acting = tanks[i % 2]
-        history.append(
-            HistoryEntry(
-                tank_id=acting.id,
-                requested_action=Action.PASS,
-                applied_action=Action.PASS,
-                valid=True,
-                state_after=initial.model_copy(deep=True),
-            )
-        )
-
-    return GameResult(
-        winner=None,
-        game_map=game_map,
-        initial_state=initial,
-        history=history,
-        turns_played=history_len,
-    )
+from ._fixtures import make_two_tank_game_result
 
 
 def _game_result_with_winner() -> GameResult:
     """Build a GameResult where team Alpha wins."""
-    result = _two_tank_game_result(history_len=2)
-    result = result.model_copy(update={"winner": "Alpha"})
-    return result
+    return make_two_tank_game_result(history_len=2, winner="Alpha")
 
 
 # ── Helper function tests ─────────────────────────────────────────────
@@ -67,29 +31,32 @@ def _game_result_with_winner() -> GameResult:
 class TestTankLogId:
     """Tests for ``_tank_log_id``."""
 
-    def test_simple_id(self) -> None:
-        """Basic tank ID produces expected DOM id."""
-        assert _tank_log_id("A1") == "log-tank-A1"
-
-    def test_different_id(self) -> None:
-        """Another tank ID works correctly."""
-        assert _tank_log_id("B2") == "log-tank-B2"
-
-    def test_complex_id(self) -> None:
-        """Longer/more complex IDs are passed through."""
-        assert _tank_log_id("team-alpha-99") == "log-tank-team-alpha-99"
+    @pytest.mark.parametrize(
+        ("tank_id", "expected"),
+        [
+            ("A1", "log-tank-A1"),
+            ("B2", "log-tank-B2"),
+            ("team-alpha-99", "log-tank-team-alpha-99"),
+        ],
+    )
+    def test_produces_expected_dom_id(self, tank_id: str, expected: str) -> None:
+        """Tank IDs produce correct DOM ids."""
+        assert _tank_log_id(tank_id) == expected
 
 
 class TestTankPanelId:
     """Tests for ``_tank_panel_id``."""
 
-    def test_simple_id(self) -> None:
-        """Basic tank ID produces expected DOM id."""
-        assert _tank_panel_id("A1") == "panel-tank-A1"
-
-    def test_different_id(self) -> None:
-        """Another tank ID works correctly."""
-        assert _tank_panel_id("B2") == "panel-tank-B2"
+    @pytest.mark.parametrize(
+        ("tank_id", "expected"),
+        [
+            ("A1", "panel-tank-A1"),
+            ("B2", "panel-tank-B2"),
+        ],
+    )
+    def test_produces_expected_dom_id(self, tank_id: str, expected: str) -> None:
+        """Tank IDs produce correct DOM ids."""
+        assert _tank_panel_id(tank_id) == expected
 
 
 # ── _build_status_text tests ──────────────────────────────────────────
@@ -100,7 +67,7 @@ class TestBuildStatusText:
 
     def _make_app(self, *, history_len: int = 5, winner: str | None = None) -> ReplayViewerApp:
         """Create a ReplayViewerApp without mounting it."""
-        result = _two_tank_game_result(history_len=history_len)
+        result = make_two_tank_game_result(history_len=history_len)
         if winner is not None:
             result = result.model_copy(update={"winner": winner})
         return ReplayViewerApp(result)
@@ -164,14 +131,14 @@ class TestActiveTankId:
 
     def test_step_zero_returns_current_tank(self) -> None:
         """At step 0, returns the initial state's current_tank_id."""
-        result = _two_tank_game_result(history_len=3)
+        result = make_two_tank_game_result(history_len=3)
         app = ReplayViewerApp(result)
         app._current_step = 0
         assert app._active_tank_id() == "A1"
 
     def test_step_one_returns_first_history_tank(self) -> None:
         """At step 1, returns history[0].tank_id."""
-        result = _two_tank_game_result(history_len=3)
+        result = make_two_tank_game_result(history_len=3)
         app = ReplayViewerApp(result)
         app._current_step = 1
         # history[0] acts with tank A1 (index 0 % 2 = 0 → tank_a)
@@ -179,7 +146,7 @@ class TestActiveTankId:
 
     def test_step_two_returns_second_history_tank(self) -> None:
         """At step 2, returns history[1].tank_id."""
-        result = _two_tank_game_result(history_len=3)
+        result = make_two_tank_game_result(history_len=3)
         app = ReplayViewerApp(result)
         app._current_step = 2
         # history[1] acts with tank B1 (index 1 % 2 = 1 → tank_b)
@@ -190,33 +157,35 @@ class TestActiveTankId:
 
 
 class TestNavigation:
-    """Tests for navigation helpers (_max_step, _go_to_step clamping)."""
+    """Tests for navigation helpers (_max_step, compute_clamped_step)."""
 
     def test_max_step(self) -> None:
         """_max_step is len(states) - 1."""
-        result = _two_tank_game_result(history_len=4)
+        result = make_two_tank_game_result(history_len=4)
         app = ReplayViewerApp(result)
         # states = initial + 4 history = 5 total, max index = 4
         assert app._max_step == 4
 
-    def test_go_to_step_clamps_negative(self) -> None:
-        """_go_to_step(-5) should clamp to 0."""
-        result = _two_tank_game_result(history_len=3)
-        app = ReplayViewerApp(result)
-        # _go_to_step calls _update_display which needs widgets; test clamping logic directly
-        step = max(0, min(-5, app._max_step))
-        assert step == 0
+    def test_clamp_negative_to_zero(self) -> None:
+        """Negative step values clamp to 0."""
+        assert compute_clamped_step(-5, max_step=3) == 0
 
-    def test_go_to_step_clamps_over_max(self) -> None:
-        """_go_to_step(999) should clamp to max_step."""
-        result = _two_tank_game_result(history_len=3)
-        app = ReplayViewerApp(result)
-        step = max(0, min(999, app._max_step))
-        assert step == app._max_step
+    def test_clamp_over_max(self) -> None:
+        """Step values exceeding max_step clamp to max_step."""
+        assert compute_clamped_step(999, max_step=3) == 3
+
+    def test_clamp_within_range(self) -> None:
+        """Valid step values are returned unchanged."""
+        assert compute_clamped_step(2, max_step=5) == 2
+
+    def test_clamp_at_boundaries(self) -> None:
+        """Boundary values (0 and max_step) are valid."""
+        assert compute_clamped_step(0, max_step=5) == 0
+        assert compute_clamped_step(5, max_step=5) == 5
 
     def test_max_step_empty_history(self) -> None:
         """With no history, max_step is 0 (only initial state)."""
-        result = _two_tank_game_result(history_len=0)
+        result = make_two_tank_game_result(history_len=0)
         app = ReplayViewerApp(result)
         assert app._max_step == 0
 
@@ -225,43 +194,30 @@ class TestNavigation:
 
 
 class TestSpeedAdjustments:
-    """Tests for delay adjustment logic."""
+    """Tests for delay adjustment logic via compute_new_delay."""
 
     def test_speed_up_decreases_delay(self) -> None:
-        """action_speed_up should decrease _delay by _DELAY_STEP."""
-        result = _two_tank_game_result(history_len=1)
-        app = ReplayViewerApp(result)
-        initial_delay = app._delay
-        # Simulate speed_up logic without calling action (which needs widgets)
-        app._delay = max(_MIN_DELAY, round(app._delay - _DELAY_STEP, 1))
-        assert app._delay == round(initial_delay - _DELAY_STEP, 1)
+        """Speeding up decreases delay by _DELAY_STEP."""
+        new_delay = compute_new_delay(_DEFAULT_DELAY, -1)
+        assert new_delay == round(_DEFAULT_DELAY - _DELAY_STEP, 1)
 
     def test_speed_up_clamps_to_min(self) -> None:
         """Delay cannot go below _MIN_DELAY."""
-        result = _two_tank_game_result(history_len=1)
-        app = ReplayViewerApp(result)
-        app._delay = _MIN_DELAY
-        app._delay = max(_MIN_DELAY, round(app._delay - _DELAY_STEP, 1))
-        assert app._delay == _MIN_DELAY
+        new_delay = compute_new_delay(_MIN_DELAY, -1)
+        assert new_delay == _MIN_DELAY
 
     def test_slow_down_increases_delay(self) -> None:
-        """Slowing down should increase _delay by _DELAY_STEP."""
-        result = _two_tank_game_result(history_len=1)
-        app = ReplayViewerApp(result)
-        initial_delay = app._delay
-        app._delay = min(_MAX_DELAY, round(app._delay + _DELAY_STEP, 1))
-        assert app._delay == round(initial_delay + _DELAY_STEP, 1)
+        """Slowing down increases delay by _DELAY_STEP."""
+        new_delay = compute_new_delay(_DEFAULT_DELAY, +1)
+        assert new_delay == round(_DEFAULT_DELAY + _DELAY_STEP, 1)
 
     def test_slow_down_clamps_to_max(self) -> None:
         """Delay cannot exceed _MAX_DELAY."""
-        result = _two_tank_game_result(history_len=1)
-        app = ReplayViewerApp(result)
-        app._delay = _MAX_DELAY
-        app._delay = min(_MAX_DELAY, round(app._delay + _DELAY_STEP, 1))
-        assert app._delay == _MAX_DELAY
+        new_delay = compute_new_delay(_MAX_DELAY, +1)
+        assert new_delay == _MAX_DELAY
 
     def test_default_delay(self) -> None:
         """App starts with _DEFAULT_DELAY."""
-        result = _two_tank_game_result(history_len=1)
+        result = make_two_tank_game_result(history_len=1)
         app = ReplayViewerApp(result)
         assert app._delay == _DEFAULT_DELAY

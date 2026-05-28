@@ -8,11 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from hmls.core.game_state import GameState
-from hmls.core.map import GameMap
-from hmls.core.results import GameResult, HistoryEntry
-from hmls.core.tank import Tank
-from hmls.core.types import Action, Direction, Position
+from hmls.core.types import Action
 from hmls.replayviewer.app import (
     ReplayViewerApp,
     _tank_log_id,
@@ -20,43 +16,29 @@ from hmls.replayviewer.app import (
 )
 from hmls.uxcommon.widgets.map_view import MapView
 
-# ── Fixtures ──────────────────────────────────────────────────────────
+from ._fixtures import make_two_tank_game_result
 
+# ── Constants ─────────────────────────────────────────────────────────
 
-def _two_tank_game_result(*, history_len: int = 5) -> GameResult:
-    """Build a GameResult with two tanks and alternating actions."""
-    tank_a = Tank(id="A1", team="A", position=Position(1, 1), direction=Direction.NORTH)
-    tank_b = Tank(id="B1", team="B", position=Position(3, 3), direction=Direction.SOUTH)
-    initial = GameState(tanks=[tank_a, tank_b], current_tank_id="A1")
-    game_map = GameMap(width=5, height=5)
-
-    tanks = [tank_a, tank_b]
-    actions = [Action.MOVE_FORWARD, Action.FIRE, Action.PASS, Action.TURN_LEFT, Action.TURN_RIGHT]
-    history: list[HistoryEntry] = []
-    for i in range(history_len):
-        acting = tanks[i % 2]
-        history.append(
-            HistoryEntry(
-                tank_id=acting.id,
-                requested_action=actions[i % len(actions)],
-                applied_action=actions[i % len(actions)],
-                valid=True,
-                state_after=initial.model_copy(deep=True),
-            )
-        )
-
-    return GameResult(
-        winner="A",
-        game_map=game_map,
-        initial_state=initial,
-        history=history,
-        turns_played=history_len,
-    )
+_PILOT_ACTIONS = [
+    Action.MOVE_FORWARD,
+    Action.FIRE,
+    Action.PASS,
+    Action.TURN_LEFT,
+    Action.TURN_RIGHT,
+]
+"""Varied action list used by pilot test fixtures for realistic replays."""
 
 
 def _make_app(history_len: int = 5) -> ReplayViewerApp:
     """Create a ReplayViewerApp for testing."""
-    result = _two_tank_game_result(history_len=history_len)
+    result = make_two_tank_game_result(
+        history_len=history_len,
+        actions=_PILOT_ACTIONS,
+        winner="Alpha",
+        team_a="A",
+        team_b="B",
+    )
     app = ReplayViewerApp(result)
     app.title = "Test Replay"
     return app
@@ -67,8 +49,7 @@ def _get_status_text(app: ReplayViewerApp) -> str:
     from textual.widgets import Static
 
     status = app.query_one("#status-bar", Static)
-    content: str = status._Static__content  # type: ignore[attr-defined]
-    return content
+    return str(status.content)
 
 
 # ── Compose & Mount tests ─────────────────────────────────────────────

@@ -136,6 +136,34 @@ def compute_toggle_play_state(
     return (True, None)
 
 
+def compute_clamped_step(step: int, max_step: int) -> int:
+    """Clamp a step value to the valid range ``[0, max_step]``.
+
+    Args:
+        step: The desired step index (may be out of bounds).
+        max_step: The maximum valid step index.
+
+    Returns:
+        The clamped step value.
+    """
+    return max(0, min(step, max_step))
+
+
+def compute_new_delay(current_delay: float, direction: int) -> float:
+    """Compute the new auto-play delay after a speed adjustment.
+
+    Args:
+        current_delay: The current delay in seconds.
+        direction: ``-1`` to speed up (decrease delay),
+            ``+1`` to slow down (increase delay).
+
+    Returns:
+        The new delay, clamped to ``[_MIN_DELAY, _MAX_DELAY]``.
+    """
+    new_delay = round(current_delay + direction * _DELAY_STEP, 1)
+    return max(_MIN_DELAY, min(_MAX_DELAY, new_delay))
+
+
 class ReplayViewerApp(LogTabMixin, LogStatusMixin, App[None]):
     """TUI application for replaying HMLS tank game history files.
 
@@ -284,7 +312,7 @@ class ReplayViewerApp(LogTabMixin, LogStatusMixin, App[None]):
         """Maximum valid step index."""
         return len(self._states) - 1
 
-    def _active_tank_id(self) -> str:
+    def _active_tank_id(self) -> TankId:
         """Return the ID of the tank that acted at the current step.
 
         At step 0 (initial state) there is no acting tank, so returns
@@ -303,7 +331,7 @@ class ReplayViewerApp(LogTabMixin, LogStatusMixin, App[None]):
         Args:
             step: Target step index (clamped to valid range).
         """
-        step = max(0, min(step, self._max_step))
+        step = compute_clamped_step(step, self._max_step)
         if step == self._current_step:
             return
         self._current_step = step
@@ -431,14 +459,14 @@ class ReplayViewerApp(LogTabMixin, LogStatusMixin, App[None]):
 
     def action_speed_up(self) -> None:
         """Decrease the auto-play delay (speed up)."""
-        self._delay = max(_MIN_DELAY, round(self._delay - _DELAY_STEP, 1))
+        self._delay = compute_new_delay(self._delay, -1)
         if self._playing:
             self._start_timer()  # Restart with new delay.
         self._update_status_only()
 
     def action_slow_down(self) -> None:
         """Increase the auto-play delay (slow down)."""
-        self._delay = min(_MAX_DELAY, round(self._delay + _DELAY_STEP, 1))
+        self._delay = compute_new_delay(self._delay, +1)
         if self._playing:
             self._start_timer()  # Restart with new delay.
         self._update_status_only()

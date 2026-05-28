@@ -7,46 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from hmls.core.game_state import GameState
-from hmls.core.map import GameMap
-from hmls.core.results import GameResult, HistoryEntry
-from hmls.core.tank import Tank
-from hmls.core.types import Action, Direction, Position
 from hmls.replayviewer.cli import build_state_timeline, load_game_result, parse_args
 
-# ── Fixtures ──────────────────────────────────────────────────────────
-
-
-def _minimal_game_result(*, history_len: int = 0) -> GameResult:
-    """Build a minimal ``GameResult`` with *history_len* history entries.
-
-    Each history entry simply records a PASS action, and the state after
-    is a copy of the initial state (good enough for timeline tests).
-    """
-    tank = Tank(id="t1", team="A", position=Position(1, 1), direction=Direction.NORTH)
-    initial = GameState(tanks=[tank], current_tank_id="t1")
-    game_map = GameMap(width=3, height=3)
-
-    history: list[HistoryEntry] = []
-    for _ in range(history_len):
-        history.append(
-            HistoryEntry(
-                tank_id="t1",
-                requested_action=Action.PASS,
-                applied_action=Action.PASS,
-                valid=True,
-                state_after=initial.model_copy(deep=True),
-            )
-        )
-
-    return GameResult(
-        winner=None,
-        game_map=game_map,
-        initial_state=initial,
-        history=history,
-        turns_played=history_len,
-    )
-
+from ._fixtures import make_minimal_game_result
 
 # ── parse_args ────────────────────────────────────────────────────────
 
@@ -73,7 +36,7 @@ class TestLoadGameResult:
 
     def test_loads_valid_json(self, tmp_path: Path) -> None:
         """A well-formed GameResult JSON file loads successfully."""
-        result = _minimal_game_result()
+        result = make_minimal_game_result()
         file = tmp_path / "game.json"
         file.write_text(result.model_dump_json(), encoding="utf-8")
 
@@ -111,7 +74,7 @@ class TestBuildStateTimeline:
 
     def test_empty_history_returns_single_state(self) -> None:
         """With no history, the timeline is just the initial state."""
-        result = _minimal_game_result(history_len=0)
+        result = make_minimal_game_result(history_len=0)
         timeline = build_state_timeline(result)
 
         assert len(timeline) == 1
@@ -119,21 +82,21 @@ class TestBuildStateTimeline:
 
     def test_timeline_length(self) -> None:
         """Timeline length should be len(history) + 1."""
-        result = _minimal_game_result(history_len=5)
+        result = make_minimal_game_result(history_len=5)
         timeline = build_state_timeline(result)
 
         assert len(timeline) == 6
 
     def test_first_element_is_initial_state(self) -> None:
         """Index 0 should be the initial state."""
-        result = _minimal_game_result(history_len=3)
+        result = make_minimal_game_result(history_len=3)
         timeline = build_state_timeline(result)
 
         assert timeline[0] is result.initial_state
 
     def test_subsequent_elements_match_history(self) -> None:
         """Index i (for i >= 1) should be history[i-1].state_after."""
-        result = _minimal_game_result(history_len=3)
+        result = make_minimal_game_result(history_len=3)
         timeline = build_state_timeline(result)
 
         for i, entry in enumerate(result.history, start=1):

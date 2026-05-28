@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from hmls.core.results import HistoryEntry
 from hmls.core.tank import Tank
 from hmls.core.types import Action, Direction, Position
@@ -92,33 +94,27 @@ class TestComputeTankLogs:
 class TestComputeTogglePlayState:
     """Tests for the ``compute_toggle_play_state`` pure function."""
 
-    def test_pause_when_playing(self) -> None:
-        """Toggling while playing → paused, no step change."""
-        playing, new_step = compute_toggle_play_state(playing=True, current_step=3, max_step=5)
-        assert playing is False
-        assert new_step is None
-
-    def test_start_from_middle(self) -> None:
-        """Toggling while paused in middle → playing, no step change."""
-        playing, new_step = compute_toggle_play_state(playing=False, current_step=3, max_step=5)
-        assert playing is True
-        assert new_step is None
-
-    def test_restart_from_end(self) -> None:
-        """Toggling while paused at end → playing, resets to step 0."""
-        playing, new_step = compute_toggle_play_state(playing=False, current_step=5, max_step=5)
-        assert playing is True
-        assert new_step == 0
-
-    def test_start_at_zero(self) -> None:
-        """Toggling while paused at step 0 (not at end) → playing, no step change."""
-        playing, new_step = compute_toggle_play_state(playing=False, current_step=0, max_step=5)
-        assert playing is True
-        assert new_step is None
-
-    def test_single_step_game_at_end(self) -> None:
-        """Single-step game (max_step=0): at end, restarts."""
-        # With max_step=0 and current_step=0, we ARE at the end.
-        playing, new_step = compute_toggle_play_state(playing=False, current_step=0, max_step=0)
-        assert playing is True
-        assert new_step == 0
+    @pytest.mark.parametrize(
+        ("playing", "current_step", "max_step", "expected_playing", "expected_step"),
+        [
+            pytest.param(True, 3, 5, False, None, id="pause_when_playing"),
+            pytest.param(False, 3, 5, True, None, id="start_from_middle"),
+            pytest.param(False, 5, 5, True, 0, id="restart_from_end"),
+            pytest.param(False, 0, 5, True, None, id="start_at_zero"),
+            pytest.param(False, 0, 0, True, 0, id="single_step_game_at_end"),
+        ],
+    )
+    def test_toggle_play_state(
+        self,
+        playing: bool,
+        current_step: int,
+        max_step: int,
+        expected_playing: bool,
+        expected_step: int | None,
+    ) -> None:
+        """Verify toggle play state transitions."""
+        new_playing, new_step = compute_toggle_play_state(
+            playing=playing, current_step=current_step, max_step=max_step
+        )
+        assert new_playing is expected_playing
+        assert new_step == expected_step
