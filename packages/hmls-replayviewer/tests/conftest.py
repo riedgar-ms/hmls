@@ -1,6 +1,25 @@
-"""Shared test fixtures for the replay viewer package."""
+"""Shared test fixtures for the replay viewer package.
+
+This module uses pytest's ``conftest.py`` mechanism to provide factory fixtures
+to all test modules in this directory.  By placing shared helpers here (rather
+than in a separate module), we avoid the need for a ``__init__.py`` in the
+tests directory — keeping this package consistent with all other test
+directories in the workspace.
+
+**Pattern used**: Each fixture returns a *factory callable* so that individual
+tests can pass different keyword arguments (e.g. ``history_len``, ``winner``).
+Test methods receive the fixture via standard pytest dependency injection::
+
+    def test_example(self, make_two_tank_game_result):
+        result = make_two_tank_game_result(history_len=3, winner="Alpha")
+        ...
+"""
 
 from __future__ import annotations
+
+from collections.abc import Callable
+
+import pytest
 
 from hmls.core.game_state import GameState
 from hmls.core.map import GameMap
@@ -9,7 +28,7 @@ from hmls.core.tank import Tank
 from hmls.core.types import Action, Direction, Position
 
 
-def make_two_tank_game_result(
+def _make_two_tank_game_result(
     *,
     history_len: int = 5,
     actions: list[Action] | None = None,
@@ -61,7 +80,7 @@ def make_two_tank_game_result(
     )
 
 
-def make_minimal_game_result(*, history_len: int = 0) -> GameResult:
+def _make_minimal_game_result(*, history_len: int = 0) -> GameResult:
     """Build a minimal GameResult with a single tank.
 
     Each history entry records a PASS action, and the state after is a copy
@@ -96,3 +115,15 @@ def make_minimal_game_result(*, history_len: int = 0) -> GameResult:
         history=history,
         turns_played=history_len,
     )
+
+
+@pytest.fixture
+def make_two_tank_game_result() -> Callable[..., GameResult]:
+    """Fixture providing a factory for two-tank game results."""
+    return _make_two_tank_game_result
+
+
+@pytest.fixture
+def make_minimal_game_result() -> Callable[..., GameResult]:
+    """Fixture providing a factory for minimal game results."""
+    return _make_minimal_game_result

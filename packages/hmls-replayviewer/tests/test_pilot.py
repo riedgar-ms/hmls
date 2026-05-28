@@ -6,8 +6,11 @@ and display updates via key presses.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import pytest
 
+from hmls.core.results import GameResult
 from hmls.core.types import Action
 from hmls.replayviewer.app import (
     ReplayViewerApp,
@@ -16,7 +19,9 @@ from hmls.replayviewer.app import (
 )
 from hmls.uxcommon.widgets.map_view import MapView
 
-from ._fixtures import make_two_tank_game_result
+# NOTE: ``make_two_tank_game_result`` is a pytest fixture defined in conftest.py
+# that provides a factory callable.  Test methods receive it via standard pytest
+# dependency injection (as a parameter) and pass it to local helpers explicitly.
 
 # ── Constants ─────────────────────────────────────────────────────────
 
@@ -30,9 +35,14 @@ _PILOT_ACTIONS = [
 """Varied action list used by pilot test fixtures for realistic replays."""
 
 
-def _make_app(history_len: int = 5) -> ReplayViewerApp:
-    """Create a ReplayViewerApp for testing."""
-    result = make_two_tank_game_result(
+def _make_app(factory: Callable[..., GameResult], history_len: int = 5) -> ReplayViewerApp:
+    """Create a ReplayViewerApp for testing.
+
+    Args:
+        factory: The ``make_two_tank_game_result`` fixture callable.
+        history_len: Number of history entries to generate.
+    """
+    result = factory(
         history_len=history_len,
         actions=_PILOT_ACTIONS,
         winner="Alpha",
@@ -59,33 +69,39 @@ class TestPilotCompose:
     """Verify the app mounts successfully and has expected widgets."""
 
     @pytest.mark.asyncio
-    async def test_app_mounts(self) -> None:
+    async def test_app_mounts(self, make_two_tank_game_result: Callable[..., GameResult]) -> None:
         """App should mount without errors."""
-        app = _make_app()
+        app = _make_app(make_two_tank_game_result)
         async with app.run_test() as pilot:
             assert pilot.app is app
 
     @pytest.mark.asyncio
-    async def test_map_view_exists(self) -> None:
+    async def test_map_view_exists(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """MapView widget should be present after mount."""
-        app = _make_app()
+        app = _make_app(make_two_tank_game_result)
         async with app.run_test():
             map_view = app.query_one("#map-view", MapView)
             assert map_view is not None
 
     @pytest.mark.asyncio
-    async def test_status_bar_exists(self) -> None:
+    async def test_status_bar_exists(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """Status bar should be present and show initial state."""
-        app = _make_app()
+        app = _make_app(make_two_tank_game_result)
         async with app.run_test():
             text = _get_status_text(app)
             assert "Step 0/" in text
             assert "Paused" in text
 
     @pytest.mark.asyncio
-    async def test_tank_log_panels_exist(self) -> None:
+    async def test_tank_log_panels_exist(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """Per-tank log panels should be created for all tanks."""
-        app = _make_app()
+        app = _make_app(make_two_tank_game_result)
         async with app.run_test():
             from textual.widgets import RichLog
 
@@ -103,18 +119,18 @@ class TestPilotNavigation:
     """Test navigation key bindings."""
 
     @pytest.mark.asyncio
-    async def test_step_forward(self) -> None:
+    async def test_step_forward(self, make_two_tank_game_result: Callable[..., GameResult]) -> None:
         """Right arrow steps forward."""
-        app = _make_app(history_len=5)
+        app = _make_app(make_two_tank_game_result, history_len=5)
         async with app.run_test() as pilot:
             assert app._current_step == 0
             await pilot.press("right")
             assert app._current_step == 1
 
     @pytest.mark.asyncio
-    async def test_step_back(self) -> None:
+    async def test_step_back(self, make_two_tank_game_result: Callable[..., GameResult]) -> None:
         """Left arrow steps back."""
-        app = _make_app(history_len=5)
+        app = _make_app(make_two_tank_game_result, history_len=5)
         async with app.run_test() as pilot:
             await pilot.press("right")
             await pilot.press("right")
@@ -123,17 +139,21 @@ class TestPilotNavigation:
             assert app._current_step == 1
 
     @pytest.mark.asyncio
-    async def test_step_back_at_zero_stays(self) -> None:
+    async def test_step_back_at_zero_stays(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """Left arrow at step 0 stays at 0."""
-        app = _make_app(history_len=5)
+        app = _make_app(make_two_tank_game_result, history_len=5)
         async with app.run_test() as pilot:
             await pilot.press("left")
             assert app._current_step == 0
 
     @pytest.mark.asyncio
-    async def test_step_forward_at_end_stays(self) -> None:
+    async def test_step_forward_at_end_stays(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """Right arrow at the last step stays put."""
-        app = _make_app(history_len=3)
+        app = _make_app(make_two_tank_game_result, history_len=3)
         async with app.run_test() as pilot:
             # Navigate to end
             for _ in range(10):
@@ -141,9 +161,9 @@ class TestPilotNavigation:
             assert app._current_step == app._max_step
 
     @pytest.mark.asyncio
-    async def test_jump_start(self) -> None:
+    async def test_jump_start(self, make_two_tank_game_result: Callable[..., GameResult]) -> None:
         """Home key jumps to step 0."""
-        app = _make_app(history_len=5)
+        app = _make_app(make_two_tank_game_result, history_len=5)
         async with app.run_test() as pilot:
             await pilot.press("right")
             await pilot.press("right")
@@ -151,17 +171,19 @@ class TestPilotNavigation:
             assert app._current_step == 0
 
     @pytest.mark.asyncio
-    async def test_jump_end(self) -> None:
+    async def test_jump_end(self, make_two_tank_game_result: Callable[..., GameResult]) -> None:
         """End key jumps to max_step."""
-        app = _make_app(history_len=5)
+        app = _make_app(make_two_tank_game_result, history_len=5)
         async with app.run_test() as pilot:
             await pilot.press("end")
             assert app._current_step == app._max_step
 
     @pytest.mark.asyncio
-    async def test_status_bar_updates_on_navigation(self) -> None:
+    async def test_status_bar_updates_on_navigation(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """Status bar reflects current step after navigation."""
-        app = _make_app(history_len=5)
+        app = _make_app(make_two_tank_game_result, history_len=5)
         async with app.run_test() as pilot:
             await pilot.press("right")
             await pilot.press("right")
@@ -176,54 +198,60 @@ class TestPilotPlayback:
     """Test playback control key bindings."""
 
     @pytest.mark.asyncio
-    async def test_toggle_play_starts_playing(self) -> None:
+    async def test_toggle_play_starts_playing(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """Space toggles from paused to playing."""
-        app = _make_app(history_len=5)
+        app = _make_app(make_two_tank_game_result, history_len=5)
         async with app.run_test() as pilot:
             assert app._playing is False
             await pilot.press("space")
             assert app._playing is True
 
     @pytest.mark.asyncio
-    async def test_toggle_play_pauses(self) -> None:
+    async def test_toggle_play_pauses(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """Space again pauses playback."""
-        app = _make_app(history_len=5)
+        app = _make_app(make_two_tank_game_result, history_len=5)
         async with app.run_test() as pilot:
             await pilot.press("space")
             await pilot.press("space")
             assert app._playing is False
 
     @pytest.mark.asyncio
-    async def test_speed_up(self) -> None:
+    async def test_speed_up(self, make_two_tank_game_result: Callable[..., GameResult]) -> None:
         """Up arrow decreases delay."""
-        app = _make_app(history_len=5)
+        app = _make_app(make_two_tank_game_result, history_len=5)
         async with app.run_test() as pilot:
             initial_delay = app._delay
             await pilot.press("up")
             assert app._delay < initial_delay
 
     @pytest.mark.asyncio
-    async def test_slow_down(self) -> None:
+    async def test_slow_down(self, make_two_tank_game_result: Callable[..., GameResult]) -> None:
         """Down arrow increases delay."""
-        app = _make_app(history_len=5)
+        app = _make_app(make_two_tank_game_result, history_len=5)
         async with app.run_test() as pilot:
             initial_delay = app._delay
             await pilot.press("down")
             assert app._delay > initial_delay
 
     @pytest.mark.asyncio
-    async def test_speed_up_status_updates(self) -> None:
+    async def test_speed_up_status_updates(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """Speed up changes the delay shown in status bar."""
-        app = _make_app(history_len=5)
+        app = _make_app(make_two_tank_game_result, history_len=5)
         async with app.run_test() as pilot:
             await pilot.press("up")
             text = _get_status_text(app)
             assert "0.4s" in text  # Default 0.5 - 0.1 = 0.4
 
     @pytest.mark.asyncio
-    async def test_auto_advance(self) -> None:
+    async def test_auto_advance(self, make_two_tank_game_result: Callable[..., GameResult]) -> None:
         """Auto-play advances the step after a delay."""
-        app = _make_app(history_len=5)
+        app = _make_app(make_two_tank_game_result, history_len=5)
         async with app.run_test() as pilot:
             app._delay = 0.1  # Fast for testing
             await pilot.press("space")  # Start playing
@@ -231,9 +259,11 @@ class TestPilotPlayback:
             assert app._current_step > 0
 
     @pytest.mark.asyncio
-    async def test_toggle_at_end_restarts(self) -> None:
+    async def test_toggle_at_end_restarts(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """Toggling play at the end restarts from beginning."""
-        app = _make_app(history_len=3)
+        app = _make_app(make_two_tank_game_result, history_len=3)
         async with app.run_test() as pilot:
             await pilot.press("end")  # Jump to end
             assert app._current_step == app._max_step
@@ -242,9 +272,11 @@ class TestPilotPlayback:
             assert app._playing is True
 
     @pytest.mark.asyncio
-    async def test_navigation_stops_playback(self) -> None:
+    async def test_navigation_stops_playback(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """Stepping manually stops auto-play."""
-        app = _make_app(history_len=5)
+        app = _make_app(make_two_tank_game_result, history_len=5)
         async with app.run_test() as pilot:
             await pilot.press("space")  # Start playing
             assert app._playing is True
@@ -252,9 +284,11 @@ class TestPilotPlayback:
             assert app._playing is False
 
     @pytest.mark.asyncio
-    async def test_auto_play_stops_at_end(self) -> None:
+    async def test_auto_play_stops_at_end(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """Auto-play should stop when reaching the end."""
-        app = _make_app(history_len=2)
+        app = _make_app(make_two_tank_game_result, history_len=2)
         async with app.run_test() as pilot:
             app._delay = 0.05  # Very fast
             await pilot.press("space")  # Start playing
@@ -263,9 +297,11 @@ class TestPilotPlayback:
             assert app._playing is False
 
     @pytest.mark.asyncio
-    async def test_speed_up_while_playing(self) -> None:
+    async def test_speed_up_while_playing(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """Speed up while playing restarts timer with new delay."""
-        app = _make_app(history_len=10)
+        app = _make_app(make_two_tank_game_result, history_len=10)
         async with app.run_test() as pilot:
             await pilot.press("space")  # Start playing
             assert app._playing is True
@@ -275,9 +311,11 @@ class TestPilotPlayback:
             assert app._playing is True  # Still playing
 
     @pytest.mark.asyncio
-    async def test_slow_down_while_playing(self) -> None:
+    async def test_slow_down_while_playing(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """Slow down while playing restarts timer with new delay."""
-        app = _make_app(history_len=10)
+        app = _make_app(make_two_tank_game_result, history_len=10)
         async with app.run_test() as pilot:
             await pilot.press("space")  # Start playing
             assert app._playing is True
@@ -294,9 +332,11 @@ class TestPilotLogRebuild:
     """Test that per-tank log content updates on navigation."""
 
     @pytest.mark.asyncio
-    async def test_logs_empty_at_step_zero(self) -> None:
+    async def test_logs_empty_at_step_zero(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """At step 0, all tank logs should be empty."""
-        app = _make_app(history_len=5)
+        app = _make_app(make_two_tank_game_result, history_len=5)
         async with app.run_test():
             from textual.widgets import RichLog
 
@@ -305,9 +345,11 @@ class TestPilotLogRebuild:
             assert len(log_a.lines) == 0
 
     @pytest.mark.asyncio
-    async def test_logs_populated_after_step(self) -> None:
+    async def test_logs_populated_after_step(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """After stepping forward, the acting tank's log has content."""
-        app = _make_app(history_len=5)
+        app = _make_app(make_two_tank_game_result, history_len=5)
         async with app.run_test() as pilot:
             from textual.widgets import RichLog
 
@@ -317,9 +359,11 @@ class TestPilotLogRebuild:
             assert len(log_a.lines) == 1
 
     @pytest.mark.asyncio
-    async def test_active_tank_panel_highlighted(self) -> None:
+    async def test_active_tank_panel_highlighted(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """The active tank's panel gets the 'active-tank' class."""
-        app = _make_app(history_len=5)
+        app = _make_app(make_two_tank_game_result, history_len=5)
         async with app.run_test() as pilot:
             await pilot.press("right")  # Step 1: A1 acts
             panel_a = app.query_one(f"#{_tank_panel_id('A1')}")
@@ -328,9 +372,11 @@ class TestPilotLogRebuild:
             assert "active-tank" not in panel_b.classes
 
     @pytest.mark.asyncio
-    async def test_active_tank_switches(self) -> None:
+    async def test_active_tank_switches(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """Active tank highlight switches between tanks."""
-        app = _make_app(history_len=5)
+        app = _make_app(make_two_tank_game_result, history_len=5)
         async with app.run_test() as pilot:
             await pilot.press("right")
             await pilot.press("right")  # Step 2: B1 acts
@@ -340,9 +386,11 @@ class TestPilotLogRebuild:
             assert "active-tank" in panel_b.classes
 
     @pytest.mark.asyncio
-    async def test_logs_cleared_on_jump_start(self) -> None:
+    async def test_logs_cleared_on_jump_start(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """Jumping to start clears all logs."""
-        app = _make_app(history_len=5)
+        app = _make_app(make_two_tank_game_result, history_len=5)
         async with app.run_test() as pilot:
             from textual.widgets import RichLog
 

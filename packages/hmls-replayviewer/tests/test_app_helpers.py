@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import pytest
 
 from hmls.core.results import GameResult
@@ -17,12 +19,9 @@ from hmls.replayviewer.app import (
     compute_new_delay,
 )
 
-from ._fixtures import make_two_tank_game_result
-
-
-def _game_result_with_winner() -> GameResult:
-    """Build a GameResult where team Alpha wins."""
-    return make_two_tank_game_result(history_len=2, winner="Alpha")
+# NOTE: ``make_two_tank_game_result`` is a pytest fixture defined in conftest.py
+# that provides a factory callable.  Test methods receive it as a parameter
+# (standard pytest dependency injection) and pass it to helper methods explicitly.
 
 
 # ── Helper function tests ─────────────────────────────────────────────
@@ -65,59 +64,75 @@ class TestTankPanelId:
 class TestBuildStatusText:
     """Tests for ``ReplayViewerApp._build_status_text``."""
 
-    def _make_app(self, *, history_len: int = 5, winner: str | None = None) -> ReplayViewerApp:
-        """Create a ReplayViewerApp without mounting it."""
-        result = make_two_tank_game_result(history_len=history_len)
+    def _make_app(
+        self,
+        factory: Callable[..., GameResult],
+        *,
+        history_len: int = 5,
+        winner: str | None = None,
+    ) -> ReplayViewerApp:
+        """Create a ReplayViewerApp without mounting it.
+
+        Args:
+            factory: The ``make_two_tank_game_result`` fixture callable.
+            history_len: Number of history entries.
+            winner: Optional winning team name.
+        """
+        result = factory(history_len=history_len)
         if winner is not None:
             result = result.model_copy(update={"winner": winner})
         return ReplayViewerApp(result)
 
-    def test_initial_state_paused(self) -> None:
+    def test_initial_state_paused(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """At step 0, paused, shows step 0/N and paused indicator."""
-        app = self._make_app(history_len=5)
+        app = self._make_app(make_two_tank_game_result, history_len=5)
         text = app._build_status_text()
         assert "Step 0/5" in text
         assert "Paused" in text
 
-    def test_mid_game(self) -> None:
+    def test_mid_game(self, make_two_tank_game_result: Callable[..., GameResult]) -> None:
         """Mid-game status shows correct step number."""
-        app = self._make_app(history_len=5)
+        app = self._make_app(make_two_tank_game_result, history_len=5)
         app._current_step = 3
         text = app._build_status_text()
         assert "Step 3/5" in text
 
-    def test_playing_state(self) -> None:
+    def test_playing_state(self, make_two_tank_game_result: Callable[..., GameResult]) -> None:
         """When playing, status shows playing indicator."""
-        app = self._make_app(history_len=5)
+        app = self._make_app(make_two_tank_game_result, history_len=5)
         app._playing = True
         text = app._build_status_text()
         assert "Playing" in text
 
-    def test_end_with_winner(self) -> None:
+    def test_end_with_winner(self, make_two_tank_game_result: Callable[..., GameResult]) -> None:
         """At end step with a winner, shows winner info."""
-        app = self._make_app(history_len=3, winner="Alpha")
+        app = self._make_app(make_two_tank_game_result, history_len=3, winner="Alpha")
         app._current_step = app._max_step
         text = app._build_status_text()
         assert "Winner" in text
         assert "Alpha" in text
 
-    def test_end_draw(self) -> None:
+    def test_end_draw(self, make_two_tank_game_result: Callable[..., GameResult]) -> None:
         """At end step with no winner, shows draw."""
-        app = self._make_app(history_len=3, winner=None)
+        app = self._make_app(make_two_tank_game_result, history_len=3, winner=None)
         app._current_step = app._max_step
         text = app._build_status_text()
         assert "Draw" in text
 
-    def test_winner_not_shown_mid_game(self) -> None:
+    def test_winner_not_shown_mid_game(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """Winner info only shows at the final step."""
-        app = self._make_app(history_len=3, winner="Alpha")
+        app = self._make_app(make_two_tank_game_result, history_len=3, winner="Alpha")
         app._current_step = 1
         text = app._build_status_text()
         assert "Winner" not in text
 
-    def test_delay_shown(self) -> None:
+    def test_delay_shown(self, make_two_tank_game_result: Callable[..., GameResult]) -> None:
         """Delay value is displayed in the status."""
-        app = self._make_app(history_len=3)
+        app = self._make_app(make_two_tank_game_result, history_len=3)
         app._delay = 1.5
         text = app._build_status_text()
         assert "1.5s" in text
@@ -129,14 +144,18 @@ class TestBuildStatusText:
 class TestActiveTankId:
     """Tests for ``ReplayViewerApp._active_tank_id``."""
 
-    def test_step_zero_returns_current_tank(self) -> None:
+    def test_step_zero_returns_current_tank(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """At step 0, returns the initial state's current_tank_id."""
         result = make_two_tank_game_result(history_len=3)
         app = ReplayViewerApp(result)
         app._current_step = 0
         assert app._active_tank_id() == "A1"
 
-    def test_step_one_returns_first_history_tank(self) -> None:
+    def test_step_one_returns_first_history_tank(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """At step 1, returns history[0].tank_id."""
         result = make_two_tank_game_result(history_len=3)
         app = ReplayViewerApp(result)
@@ -144,7 +163,9 @@ class TestActiveTankId:
         # history[0] acts with tank A1 (index 0 % 2 = 0 → tank_a)
         assert app._active_tank_id() == "A1"
 
-    def test_step_two_returns_second_history_tank(self) -> None:
+    def test_step_two_returns_second_history_tank(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """At step 2, returns history[1].tank_id."""
         result = make_two_tank_game_result(history_len=3)
         app = ReplayViewerApp(result)
@@ -159,7 +180,7 @@ class TestActiveTankId:
 class TestNavigation:
     """Tests for navigation helpers (_max_step, compute_clamped_step)."""
 
-    def test_max_step(self) -> None:
+    def test_max_step(self, make_two_tank_game_result: Callable[..., GameResult]) -> None:
         """_max_step is len(states) - 1."""
         result = make_two_tank_game_result(history_len=4)
         app = ReplayViewerApp(result)
@@ -183,7 +204,9 @@ class TestNavigation:
         assert compute_clamped_step(0, max_step=5) == 0
         assert compute_clamped_step(5, max_step=5) == 5
 
-    def test_max_step_empty_history(self) -> None:
+    def test_max_step_empty_history(
+        self, make_two_tank_game_result: Callable[..., GameResult]
+    ) -> None:
         """With no history, max_step is 0 (only initial state)."""
         result = make_two_tank_game_result(history_len=0)
         app = ReplayViewerApp(result)
@@ -216,7 +239,7 @@ class TestSpeedAdjustments:
         new_delay = compute_new_delay(_MAX_DELAY, +1)
         assert new_delay == _MAX_DELAY
 
-    def test_default_delay(self) -> None:
+    def test_default_delay(self, make_two_tank_game_result: Callable[..., GameResult]) -> None:
         """App starts with _DEFAULT_DELAY."""
         result = make_two_tank_game_result(history_len=1)
         app = ReplayViewerApp(result)

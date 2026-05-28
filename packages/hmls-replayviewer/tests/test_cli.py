@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
+from hmls.core.results import GameResult
 from hmls.replayviewer.cli import build_state_timeline, load_game_result, parse_args
 
-from ._fixtures import make_minimal_game_result
+# NOTE: ``make_minimal_game_result`` is a pytest fixture defined in conftest.py
+# that provides a factory callable.  Test methods receive it via standard pytest
+# dependency injection (as a parameter).
+
 
 # ── parse_args ────────────────────────────────────────────────────────
 
@@ -34,7 +39,9 @@ class TestParseArgs:
 class TestLoadGameResult:
     """Tests for ``load_game_result``."""
 
-    def test_loads_valid_json(self, tmp_path: Path) -> None:
+    def test_loads_valid_json(
+        self, tmp_path: Path, make_minimal_game_result: Callable[..., GameResult]
+    ) -> None:
         """A well-formed GameResult JSON file loads successfully."""
         result = make_minimal_game_result()
         file = tmp_path / "game.json"
@@ -72,7 +79,9 @@ class TestLoadGameResult:
 class TestBuildStateTimeline:
     """Tests for ``build_state_timeline``."""
 
-    def test_empty_history_returns_single_state(self) -> None:
+    def test_empty_history_returns_single_state(
+        self, make_minimal_game_result: Callable[..., GameResult]
+    ) -> None:
         """With no history, the timeline is just the initial state."""
         result = make_minimal_game_result(history_len=0)
         timeline = build_state_timeline(result)
@@ -80,21 +89,25 @@ class TestBuildStateTimeline:
         assert len(timeline) == 1
         assert timeline[0] is result.initial_state
 
-    def test_timeline_length(self) -> None:
+    def test_timeline_length(self, make_minimal_game_result: Callable[..., GameResult]) -> None:
         """Timeline length should be len(history) + 1."""
         result = make_minimal_game_result(history_len=5)
         timeline = build_state_timeline(result)
 
         assert len(timeline) == 6
 
-    def test_first_element_is_initial_state(self) -> None:
+    def test_first_element_is_initial_state(
+        self, make_minimal_game_result: Callable[..., GameResult]
+    ) -> None:
         """Index 0 should be the initial state."""
         result = make_minimal_game_result(history_len=3)
         timeline = build_state_timeline(result)
 
         assert timeline[0] is result.initial_state
 
-    def test_subsequent_elements_match_history(self) -> None:
+    def test_subsequent_elements_match_history(
+        self, make_minimal_game_result: Callable[..., GameResult]
+    ) -> None:
         """Index i (for i >= 1) should be history[i-1].state_after."""
         result = make_minimal_game_result(history_len=3)
         timeline = build_state_timeline(result)
