@@ -8,15 +8,14 @@ from hmls.core.results import GameResult, HistoryEntry
 from hmls.core.tank import Tank
 from hmls.core.types import Action, Direction, Position
 from hmls.replayviewer.app import (
-    ReplayViewerApp,
     _DEFAULT_DELAY,
     _DELAY_STEP,
     _MAX_DELAY,
     _MIN_DELAY,
+    ReplayViewerApp,
     _tank_log_id,
     _tank_panel_id,
 )
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────
 
