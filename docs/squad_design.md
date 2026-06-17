@@ -175,3 +175,82 @@ Depends only on Tier 1 abstractions, not concrete implementations. Any planner/e
 5. **Inter-executor communication** — Future executor architectures could receive information from other executors (e.g. shared hidden states or attention across the team).
 
 6. **Dynamic planning frequency** — The initial implementation calls the planner every turn. Future work could explore planning every N turns, or only on significant events (tank death, enemy spotted).
+
+## How Multi-Tank Training and Inference Work
+
+The squad architecture uses a **single executor model** shared across all tanks on a team, and a **single planner model** per team. This section explains how both inference and training handle the fact that multiple tanks interact with the same model simultaneously.
+
+### Per-tank hidden state during play
+
+The existing single-tank `NNPlayer` holds one GRU hidden-state tensor (`self._hidden`). When the engine calls `choose_action("A1", view)` followed by `choose_action("A2", view)`, the hidden state from A1's forward pass would be used as input for A2 — mixing their temporal contexts.
+
+The `SquadPlayer` solves this by maintaining **per-tank hidden states** in a dictionary:
+
+```python
+self._hidden_states: dict[TankId, torch.Tensor]
+```
+
+When `choose_action` is called for tank A1, the player looks up `_hidden_states["A1"]`, runs the executor forward pass, and stores the new hidden state back. When called for A2, it uses `_hidden_states["A2"]`. Each tank's GRU memory is independent and continuous across turns, even though the **model weights are shared**.
+
+This is analogous to running the same RNN on multiple input sequences in parallel — same parameters, independent hidden states.
+
+**Initialisation:** On episode reset (`reset_episode`), the dict is cleared. On the first call for a new `tank_id`, the hidden state is initialised via `model.initial_hidden()` (zeros). When a tank dies, the engine simply stops calling `choose_action` for it; the stale hidden state is harmless and gets cleared on the next episode reset.
+
+### Per-tank reward and trajectories during training
+
+REINFORCE needs a trajectory — a sequence of (log-probability, reward) pairs — to compute a policy gradient. With multiple tanks sharing one model, there are multiple trajectories being generated simultaneously, each with its own reward signal.
+
+The `SquadPlayer` maintains **per-tank episodes**:
+
+```python
+self._episodes: dict[TankId, Episode]
+self._log_prob_tensors: dict[TankId, list[torch.Tensor]]
+self._entropy_tensors: dict[TankId, list[torch.Tensor]]
+```
+
+During a game:
+
+1. Engine calls `choose_action("A1", view)` → executor forward pass with A1's hidden state → action sampled → log-prob and entropy appended to **A1's** trajectory.
+2. Engine calls `choose_action("A2", view)` → same model, A2's hidden state → appended to **A2's** trajectory.
+3. When the engine reports a step result for A1, the reward is assigned to A1's episode. Same for A2.
+
+### Accumulated gradient update (executor)
+
+After a game, each tank's trajectory is an independent episode through the **same model**. The recommended approach is to **accumulate the loss across all tanks** and perform a single optimiser step:
+
+```python
+total_loss = torch.tensor(0.0)
+for tank_id in alive_tanks:
+    episode = player.episodes[tank_id]
+    returns = compute_returns(episode.rewards(), gamma)
+    advantages = baseline.compute_advantages(returns)
+    log_probs = torch.stack(player.log_prob_tensors[tank_id])
+    total_loss += -(log_probs * advantages.detach()).sum()
+    # plus entropy bonus
+
+optimizer.zero_grad()
+total_loss.backward()
+optimizer.step()
+```
+
+This is equivalent to treating each tank as a separate rollout from the same policy — a standard approach in multi-agent RL with parameter sharing. One optimiser step per game regardless of tank count, and each tank's trajectory provides independent gradient samples, giving a lower-variance estimate than any single tank alone.
+
+The `ReturnBaseline` (exponential moving average of returns) is **shared across all tanks**: it tracks the running average return for the executor policy regardless of which tank generated it.
+
+### Planner training
+
+The planner has a simpler structure:
+
+- **One trajectory per team** — the planner acts once per planning round (initially every turn), outputting one order per alive tank. This entire decision is a single trajectory step.
+- **Team-level reward** — the planner's reward is the mean of per-step executor rewards across all tanks (Option 2 from the reward strategy discussion above).
+- **Separate optimiser** — the planner and executor have independent optimisers and independent REINFORCE updates.
+
+### Summary
+
+| Aspect | Single-tank (current) | Squad executor | Squad planner |
+|--------|----------------------|----------------|---------------|
+| Hidden state | 1 per player | 1 per tank (`dict`) | 1 per team |
+| Episode/trajectory | 1 per player | 1 per tank (`dict`) | 1 per team |
+| Reward signal | Per-step for this tank | Per-step per tank | Aggregated team reward |
+| REINFORCE update | 1 loss → backward → step | Sum per-tank losses → 1 backward → step | 1 loss → backward → step |
+| Model weights | Unique per player | Shared across all tanks | Unique per team |
