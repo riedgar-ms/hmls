@@ -8,7 +8,9 @@ This is a `uv` workspace (see root `pyproject.toml`). All packages live under `p
 
 Key package groups:
 - **Core**: `hmls-core` — game types, map, engine, visibility
-- **Neural networks**: `hmls-nncore` (base classes), `hmls-singlemki/ii/iii` (architectures), `hmls-randomtank` (rule-based), `hmls-reinforcetrainer`
+- **Computer players** (`packages/computerplayers/`):
+  - `hmls-nncore` — base classes for neural network tanks
+  - Single-tank players (`packages/computerplayers/singletank/`): `hmls-singlemki/ii/iii` (architectures), `hmls-randomtank` (rule-based), `hmls-reinforcetrainer`
 - **Networking**: `hmls-protocol`, `hmls-networking`, `hmls-server`, `hmls-client`, `hmls-observer`
 - **UX (Textual TUI)**: `hmls-uxcommon`, `hmls-mapgenerator`, `hmls-testharness`, `hmls-replayviewer`
 

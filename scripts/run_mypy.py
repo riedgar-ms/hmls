@@ -42,9 +42,15 @@ from pathlib import Path
 
 
 def discover_packages(workspace_root: Path) -> list[Path]:
-    """Return sorted list of package directories under packages/."""
+    """Return sorted list of package directories under packages/ (recursive).
+
+    A directory is considered a package if it contains a pyproject.toml file.
+    This supports nested directory structures like packages/computerplayers/singletank/.
+    """
     packages_dir = workspace_root / "packages"
-    return sorted(d for d in packages_dir.iterdir() if d.is_dir())
+    return sorted(
+        d.parent for d in packages_dir.rglob("pyproject.toml") if d.parent != packages_dir
+    )
 
 
 def build_mypy_path(package_dirs: list[Path]) -> str:
