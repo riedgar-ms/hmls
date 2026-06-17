@@ -44,19 +44,23 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-packages
 
+      - name: Compute package slug
+        id: slug
+        run: echo "value=$(echo '${{ matrix.package }}' | tr '/' '-')" >> "$GITHUB_OUTPUT"
+
       - name: Run tests with coverage
         run: |
           uv run pytest "packages/${{ matrix.package }}/tests/" \
             --cov="packages/${{ matrix.package }}/src" \
             --cov-report=term-missing \
-            --cov-report="xml:coverage-${{ matrix.package }}.xml"
+            --cov-report="xml:coverage-${{ steps.slug.outputs.value }}.xml"
 
       - name: Upload coverage artifact
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: coverage-${{ matrix.package }}
-          path: coverage-${{ matrix.package }}.xml
+          name: coverage-${{ steps.slug.outputs.value }}
+          path: coverage-${{ steps.slug.outputs.value }}.xml
 
   combined:
     runs-on: ubuntu-latest
