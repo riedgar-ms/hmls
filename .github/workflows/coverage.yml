@@ -21,16 +21,16 @@ jobs:
           - hmls-core
           - hmls-mapgenerator
           - hmls-networking
-          - hmls-nncore
+          - computerplayers/hmls-nncore
           - hmls-observer
           - hmls-protocol
-          - hmls-randomtank
-          - hmls-reinforcetrainer
+          - computerplayers/singletank/hmls-randomtank
+          - computerplayers/singletank/hmls-reinforcetrainer
           - hmls-replayviewer
           - hmls-server
-          - hmls-singlemki
-          - hmls-singlemkii
-          - hmls-singlemkiii
+          - computerplayers/singletank/hmls-singlemki
+          - computerplayers/singletank/hmls-singlemkii
+          - computerplayers/singletank/hmls-singlemkiii
           - hmls-testharness
           - hmls-uxcommon
     steps:

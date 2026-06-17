@@ -54,7 +54,7 @@ This does _not_ credit the other tank with a win, though.
 ### Key configuration sections
 
 The configuration file is JSON with several sections. The full reference is in
-[`packages/hmls-reinforcetrainer/README.md`](../packages/hmls-reinforcetrainer/README.md);
+[`packages/computerplayers/singletank/hmls-reinforcetrainer/README.md`](../packages/computerplayers/singletank/hmls-reinforcetrainer/README.md);
 below is a high-level overview of the most important knobs.
 
 #### Model selection
@@ -184,7 +184,7 @@ Useful as an initial training opponent because it provides consistent, non-trivi
 
 ## Implementing new tanks
 
-You can create your own tank architecture by adding a new package under `packages/`.
+You can create your own tank architecture by adding a new package under `packages/computerplayers/singletank/`.
 The easiest approach is to copy an existing tank package (e.g. `hmls-singlemkiii` for the simplest structure) and modify it.
 
 ### Required components

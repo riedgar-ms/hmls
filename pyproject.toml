@@ -5,7 +5,8 @@ description = "Tank game AI experiments workspace"
 requires-python = ">=3.14"
 
 [tool.uv.workspace]
-members = ["packages/*"]
+members = ["packages/*", "packages/computerplayers/*", "packages/computerplayers/singletank/*"]
+exclude = ["packages/computerplayers", "packages/computerplayers/singletank"]
 
 [dependency-groups]
 dev = [
@@ -52,7 +53,7 @@ hmls-testharness = { workspace = true }
 hmls-uxcommon = { workspace = true }
 
 [tool.ruff]
-src = ["packages/*/src"]
+src = ["packages/**/src"]
 line-length = 100
 target-version = "py314"
 

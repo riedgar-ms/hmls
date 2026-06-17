@@ -7,8 +7,8 @@ Create a new neural network tank architecture for the hmls game.
 1. **Choose a name** — e.g. `hmls-singlemkiv`. The package name pattern is `hmls-<tankname>`.
 
 2. **Copy an existing tank package** as a starting point:
-   - `packages/hmls-singlemkiii` is simplest (no CNN).
-   - `packages/hmls-singlemki` is the standard CNN+GRU template.
+   - `packages/computerplayers/singletank/hmls-singlemkiii` is simplest (no CNN).
+   - `packages/computerplayers/singletank/hmls-singlemki` is the standard CNN+GRU template.
 
 3. **Rename the namespace** — the Python package is `hmls.<tankname>` under `src/hmls/<tankname>/`.
 

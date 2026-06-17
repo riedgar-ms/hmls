@@ -77,4 +77,4 @@ uv run hmls-reinforcetrainer path/to/config.json
 - Start with the sample config: `sample_configs/single_tanks/config.json`
 - Use small runs first (`total_maps: 10`, `games_per_map: 5`) to verify setup.
 - Review sample game replays with `uv run hmls-replayviewer`.
-- See `packages/hmls-reinforcetrainer/README.md` for full reference.
+- See `packages/computerplayers/singletank/hmls-reinforcetrainer/README.md` for full reference.

@@ -1,5 +1,5 @@
 ---
-applyTo: "packages/hmls-singlemk*/**,packages/hmls-nncore/**,packages/hmls-randomtank/**,packages/hmls-reinforcetrainer/**"
+applyTo: "packages/computerplayers/singletank/hmls-singlemk*/**,packages/computerplayers/hmls-nncore/**,packages/computerplayers/singletank/hmls-randomtank/**,packages/computerplayers/singletank/hmls-reinforcetrainer/**"
 ---
 
 # Neural Network & Training Packages
@@ -27,7 +27,7 @@ Every tank package must provide four semantic components:
 The existing packages generally follow this file layout, though it is not prescribed:
 
 ```
-packages/hmls-singlemkX/
+packages/computerplayers/singletank/hmls-singlemkX/
 ├── pyproject.toml          # Must include entry point
 ├── src/hmls/singlemkX/
 │   ├── __init__.py
