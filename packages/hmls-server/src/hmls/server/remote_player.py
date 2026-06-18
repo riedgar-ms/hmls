@@ -98,6 +98,17 @@ class RemotePlayer(PendingActionPlayer):
             raise RuntimeError(msg)
         self._action_future.set_result(action)
 
+    def cancel_pending_action(self) -> None:
+        """Cancel a pending action future, e.g. when the player disconnects.
+
+        If there is a pending action future, sets a :class:`RuntimeError` on it
+        so that :meth:`wait_for_action` raises instead of blocking forever.
+        """
+        if self._action_future is not None and not self._action_future.done():
+            self._action_future.set_exception(
+                RuntimeError("Player disconnected")  # noqa: EM101
+            )
+
     def _no_action_message(self) -> str:
         """Return error message specific to RemotePlayer."""
         return (

@@ -175,6 +175,8 @@ class TestClientServerRoundTrip:
 
             for t in threads:
                 t.join(timeout=30)
+            for t in threads:
+                assert not t.is_alive(), f"Thread {t.name} did not finish in time"
 
         # Both players should have been assigned teams.
         assert results[0]["team"] in ("A", "B")
@@ -210,6 +212,8 @@ class TestClientServerRoundTrip:
             t2.start()
             t1.join(timeout=30)
             t2.join(timeout=30)
+            assert not t1.is_alive(), "Player 1 thread did not finish in time"
+            assert not t2.is_alive(), "Player 2 thread did not finish in time"
 
         # Both should receive game_over with draw.
         assert results[0]["game_over_msg"] is not None
@@ -235,6 +239,8 @@ class TestClientServerRoundTrip:
             t2.start()
             t1.join(timeout=30)
             t2.join(timeout=30)
+            assert not t1.is_alive(), "Player 1 thread did not finish in time"
+            assert not t2.is_alive(), "Player 2 thread did not finish in time"
 
         for r in results:
             msg_types = [m["type"] for m in r["messages"]]
@@ -282,6 +288,8 @@ class TestClientServerRoundTrip:
             t2.start()
             t1.join(timeout=30)
             t2.join(timeout=30)
+            assert not t1.is_alive(), "Disconnecting player thread did not finish in time"
+            assert not t2.is_alive(), "Surviving player thread did not finish in time"
 
         # Survivor should have received game_over.
         assert survivor_result.get("game_over_msg") is not None
@@ -338,6 +346,8 @@ class TestClientServerRoundTrip:
 
             t1.join(timeout=10)
             t2.join(timeout=10)
+            assert not t1.is_alive(), "First player thread did not finish in time"
+            assert not t2.is_alive(), "Second player thread did not finish in time"
 
     def test_invalid_message_returns_error(self) -> None:
         """Sending an invalid message after joining should return an error."""
