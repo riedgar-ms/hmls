@@ -28,6 +28,10 @@ jobs:
           - computerplayers/singletank/hmls-reinforcetrainer
           - hmls-replayviewer
           - hmls-server
+          - computerplayers/simplesquad/hmls-simplesquadexecutor
+          - computerplayers/simplesquad/hmls-simplesquadplanner
+          - computerplayers/simplesquad/hmls-simplesquadplayer
+          - computerplayers/simplesquad/hmls-simplesquadtrainer
           - computerplayers/singletank/hmls-singlemki
           - computerplayers/singletank/hmls-singlemkii
           - computerplayers/singletank/hmls-singlemkiii

@@ -19,6 +19,10 @@ members = [
     "hmls-reinforcetrainer",
     "hmls-replayviewer",
     "hmls-server",
+    "hmls-simplesquadexecutor",
+    "hmls-simplesquadplanner",
+    "hmls-simplesquadplayer",
+    "hmls-simplesquadtrainer",
     "hmls-singlemki",
     "hmls-singlemkii",
     "hmls-singlemkiii",
@@ -471,6 +475,94 @@ requires-dist = [
 ]
 
 [[package]]
+name = "hmls-simplesquadexecutor"
+version = "0.1.0"
+source = { editable = "packages/computerplayers/simplesquad/hmls-simplesquadexecutor" }
+dependencies = [
+    { name = "hmls-core" },
+    { name = "hmls-nncore" },
+    { name = "pydantic" },
+    { name = "torch" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "hmls-core", editable = "packages/hmls-core" },
+    { name = "hmls-nncore", editable = "packages/computerplayers/hmls-nncore" },
+    { name = "pydantic", specifier = ">=2.0" },
+    { name = "torch", specifier = ">=2.0" },
+]
+
+[[package]]
+name = "hmls-simplesquadplanner"
+version = "0.1.0"
+source = { editable = "packages/computerplayers/simplesquad/hmls-simplesquadplanner" }
+dependencies = [
+    { name = "hmls-core" },
+    { name = "hmls-nncore" },
+    { name = "pydantic" },
+    { name = "torch" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "hmls-core", editable = "packages/hmls-core" },
+    { name = "hmls-nncore", editable = "packages/computerplayers/hmls-nncore" },
+    { name = "pydantic", specifier = ">=2.0" },
+    { name = "torch", specifier = ">=2.0" },
+]
+
+[[package]]
+name = "hmls-simplesquadplayer"
+version = "0.1.0"
+source = { editable = "packages/computerplayers/simplesquad/hmls-simplesquadplayer" }
+dependencies = [
+    { name = "hmls-core" },
+    { name = "hmls-nncore" },
+    { name = "hmls-simplesquadexecutor" },
+    { name = "hmls-simplesquadplanner" },
+    { name = "pydantic" },
+    { name = "torch" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "hmls-core", editable = "packages/hmls-core" },
+    { name = "hmls-nncore", editable = "packages/computerplayers/hmls-nncore" },
+    { name = "hmls-simplesquadexecutor", editable = "packages/computerplayers/simplesquad/hmls-simplesquadexecutor" },
+    { name = "hmls-simplesquadplanner", editable = "packages/computerplayers/simplesquad/hmls-simplesquadplanner" },
+    { name = "pydantic", specifier = ">=2.0" },
+    { name = "torch", specifier = ">=2.0" },
+]
+
+[[package]]
+name = "hmls-simplesquadtrainer"
+version = "0.1.0"
+source = { editable = "packages/computerplayers/simplesquad/hmls-simplesquadtrainer" }
+dependencies = [
+    { name = "hmls-core" },
+    { name = "hmls-mapgenerator" },
+    { name = "hmls-nncore" },
+    { name = "hmls-simplesquadexecutor" },
+    { name = "hmls-simplesquadplanner" },
+    { name = "hmls-simplesquadplayer" },
+    { name = "pydantic" },
+    { name = "torch" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "hmls-core", editable = "packages/hmls-core" },
+    { name = "hmls-mapgenerator", editable = "packages/hmls-mapgenerator" },
+    { name = "hmls-nncore", editable = "packages/computerplayers/hmls-nncore" },
+    { name = "hmls-simplesquadexecutor", editable = "packages/computerplayers/simplesquad/hmls-simplesquadexecutor" },
+    { name = "hmls-simplesquadplanner", editable = "packages/computerplayers/simplesquad/hmls-simplesquadplanner" },
+    { name = "hmls-simplesquadplayer", editable = "packages/computerplayers/simplesquad/hmls-simplesquadplayer" },
+    { name = "pydantic", specifier = ">=2.0" },
+    { name = "torch", specifier = ">=2.0" },
+]
+
+[[package]]
 name = "hmls-singlemki"
 version = "0.1.0"
 source = { editable = "packages/computerplayers/singletank/hmls-singlemki" }
@@ -577,6 +669,10 @@ dev = [
     { name = "hmls-reinforcetrainer" },
     { name = "hmls-replayviewer" },
     { name = "hmls-server" },
+    { name = "hmls-simplesquadexecutor" },
+    { name = "hmls-simplesquadplanner" },
+    { name = "hmls-simplesquadplayer" },
+    { name = "hmls-simplesquadtrainer" },
     { name = "hmls-singlemki" },
     { name = "hmls-singlemkii" },
     { name = "hmls-singlemkiii" },
@@ -605,6 +701,10 @@ dev = [
     { name = "hmls-reinforcetrainer", editable = "packages/computerplayers/singletank/hmls-reinforcetrainer" },
     { name = "hmls-replayviewer", editable = "packages/hmls-replayviewer" },
     { name = "hmls-server", editable = "packages/hmls-server" },
+    { name = "hmls-simplesquadexecutor", editable = "packages/computerplayers/simplesquad/hmls-simplesquadexecutor" },
+    { name = "hmls-simplesquadplanner", editable = "packages/computerplayers/simplesquad/hmls-simplesquadplanner" },
+    { name = "hmls-simplesquadplayer", editable = "packages/computerplayers/simplesquad/hmls-simplesquadplayer" },
+    { name = "hmls-simplesquadtrainer", editable = "packages/computerplayers/simplesquad/hmls-simplesquadtrainer" },
     { name = "hmls-singlemki", editable = "packages/computerplayers/singletank/hmls-singlemki" },
     { name = "hmls-singlemkii", editable = "packages/computerplayers/singletank/hmls-singlemkii" },
     { name = "hmls-singlemkiii", editable = "packages/computerplayers/singletank/hmls-singlemkiii" },

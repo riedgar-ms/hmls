@@ -5,8 +5,8 @@ description = "Tank game AI experiments workspace"
 requires-python = ">=3.14"
 
 [tool.uv.workspace]
-members = ["packages/*", "packages/computerplayers/*", "packages/computerplayers/singletank/*"]
-exclude = ["packages/computerplayers", "packages/computerplayers/singletank"]
+members = ["packages/*", "packages/computerplayers/*", "packages/computerplayers/singletank/*", "packages/computerplayers/simplesquad/*"]
+exclude = ["packages/computerplayers", "packages/computerplayers/singletank", "packages/computerplayers/simplesquad"]
 
 [dependency-groups]
 dev = [
@@ -27,6 +27,10 @@ dev = [
     "hmls-reinforcetrainer",
     "hmls-replayviewer",
     "hmls-server",
+    "hmls-simplesquadexecutor",
+    "hmls-simplesquadplanner",
+    "hmls-simplesquadplayer",
+    "hmls-simplesquadtrainer",
     "hmls-singlemki",
     "hmls-singlemkii",
     "hmls-singlemkiii",
@@ -46,6 +50,10 @@ hmls-randomtank = { workspace = true }
 hmls-reinforcetrainer = { workspace = true }
 hmls-replayviewer = { workspace = true }
 hmls-server = { workspace = true }
+hmls-simplesquadexecutor = { workspace = true }
+hmls-simplesquadplanner = { workspace = true }
+hmls-simplesquadplayer = { workspace = true }
+hmls-simplesquadtrainer = { workspace = true }
 hmls-singlemki = { workspace = true }
 hmls-singlemkii = { workspace = true }
 hmls-singlemkiii = { workspace = true }

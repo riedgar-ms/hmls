@@ -1,0 +1,22 @@
+[project]
+name = "hmls-simplesquadexecutor"
+version = "0.1.0"
+description = "CNN + order embedding executor model for simple squad architecture"
+requires-python = ">=3.14"
+dependencies = [
+    "hmls-core",
+    "hmls-nncore",
+    "pydantic>=2.0",
+    "torch>=2.0",
+]
+
+[tool.uv.sources]
+hmls-core = { workspace = true }
+hmls-nncore = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hmls"]
