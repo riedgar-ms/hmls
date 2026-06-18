@@ -213,6 +213,9 @@ class TestObserverIntegration:
             t_obs.join(timeout=30)
             t_p1.join(timeout=30)
             t_p2.join(timeout=30)
+            assert not t_obs.is_alive(), "Observer thread did not finish in time"
+            assert not t_p1.is_alive(), "Player 1 thread did not finish in time"
+            assert not t_p2.is_alive(), "Player 2 thread did not finish in time"
 
         # Observer should have received game_start.
         assert observer_result["game_start_msg"] is not None
@@ -256,6 +259,9 @@ class TestObserverIntegration:
             t_obs.join(timeout=30)
             t_p1.join(timeout=30)
             t_p2.join(timeout=30)
+            assert not t_obs.is_alive(), "Observer thread did not finish in time"
+            assert not t_p1.is_alive(), "Player 1 thread did not finish in time"
+            assert not t_p2.is_alive(), "Player 2 thread did not finish in time"
 
         gs = observer_result["game_start_msg"]
         assert gs is not None
@@ -294,6 +300,9 @@ class TestObserverIntegration:
             t_obs.join(timeout=30)
             t_p1.join(timeout=30)
             t_p2.join(timeout=30)
+            assert not t_obs.is_alive(), "Observer thread did not finish in time"
+            assert not t_p1.is_alive(), "Player 1 thread did not finish in time"
+            assert not t_p2.is_alive(), "Player 2 thread did not finish in time"
 
         state_updates = observer_result["state_updates"]
         assert len(state_updates) > 0
@@ -336,6 +345,9 @@ class TestObserverIntegration:
             t_obs.join(timeout=30)
             t_p1.join(timeout=30)
             t_p2.join(timeout=30)
+            assert not t_obs.is_alive(), "Observer thread did not finish in time"
+            assert not t_p1.is_alive(), "Player 1 thread did not finish in time"
+            assert not t_p2.is_alive(), "Player 2 thread did not finish in time"
 
         turn_results = observer_result["turn_results"]
         assert len(turn_results) > 0
@@ -375,6 +387,9 @@ class TestObserverIntegration:
             t_obs.join(timeout=30)
             t_p1.join(timeout=30)
             t_p2.join(timeout=30)
+            assert not t_obs.is_alive(), "Observer thread did not finish in time"
+            assert not t_p1.is_alive(), "Player 1 thread did not finish in time"
+            assert not t_p2.is_alive(), "Player 2 thread did not finish in time"
 
         obs_go = observer_result["game_over_msg"]
         assert obs_go is not None
@@ -424,6 +439,9 @@ class TestObserverIntegration:
             t_p1.join(timeout=30)
             t_p2.join(timeout=30)
             t_obs.join(timeout=30)
+            assert not t_p1.is_alive(), "Player 1 thread did not finish in time"
+            assert not t_p2.is_alive(), "Player 2 thread did not finish in time"
+            assert not t_obs.is_alive(), "Observer thread did not finish in time"
 
         # Observer should still get game_start (sent on connect for late joiners).
         assert observer_result["game_start_msg"] is not None
@@ -466,6 +484,9 @@ class TestObserverIntegration:
             t_obs.join(timeout=30)
             t_p1.join(timeout=30)
             t_p2.join(timeout=30)
+            assert not t_obs.is_alive(), "Observer thread did not finish in time"
+            assert not t_p1.is_alive(), "Player 1 thread did not finish in time"
+            assert not t_p2.is_alive(), "Player 2 thread did not finish in time"
 
         # Both players should still complete the game.
         assert player_results[0]["game_over_msg"] is not None

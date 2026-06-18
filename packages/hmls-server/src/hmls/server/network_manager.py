@@ -216,7 +216,9 @@ class NetworkManager:
         """Listen for action messages from a connected client."""
         while not self.game_over:
             try:
-                raw = await websocket.receive_text()
+                raw = await asyncio.wait_for(websocket.receive_text(), timeout=1.0)
+            except TimeoutError:
+                continue
             except WebSocketDisconnect:
                 raise
 
