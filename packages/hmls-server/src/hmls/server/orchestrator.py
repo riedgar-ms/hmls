@@ -79,6 +79,10 @@ class GameOrchestrator:
         """Handle a player disconnecting mid-game."""
         if not self.game_over:
             self.game_over = True
+            # Cancel any pending action future so the game loop unblocks.
+            player = self.players.get(event.team)
+            if player is not None:
+                player.cancel_pending_action()
             other_team = "B" if event.team == "A" else "A"
             await self._event_bus.emit(
                 GameOverEvent(
