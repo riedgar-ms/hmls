@@ -6,7 +6,12 @@ requires-python = ">=3.14"
 
 [tool.uv.workspace]
 members = ["packages/*", "packages/computerplayers/*", "packages/computerplayers/singletank/*"]
-exclude = ["packages/computerplayers", "packages/computerplayers/singletank"]
+exclude = [
+    "packages/computerplayers",
+    "packages/computerplayers/singletank",
+    # TODO: temporary — remove once simplesquad has a pyproject.toml
+    "packages/computerplayers/simplesquad",
+]
 
 [dependency-groups]
 dev = [
