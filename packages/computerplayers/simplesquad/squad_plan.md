@@ -33,4 +33,6 @@ The planner should be stateful. It can use the incoming patch data to build up a
 
 ## Training
 
-### Executors
+Initial training of the executors can be done per-order. We can have one trainer for the 'move' order, one for explore, and one for hunting. The last should use one of the existing singletanks (or the randomtank) as an opponent. Similar to the single tank trainer, this should be done on multiple maps of multiple sizes.
+
+Once the basic executor training is done, then we can start training the planner (although there will be continued executor training happening at the same time). Initially, it can play against groups of single tanks (random or Mk-n), but over time this should be switchable to another squad player. Again, each training run will need to have multiple maps of differing sizes.
